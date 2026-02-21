@@ -770,17 +770,26 @@ cache hit rates since the content is deterministic (no PDF extraction variance).
 - Internal schemas `ESRSClaim` and `TaxonomyFinancials` live in `schemas.py`
 - `backend/.venv` created; activate with `source backend/.venv/bin/activate`
 
-### Iteration 0.5 — Migrate to Single-Document JSON Input ⬅ NEW
-- [ ] Update `state.py` — replace `management_text`, `taxonomy_text`, `transition_text` with `report_json`, `esrs_data`, `taxonomy_data`
-- [ ] Update `schemas.py` — `ESRSClaim.page_ref` → `ESRSClaim.xbrl_concept`, `TaxonomyFinancials.source_document` default
-- [ ] Write `tools/report_parser.py` — `clean_report_json()`, `extract_esrs_sections()`, `extract_taxonomy_sections()`
-- [ ] Delete `tools/pdf_reader.py` (replaced by `report_parser.py`)
-- [ ] Update `tools/prompts.py` — rewrite Extractor + Fetcher preambles for structured JSON input
-- [ ] Update stub agents to read from new state keys (`esrs_data`, `taxonomy_data`)
-- [ ] Update `backend/tests/test_iteration1.py` — fix test fixtures for new state shape
-- [ ] Remove `pdfplumber` from `requirements.txt`
+### Iteration 0.5 — Migrate to Single-Document JSON Input ✓ COMPLETE (2026-02-21)
+- [x] Update `state.py` — replace `management_text`, `taxonomy_text`, `transition_text` with `report_json`, `esrs_data`, `taxonomy_data`
+- [x] Update `schemas.py` — `ESRSClaim.page_ref` → `ESRSClaim.xbrl_concept`, `TaxonomyFinancials.source_document` default → `"Annual Management Report — Taxonomy Section"`
+- [x] Write `tools/report_parser.py` — `clean_report_json()`, `extract_esrs_sections()`, `extract_taxonomy_sections()`
+- [x] Delete `tools/pdf_reader.py` (replaced by `report_parser.py`)
+- [x] Update `tools/prompts.py` — rewrite Extractor + Fetcher preambles for structured JSON input (iXBRL concept/value/unit/context/decimals data format)
+- [x] Update stub agents to read from new state keys (`esrs_data`, `taxonomy_data`)
+- [x] Update `backend/tests/test_iteration1.py` — fix test fixtures for new state shape
+- [x] Remove `pdfplumber` from `requirements.txt`
 
 **Gate**: `graph.invoke({"audit_id":"test","report_json":{...},"esrs_data":{...},"taxonomy_data":{...},"entity_id":"test"})` runs end-to-end ✓
+
+**Implementation notes**:
+- `report_parser.py` handles two common iXBRL JSON shapes: flat dict keyed by concept name (Shape A) and list-of-tagged-nodes under a top-level key (Shape B)
+- ESRS section routing filters for `esrs_e1-1`, `esrs_e1-5`, `esrs_e1-6` + entity identification concepts (LEI, company name, jurisdiction)
+- Taxonomy section routing filters for `eutaxonomy`, `taxonomyeligibility`, `taxonomyalignment` + standard financial tags (`ifrs-full:capitalexpenditures`, etc.)
+- `clean_report_json()` recursively strips script/style elements, CSP metadata, whitespace-only text nodes, and browser rendering artifacts
+- Extractor stub now uses `xbrl_concept` (e.g. `"esrs_e1-1_01"`) instead of `page_ref` in dummy ESRSClaim objects
+- Consultant now assembles 1 source entry (single Annual Management Report) instead of 3 separate documents
+- All 72 unit tests passing; all 3 PRD gate checks green (`schemas OK`, `graph OK`, `parser OK`)
 
 ### Iteration 1 — LangGraph Skeleton with Echo Nodes ✓ COMPLETE (2026-02-21)
 - [x] Write `graph.py` — all 4 nodes as pass-through stubs that log + write dummy values

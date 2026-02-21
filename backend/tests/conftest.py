@@ -20,9 +20,16 @@ def minimal_state() -> AuditState:
     """Minimal valid AuditState for testing — only INIT keys set."""
     return {
         "audit_id": "test-audit-001",
-        "management_text": "Sample integrated management report text for CSRD compliance.",
-        "taxonomy_text": "Sample EU Taxonomy Table disclosure text.",
-        "transition_text": "Sample climate transition plan with ESRS E1 targets.",
+        "report_json": {"facts": []},
+        "esrs_data": {
+            "esrs_e1-1_01": {"concept": "esrs_e1-1_01", "value": "Net-zero by 2050", "unit": None, "context": "2024"},
+            "esrs_e1-5_01": {"concept": "esrs_e1-5_01", "value": "45000", "unit": "MWh", "context": "2024"},
+            "esrs_e1-6_01": {"concept": "esrs_e1-6_01", "value": "1200", "unit": "tCO2eq", "context": "2024"},
+        },
+        "taxonomy_data": {
+            "eutaxonomy:CapExTotal": {"concept": "eutaxonomy:CapExTotal", "value": "50000000", "unit": "iso4217:EUR", "context": "2024"},
+            "eutaxonomy:CapExAligned": {"concept": "eutaxonomy:CapExAligned", "value": "17500000", "unit": "iso4217:EUR", "context": "2024"},
+        },
         "entity_id": "TestCorp SA",
         "logs": [],
         "pipeline_trace": [],

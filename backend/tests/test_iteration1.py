@@ -120,10 +120,10 @@ class TestExtractorNode:
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
-        # management_text is an input key — must not appear in the returned dict
-        assert "management_text" not in result
-        assert "taxonomy_text" not in result
-        assert "transition_text" not in result
+        # report_json / esrs_data / taxonomy_data are input keys — must not appear in returned dict
+        assert "report_json" not in result
+        assert "esrs_data" not in result
+        assert "taxonomy_data" not in result
 
 
 # ---------------------------------------------------------------------------
@@ -165,11 +165,11 @@ class TestFetcherNode:
         result = fetcher_node(state_after_extractor)
         assert 0.0 <= result["taxonomy_financials"].confidence <= 1.0
 
-    def test_source_document_is_taxonomy_table(self, state_after_extractor):
+    def test_source_document_is_annual_management_report(self, state_after_extractor):
         from agents.fetcher import fetcher_node
 
         result = fetcher_node(state_after_extractor)
-        assert result["taxonomy_financials"].source_document == "EU Taxonomy Table"
+        assert result["taxonomy_financials"].source_document == "Annual Management Report — Taxonomy Section"
 
     def test_taxonomy_activities_is_list(self, state_after_extractor):
         from agents.fetcher import fetcher_node
@@ -399,8 +399,8 @@ class TestConsultantNode:
         from agents.consultant import consultant_node
 
         result = consultant_node(state_after_auditor)
-        assert len(result["final_audit"].sources) == 3, (
-            "CSRDAudit must reference all 3 golden-source documents"
+        assert len(result["final_audit"].sources) >= 1, (
+            "CSRDAudit must reference the uploaded Annual Management Report"
         )
 
     def test_final_audit_pipeline_has_four_agents(self, state_after_auditor):
@@ -477,9 +477,9 @@ class TestAuditState:
         # TypedDict is just a dict at runtime; verify keys exist in annotations
         hints = get_type_hints(AuditState)
         assert "audit_id" in hints
-        assert "management_text" in hints
-        assert "taxonomy_text" in hints
-        assert "transition_text" in hints
+        assert "report_json" in hints
+        assert "esrs_data" in hints
+        assert "taxonomy_data" in hints
         assert "entity_id" in hints
         assert "esrs_claims" in hints
         assert "final_audit" in hints
@@ -578,11 +578,12 @@ class TestGraphEndToEnd:
         assert isinstance(pct, float)
         assert 0.0 <= pct <= 100.0
 
-    def test_sources_has_three_documents(self, minimal_state):
+    def test_sources_has_annual_management_report(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
-        assert len(result["final_audit"].sources) == 3
+        assert len(result["final_audit"].sources) >= 1
+        assert any("Annual Management Report" in s.document_name for s in result["final_audit"].sources)
 
     def test_company_name_in_final_audit(self, minimal_state):
         from graph import graph
@@ -590,15 +591,15 @@ class TestGraphEndToEnd:
         result = graph.invoke(minimal_state)
         assert result["final_audit"].company.name == minimal_state["entity_id"]
 
-    def test_graph_handles_empty_string_texts(self):
-        """Graph must not crash when document texts are empty strings."""
+    def test_graph_handles_empty_report_json(self):
+        """Graph must not crash when report JSON sections are empty dicts."""
         from graph import graph
 
         state = {
             "audit_id": "test-empty-docs",
-            "management_text": "",
-            "taxonomy_text": "",
-            "transition_text": "",
+            "report_json": {},
+            "esrs_data": {},
+            "taxonomy_data": {},
             "entity_id": "EmptyCorp",
             "logs": [],
             "pipeline_trace": [],
@@ -612,9 +613,9 @@ class TestGraphEndToEnd:
 
         state = {
             "audit_id": "test-no-entity",
-            "management_text": "x",
-            "taxonomy_text": "x",
-            "transition_text": "x",
+            "report_json": {"facts": []},
+            "esrs_data": {},
+            "taxonomy_data": {},
             "logs": [],
             "pipeline_trace": [],
         }

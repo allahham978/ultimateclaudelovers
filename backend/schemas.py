@@ -155,17 +155,17 @@ class CSRDAudit(BaseModel):
 # ---------------------------------------------------------------------------
 
 class ESRSClaim(BaseModel):
-    """Raw extracted claim from ESRS PDF — internal to extractor node."""
+    """Extracted claim from ESRS sections of the management report JSON — internal to extractor node."""
     standard: str               # "E1-1" | "E1-5" | "E1-6"
     data_point: str
     disclosed_value: Optional[str] = None
     unit: Optional[str] = None
     confidence: float           # 0.0–1.0
-    page_ref: Optional[int] = None
+    xbrl_concept: Optional[str] = None  # iXBRL concept name for audit traceability
 
 
 class TaxonomyFinancials(BaseModel):
-    """CapEx/revenue data extracted from the EU Taxonomy Table PDF — internal to fetcher node."""
+    """CapEx/revenue data from the Taxonomy sections of the management report JSON — internal to fetcher node."""
     capex_total_eur: Optional[float] = None
     capex_green_eur: Optional[float] = None
     opex_total_eur: Optional[float] = None
@@ -173,5 +173,5 @@ class TaxonomyFinancials(BaseModel):
     revenue_eur: Optional[float] = None
     fiscal_year: str
     taxonomy_activities: list[str] = []
-    source_document: str = "EU Taxonomy Table"
+    source_document: str = "Annual Management Report — Taxonomy Section"
     confidence: float           # 0.0–1.0

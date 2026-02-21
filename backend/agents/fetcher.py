@@ -1,11 +1,11 @@
 """
 Node 2 — Financial Extractor (Fetcher) — Iteration 1 stub.
 
-Reads: state["taxonomy_text"]
+Reads: state["taxonomy_data"] — Taxonomy-tagged iXBRL sections from the Annual Management Report JSON
 Writes: state["taxonomy_financials"], state["document_source"]
 
 Iteration 4 will replace the dummy values with a real Claude API call using
-SYSTEM_PROMPT_FETCHER and prompt caching on the taxonomy table document.
+SYSTEM_PROMPT_FETCHER and prompt caching on the taxonomy_data sections.
 """
 
 import time
@@ -23,8 +23,8 @@ def fetcher_node(state: AuditState) -> dict[str, Any]:
     pipeline_trace: list[dict] = list(state.get("pipeline_trace") or [])
 
     ts = lambda: int(time.time() * 1000)  # noqa: E731
-    logs.append({"agent": "fetcher", "msg": "Parsing EU Taxonomy Table (Article 8 disclosure)...", "ts": ts()})
-    logs.append({"agent": "fetcher", "msg": "Extracting CapEx and OpEx alignment rows...", "ts": ts()})
+    logs.append({"agent": "fetcher", "msg": "Parsing Annual Management Report JSON (Taxonomy sections)...", "ts": ts()})
+    logs.append({"agent": "fetcher", "msg": "Extracting EU Taxonomy CapEx and OpEx alignment data...", "ts": ts()})
     logs.append({"agent": "fetcher", "msg": "Calculating taxonomy-aligned CapEx percentage...", "ts": ts()})
 
     taxonomy_financials = TaxonomyFinancials(
@@ -38,12 +38,12 @@ def fetcher_node(state: AuditState) -> dict[str, Any]:
             "8.1 Data processing, hosting and related activities",
             "4.1 Electricity generation using solar photovoltaic technology",
         ],
-        source_document="EU Taxonomy Table",
+        source_document="Annual Management Report — Taxonomy Section",
         confidence=0.92,
     )
 
     document_source = RegistrySource(
-        name="EU Taxonomy Table 2024",
+        name="Annual Management Report 2024",
         registry_type="eu_bris",
         jurisdiction="EU",
     )

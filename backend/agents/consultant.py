@@ -117,15 +117,13 @@ def consultant_node(state: AuditState) -> dict[str, Any]:
         basis="Art. 51 CSRD Directive (EU) 2022/2464 — up to EUR 10M or 5% of net worldwide turnover",
     )
     document_source: RegistrySource = state.get("document_source") or RegistrySource(
-        name="EU Taxonomy Table",
+        name="Annual Management Report",
         registry_type="eu_bris",
         jurisdiction="EU",
     )
 
     sources = [
-        Source(id="src-1", document_name="Integrated Management Report 2024", document_type="csrd_report"),
-        Source(id="src-2", document_name="EU Taxonomy Table 2024", document_type="csrd_report"),
-        Source(id="src-3", document_name="Climate Transition Plan 2024", document_type="csrd_report"),
+        Source(id="src-1", document_name="Annual Management Report 2024", document_type="csrd_report"),
     ]
 
     final_audit = CSRDAudit(
