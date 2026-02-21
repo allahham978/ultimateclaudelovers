@@ -3,18 +3,24 @@
 import { useState, useRef, useCallback } from "react";
 import { config } from "@/lib/config";
 import {
+  MOCK_COMPLIANCE_RESULT,
+  ANALYSIS_LOGS,
+  FREE_TEXT_ANALYSIS_LOGS,
+  // Legacy mock data — kept for old views
   MOCK_AUDIT,
   AUDIT_LOGS,
   MOCK_COMPLIANCE_CHECK,
   COMPLIANCE_CHECK_LOGS,
 } from "@/lib/mock-data";
 import {
-  startAuditRun,
-  startComplianceCheck as apiStartComplianceCheck,
+  startAnalysis,
   streamAuditEvents,
 } from "@/lib/api";
 import type {
   AuditLog,
+  CompanyInputs,
+  ComplianceResult,
+  // Legacy types — kept for old views
   CSRDAudit,
   ComplianceCheckResult,
   SSEEvent,
@@ -29,14 +35,28 @@ export type Step = "idle" | "analyzing" | "complete";
 export interface AuditStreamState {
   step: Step;
   logs: AuditLog[];
+  /** v5.0 unified result — used by the new ComplianceResultView */
+  result: ComplianceResult | null;
+  /** @deprecated Legacy audit result — kept for old ResultsView */
   audit: CSRDAudit | null;
+  /** @deprecated Legacy compliance check result — kept for old ComplianceCheckView */
   complianceCheck: ComplianceCheckResult | null;
   error: string | null;
   progress: number;
   totalLogs: number;
+  /** v5.0 unified start — works for both modes */
+  startAnalysis: (
+    entity: string,
+    mode: "structured_document" | "free_text",
+    companyInputs: CompanyInputs,
+    reportFile?: File | null,
+    freeText?: string
+  ) => void;
+  /** @deprecated Use startAnalysis() instead */
   startAudit: (entity: string, reportFile: File | null) => void;
+  /** @deprecated Use startAnalysis() instead */
   startComplianceCheck: (entity: string, freeText: string) => void;
-  skipToComplete: (mode?: "full_audit" | "compliance_check") => void;
+  skipToComplete: (mode?: "structured_document" | "free_text") => void;
   reset: () => void;
 }
 
@@ -47,14 +67,15 @@ export interface AuditStreamState {
 export function useAuditStream(): AuditStreamState {
   const [step, setStep] = useState<Step>("idle");
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [result, setResult] = useState<ComplianceResult | null>(null);
   const [audit, setAudit] = useState<CSRDAudit | null>(null);
   const [complianceCheck, setComplianceCheck] =
     useState<ComplianceCheckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [completedNodes, setCompletedNodes] = useState(0);
   const [activeMode, setActiveMode] = useState<
-    "full_audit" | "compliance_check"
-  >("full_audit");
+    "structured_document" | "free_text"
+  >("structured_document");
 
   // Cleanup refs
   const mockTimers = useRef<NodeJS.Timeout[]>([]);
@@ -68,70 +89,65 @@ export function useAuditStream(): AuditStreamState {
     sseCleanup.current = null;
   }, []);
 
-  /* ---- mock flow (full audit) ---- */
-  const startMockAudit = useCallback(() => {
+  /* ---- reset all state ---- */
+  const resetState = useCallback(() => {
     setLogs([]);
+    setResult(null);
     setAudit(null);
     setComplianceCheck(null);
     setError(null);
     setCompletedNodes(0);
-    setActiveMode("full_audit");
-    setStep("analyzing");
-
-    const timers: NodeJS.Timeout[] = [];
-
-    AUDIT_LOGS.forEach((log) => {
-      timers.push(
-        setTimeout(() => {
-          setLogs((prev) => [...prev, log]);
-        }, log.timestamp)
-      );
-    });
-
-    const lastTs = AUDIT_LOGS[AUDIT_LOGS.length - 1].timestamp;
-    timers.push(
-      setTimeout(() => {
-        setAudit(MOCK_AUDIT);
-        setStep("complete");
-      }, lastTs + 1400)
-    );
-
-    mockTimers.current = timers;
   }, []);
 
-  /* ---- mock flow (compliance check) ---- */
-  const startMockComplianceCheck = useCallback(() => {
-    setLogs([]);
-    setAudit(null);
-    setComplianceCheck(null);
-    setError(null);
-    setCompletedNodes(0);
-    setActiveMode("compliance_check");
-    setStep("analyzing");
+  /* ---- mock flow (v5.0 unified) ---- */
+  const startMockAnalysis = useCallback(
+    (mode: "structured_document" | "free_text") => {
+      resetState();
+      setActiveMode(mode);
+      setStep("analyzing");
 
-    const timers: NodeJS.Timeout[] = [];
+      const mockLogs =
+        mode === "free_text" ? FREE_TEXT_ANALYSIS_LOGS : ANALYSIS_LOGS;
 
-    COMPLIANCE_CHECK_LOGS.forEach((log) => {
+      const timers: NodeJS.Timeout[] = [];
+
+      mockLogs.forEach((log) => {
+        timers.push(
+          setTimeout(() => {
+            setLogs((prev) => [...prev, log]);
+          }, log.timestamp)
+        );
+      });
+
+      const lastTs = mockLogs[mockLogs.length - 1].timestamp;
       timers.push(
         setTimeout(() => {
-          setLogs((prev) => [...prev, log]);
-        }, log.timestamp)
+          // For free text mode, create a variant of the mock result
+          if (mode === "free_text") {
+            setResult({
+              ...MOCK_COMPLIANCE_RESULT,
+              mode: "free_text",
+              score: {
+                ...MOCK_COMPLIANCE_RESULT.score,
+                overall: 36,
+                disclosed_count: 5,
+                partial_count: 3,
+                missing_count: 10,
+              },
+            });
+          } else {
+            setResult(MOCK_COMPLIANCE_RESULT);
+          }
+          setStep("complete");
+        }, lastTs + 1400)
       );
-    });
 
-    const lastTs =
-      COMPLIANCE_CHECK_LOGS[COMPLIANCE_CHECK_LOGS.length - 1].timestamp;
-    timers.push(
-      setTimeout(() => {
-        setComplianceCheck(MOCK_COMPLIANCE_CHECK);
-        setStep("complete");
-      }, lastTs + 1400)
-    );
+      mockTimers.current = timers;
+    },
+    [resetState]
+  );
 
-    mockTimers.current = timers;
-  }, []);
-
-  /* ---- SSE event handler (shared by both modes) ---- */
+  /* ---- SSE event handler ---- */
   const handleSSEEvent = useCallback((event: SSEEvent) => {
     switch (event.type) {
       case "log":
@@ -148,6 +164,11 @@ export function useAuditStream(): AuditStreamState {
         setCompletedNodes((prev) => prev + 1);
         break;
       case "complete":
+        // v5.0 unified result
+        if (event.result) {
+          setResult(event.result);
+        }
+        // Legacy fallbacks
         if (event.audit) {
           setAudit(event.audit);
         }
@@ -167,66 +188,38 @@ export function useAuditStream(): AuditStreamState {
     }
   }, []);
 
-  /* ---- real flow (full audit) ---- */
-  const startRealAudit = useCallback(
-    async (entity: string, reportFile: File) => {
-      setLogs([]);
-      setAudit(null);
-      setComplianceCheck(null);
-      setError(null);
-      setCompletedNodes(0);
-      setActiveMode("full_audit");
+  /* ---- real flow (v5.0 unified) ---- */
+  const startRealAnalysis = useCallback(
+    async (
+      entity: string,
+      mode: "structured_document" | "free_text",
+      companyInputs: CompanyInputs,
+      reportFile?: File | null,
+      freeText?: string
+    ) => {
+      resetState();
+      setActiveMode(mode);
       setStep("analyzing");
 
-      let runId: string;
+      let auditId: string;
       try {
-        runId = await startAuditRun(entity, reportFile);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to start audit.");
-        setStep("idle");
-        return;
-      }
-
-      const closeSse = streamAuditEvents(
-        runId,
-        handleSSEEvent,
-        (errMsg: string) => {
-          setError(errMsg);
-          setStep("idle");
-        }
-      );
-
-      sseCleanup.current = closeSse;
-    },
-    [handleSSEEvent]
-  );
-
-  /* ---- real flow (compliance check) ---- */
-  const startRealComplianceCheck = useCallback(
-    async (entity: string, freeText: string) => {
-      setLogs([]);
-      setAudit(null);
-      setComplianceCheck(null);
-      setError(null);
-      setCompletedNodes(0);
-      setActiveMode("compliance_check");
-      setStep("analyzing");
-
-      let runId: string;
-      try {
-        runId = await apiStartComplianceCheck(entity, freeText);
+        auditId = await startAnalysis({
+          entity,
+          mode,
+          companyInputs,
+          reportFile,
+          freeText,
+        });
       } catch (err) {
         setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to start compliance check."
+          err instanceof Error ? err.message : "Failed to start analysis."
         );
         setStep("idle");
         return;
       }
 
       const closeSse = streamAuditEvents(
-        runId,
+        auditId,
         handleSSEEvent,
         (errMsg: string) => {
           setError(errMsg);
@@ -236,46 +229,109 @@ export function useAuditStream(): AuditStreamState {
 
       sseCleanup.current = closeSse;
     },
-    [handleSSEEvent]
+    [resetState, handleSSEEvent]
   );
 
-  /* ---- public API ---- */
-  const startAudit = useCallback(
-    (entity: string, reportFile: File | null) => {
+  /* ---- public API: v5.0 unified start ---- */
+  const doStartAnalysis = useCallback(
+    (
+      entity: string,
+      mode: "structured_document" | "free_text",
+      companyInputs: CompanyInputs,
+      reportFile?: File | null,
+      freeText?: string
+    ) => {
       cleanup();
       if (config.useMock) {
-        startMockAudit();
+        startMockAnalysis(mode);
       } else {
-        if (!reportFile) {
-          return;
-        }
-        startRealAudit(entity, reportFile);
+        startRealAnalysis(entity, mode, companyInputs, reportFile, freeText);
       }
     },
-    [cleanup, startMockAudit, startRealAudit]
+    [cleanup, startMockAnalysis, startRealAnalysis]
   );
 
-  const startComplianceCheck = useCallback(
-    (entity: string, freeText: string) => {
+  /* ---- deprecated: legacy start functions (mock-only) ---- */
+  const doStartAudit = useCallback(
+    (...args: [entity: string, reportFile: File | null]) => {
+      void args; // legacy params — kept for API compatibility
       cleanup();
       if (config.useMock) {
-        startMockComplianceCheck();
-      } else {
-        startRealComplianceCheck(entity, freeText);
+        resetState();
+        setActiveMode("structured_document");
+        setStep("analyzing");
+
+        const timers: NodeJS.Timeout[] = [];
+        AUDIT_LOGS.forEach((log) => {
+          timers.push(
+            setTimeout(() => {
+              setLogs((prev) => [...prev, log]);
+            }, log.timestamp)
+          );
+        });
+        const lastTs = AUDIT_LOGS[AUDIT_LOGS.length - 1].timestamp;
+        timers.push(
+          setTimeout(() => {
+            setAudit(MOCK_AUDIT);
+            setStep("complete");
+          }, lastTs + 1400)
+        );
+        mockTimers.current = timers;
       }
     },
-    [cleanup, startMockComplianceCheck, startRealComplianceCheck]
+    [cleanup, resetState]
+  );
+
+  const doStartComplianceCheck = useCallback(
+    (...args: [entity: string, freeText: string]) => {
+      void args; // legacy params — kept for API compatibility
+      cleanup();
+      if (config.useMock) {
+        resetState();
+        setActiveMode("free_text");
+        setStep("analyzing");
+
+        const timers: NodeJS.Timeout[] = [];
+        COMPLIANCE_CHECK_LOGS.forEach((log) => {
+          timers.push(
+            setTimeout(() => {
+              setLogs((prev) => [...prev, log]);
+            }, log.timestamp)
+          );
+        });
+        const lastTs =
+          COMPLIANCE_CHECK_LOGS[COMPLIANCE_CHECK_LOGS.length - 1].timestamp;
+        timers.push(
+          setTimeout(() => {
+            setComplianceCheck(MOCK_COMPLIANCE_CHECK);
+            setStep("complete");
+          }, lastTs + 1400)
+        );
+        mockTimers.current = timers;
+      }
+    },
+    [cleanup, resetState]
   );
 
   const skipToComplete = useCallback(
-    (mode?: "full_audit" | "compliance_check") => {
+    (mode?: "structured_document" | "free_text") => {
       cleanup();
       const effectiveMode = mode ?? activeMode;
       if (config.useMock) {
-        if (effectiveMode === "compliance_check") {
-          setComplianceCheck(MOCK_COMPLIANCE_CHECK);
+        if (effectiveMode === "free_text") {
+          setResult({
+            ...MOCK_COMPLIANCE_RESULT,
+            mode: "free_text",
+            score: {
+              ...MOCK_COMPLIANCE_RESULT.score,
+              overall: 36,
+              disclosed_count: 5,
+              partial_count: 3,
+              missing_count: 10,
+            },
+          });
         } else {
-          setAudit(MOCK_AUDIT);
+          setResult(MOCK_COMPLIANCE_RESULT);
         }
       }
       setStep("complete");
@@ -286,36 +342,34 @@ export function useAuditStream(): AuditStreamState {
   const reset = useCallback(() => {
     cleanup();
     setStep("idle");
-    setLogs([]);
-    setAudit(null);
-    setComplianceCheck(null);
-    setError(null);
-    setCompletedNodes(0);
-  }, [cleanup]);
+    resetState();
+  }, [cleanup, resetState]);
 
-  /* ---- progress ---- */
-  const agentCount = activeMode === "compliance_check" ? 3 : 4;
+  /* ---- progress: always 3 agents in v5.0 ---- */
+  const AGENT_COUNT = 3;
   const mockLogs =
-    activeMode === "compliance_check" ? COMPLIANCE_CHECK_LOGS : AUDIT_LOGS;
+    activeMode === "free_text" ? FREE_TEXT_ANALYSIS_LOGS : ANALYSIS_LOGS;
 
   const progress = config.useMock
     ? mockLogs.length > 0
       ? logs.length / mockLogs.length
       : 0
-    : completedNodes / agentCount;
+    : completedNodes / AGENT_COUNT;
 
   const totalLogs = config.useMock ? mockLogs.length : -1;
 
   return {
     step,
     logs,
+    result,
     audit,
     complianceCheck,
     error,
     progress,
     totalLogs,
-    startAudit,
-    startComplianceCheck,
+    startAnalysis: doStartAnalysis,
+    startAudit: doStartAudit,
+    startComplianceCheck: doStartComplianceCheck,
     skipToComplete,
     reset,
   };

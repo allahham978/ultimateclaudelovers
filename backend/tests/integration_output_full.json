@@ -1,0 +1,559 @@
+{
+  "total": 92,
+  "passed": 92,
+  "failed": 0,
+  "results": [
+    {
+      "path": "PATH1",
+      "test": "Extractor returns company_meta",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "Extractor returns esrs_claims with 3 standards",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "Fetcher returns TaxonomyFinancials",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "capex_total_eur populated",
+      "passed": true,
+      "detail": "value=50000000.0"
+    },
+    {
+      "path": "PATH1",
+      "test": "capex_green_eur populated",
+      "passed": true,
+      "detail": "value=17500000.0"
+    },
+    {
+      "path": "PATH1",
+      "test": "revenue_eur populated",
+      "passed": true,
+      "detail": "value=250000000.0"
+    },
+    {
+      "path": "PATH1",
+      "test": "confidence > 0.5",
+      "passed": true,
+      "detail": "confidence=1.0"
+    },
+    {
+      "path": "PATH1",
+      "test": "fiscal_year not Unknown",
+      "passed": true,
+      "detail": "fiscal_year=FY2024"
+    },
+    {
+      "path": "PATH1",
+      "test": "No fetcher errors in logs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "Auditor returns esrs_ledger",
+      "passed": true,
+      "detail": "items=3"
+    },
+    {
+      "path": "PATH1",
+      "test": "esrs_ledger has 3 items",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "All ledger items are ESRSLedgerItem",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "Auditor returns taxonomy_alignment",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "capex_aligned_pct in 0-100",
+      "passed": true,
+      "detail": "pct=35.0"
+    },
+    {
+      "path": "PATH1",
+      "test": "taxonomy_status is valid",
+      "passed": true,
+      "detail": "status=partially_aligned"
+    },
+    {
+      "path": "PATH1",
+      "test": "Auditor returns compliance_cost",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "compliance_cost.projected_fine_eur >= 0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "No auditor errors in logs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "Consultant returns final_audit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "final_audit.audit_id matches",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "final_audit.pipeline has 4 agents",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "final_audit serialises to JSON",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "final_audit.taxonomy_alignment matches auditor output",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "Pipeline trace has 4 entries",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH1",
+      "test": "Pipeline order: extractor\u2192fetcher\u2192auditor\u2192consultant",
+      "passed": true,
+      "detail": "actual=['extractor', 'fetcher', 'auditor', 'consultant']"
+    },
+    {
+      "path": "PATH2",
+      "test": "Extractor returns extracted_goals",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "Extractor returns esrs_claims",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "xbrl_concept is None in compliance mode",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "No taxonomy_financials in state",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "Auditor returns esrs_coverage",
+      "passed": true,
+      "detail": "items=3"
+    },
+    {
+      "path": "PATH2",
+      "test": "esrs_coverage has 3 items",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "All coverage levels are valid",
+      "passed": true,
+      "detail": "levels=['partial', 'not_covered', 'not_covered']"
+    },
+    {
+      "path": "PATH2",
+      "test": "Auditor returns compliance_cost_estimate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "cost estimate has low and high range",
+      "passed": true,
+      "detail": "low=750000.0, high=3000000.0"
+    },
+    {
+      "path": "PATH2",
+      "test": "low <= high",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "cost estimate has caveat",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "No auditor errors in logs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "No esrs_ledger in compliance mode",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "No taxonomy_alignment in compliance mode",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "Consultant returns todo_list",
+      "passed": true,
+      "detail": "items=5"
+    },
+    {
+      "path": "PATH2",
+      "test": "todo_list includes foundational items",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "todo_list includes auditor engagement",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "Consultant returns final_compliance_check",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "final_compliance_check.mode is compliance_check",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "pipeline has 3 agents (no fetcher)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "final_compliance_check serialises to JSON",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH2",
+      "test": "Pipeline order: extractor\u2192auditor\u2192consultant",
+      "passed": true,
+      "detail": "actual=['extractor', 'auditor', 'consultant']"
+    },
+    {
+      "path": "PATH3",
+      "test": "XHTML parsed with facts",
+      "passed": true,
+      "detail": "total_facts=660"
+    },
+    {
+      "path": "PATH3",
+      "test": "Taxonomy section has facts",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH3",
+      "test": "ASML fetcher returned TaxonomyFinancials",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH3",
+      "test": "ASML no fetcher errors",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH3",
+      "test": "ASML fetcher confidence is a float",
+      "passed": true,
+      "detail": "confidence=0.3"
+    },
+    {
+      "path": "PATH3",
+      "test": "ASML esrs_ledger has 3 items",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH3",
+      "test": "ASML taxonomy_alignment present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH3",
+      "test": "ASML final_audit produced",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH3",
+      "test": "ASML pipeline has 4 agents",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH4",
+      "test": "graph.invoke (full_audit) produces final_audit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH4",
+      "test": "full_audit pipeline has 4 agents",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH4",
+      "test": "full_audit pipeline_trace has 4 entries",
+      "passed": true,
+      "detail": "agents=['extractor', 'fetcher', 'auditor', 'consultant']"
+    },
+    {
+      "path": "PATH4",
+      "test": "full_audit no errors in logs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH4",
+      "test": "graph.invoke (compliance_check) produces final_compliance_check",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH4",
+      "test": "compliance_check pipeline has 3 agents",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH4",
+      "test": "compliance_check pipeline_trace has 3 entries",
+      "passed": true,
+      "detail": "agents=['extractor', 'auditor', 'consultant']"
+    },
+    {
+      "path": "PATH4",
+      "test": "compliance_check skips fetcher",
+      "passed": true,
+      "detail": "agents=['extractor', 'auditor', 'consultant']"
+    },
+    {
+      "path": "PATH4",
+      "test": "compliance_check no errors in logs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH4",
+      "test": "full_audit result has no final_compliance_check",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH4",
+      "test": "compliance_check result has no final_audit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "POST /audit/run (full_audit) returns 200",
+      "passed": true,
+      "detail": "status=200"
+    },
+    {
+      "path": "PATH5",
+      "test": "run_id is present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Full audit completed within timeout",
+      "passed": true,
+      "detail": "status_code=200, body_keys=['audit_id', 'generated_at', 'schema_version', 'company', 'taxonomy_alignment']"
+    },
+    {
+      "path": "PATH5",
+      "test": "Full audit has audit_id",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Full audit has esrs_ledger",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Full audit has taxonomy_alignment",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Full audit has pipeline with 4 agents",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "POST /audit/run (compliance_check) returns 200",
+      "passed": true,
+      "detail": "status=200"
+    },
+    {
+      "path": "PATH5",
+      "test": "Compliance check completed within timeout",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Compliance check has mode=compliance_check",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Compliance check has esrs_coverage",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Compliance check has todo_list",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Compliance check has estimated_compliance_cost",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Compliance check pipeline has 3 agents",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "SSE endpoint returns 200",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "SSE has log events",
+      "passed": true,
+      "detail": "types={'complete', 'log', 'node_complete'}"
+    },
+    {
+      "path": "PATH5",
+      "test": "SSE has node_complete events",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "SSE has complete event",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "SSE complete event is last",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "SSE 3 node_complete events (compliance)",
+      "passed": true,
+      "detail": "agents=['extractor', 'auditor', 'consultant']"
+    },
+    {
+      "path": "PATH5",
+      "test": "Missing report_json returns 400",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Missing free_text returns 400",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Invalid mode returns 400",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Unknown audit_id returns 404",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "path": "PATH5",
+      "test": "Unknown audit_id stream returns 404",
+      "passed": true,
+      "detail": ""
+    }
+  ]
+}

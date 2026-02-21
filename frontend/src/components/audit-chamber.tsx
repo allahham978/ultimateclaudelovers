@@ -8,12 +8,14 @@ import {
   type DragEvent,
 } from "react";
 import { useAuditStream } from "@/hooks/useAuditStream";
-import type { AgentName } from "@/lib/types";
+import type { AgentName, CompanyInputs } from "@/lib/types";
+import ComplianceResultView from "@/components/compliance-result-view";
+// Legacy views — kept for backward compatibility (iteration 13 cleanup)
 import ResultsView from "@/components/results-view";
 import ComplianceCheckView from "@/components/compliance-check-view";
 
 /* ================================================================= */
-/* Constants                                                          */
+/* Constants                                                           */
 /* ================================================================= */
 
 const AGENT_COLORS: Record<AgentName, string> = {
@@ -21,6 +23,8 @@ const AGENT_COLORS: Record<AgentName, string> = {
   fetcher: "text-amber-400",
   auditor: "text-violet-400",
   consultant: "text-emerald-400",
+  scorer: "text-blue-400",
+  advisor: "text-emerald-400",
 };
 
 const AGENT_BG: Record<AgentName, string> = {
@@ -28,10 +32,14 @@ const AGENT_BG: Record<AgentName, string> = {
   fetcher: "bg-amber-400/10",
   auditor: "bg-violet-400/10",
   consultant: "bg-emerald-400/10",
+  scorer: "bg-blue-400/10",
+  advisor: "bg-emerald-400/10",
 };
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 /* ================================================================= */
-/* EU Flag SVG                                                        */
+/* EU Flag SVG                                                         */
 /* ================================================================= */
 
 function EUFlag({ className }: { className?: string }) {
@@ -50,28 +58,34 @@ function EUFlag({ className }: { className?: string }) {
 }
 
 /* ================================================================= */
-/* Orchestrator                                                       */
+/* Orchestrator                                                        */
 /* ================================================================= */
 
 export default function AuditChamber() {
   const [entity, setEntity] = useState("");
   const [reportFileName, setReportFileName] = useState<string | null>(null);
   const reportFileRef = useRef<File | null>(null);
-  const [mode, setMode] = useState<"full_audit" | "compliance_check">(
-    "full_audit"
+  const [mode, setMode] = useState<"structured_document" | "free_text">(
+    "structured_document"
   );
   const [freeText, setFreeText] = useState("");
+
+  // Company inputs state
+  const [employees, setEmployees] = useState("");
+  const [revenue, setRevenue] = useState("");
+  const [assets, setAssets] = useState("");
+  const [reportingYear, setReportingYear] = useState(String(CURRENT_YEAR));
 
   const {
     step,
     logs,
+    result,
     audit,
     complianceCheck,
     error,
     progress,
     totalLogs,
-    startAudit,
-    startComplianceCheck,
+    startAnalysis,
     skipToComplete,
     reset,
   } = useAuditStream();
@@ -83,14 +97,39 @@ export default function AuditChamber() {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
+  /* ---- build CompanyInputs from form state ---- */
+  const buildCompanyInputs = (): CompanyInputs | null => {
+    const emp = parseInt(employees, 10);
+    const rev = parseFloat(revenue);
+    const ast = parseFloat(assets);
+    const yr = parseInt(reportingYear, 10);
+
+    if (isNaN(emp) || isNaN(rev) || isNaN(ast) || isNaN(yr)) return null;
+    if (emp <= 0 || rev <= 0 || ast <= 0 || yr < 2020) return null;
+
+    return {
+      number_of_employees: emp,
+      revenue_eur: rev,
+      total_assets_eur: ast,
+      reporting_year: yr,
+    };
+  };
+
+  const companyInputsValid = buildCompanyInputs() !== null;
+
   /* ---- handlers ---- */
   const handleRun = () => {
     if (!canRun) return;
-    if (mode === "full_audit") {
-      startAudit(entity, reportFileRef.current);
-    } else {
-      startComplianceCheck(entity, freeText);
-    }
+    const companyInputs = buildCompanyInputs();
+    if (!companyInputs) return;
+
+    startAnalysis(
+      entity,
+      mode,
+      companyInputs,
+      mode === "structured_document" ? reportFileRef.current : null,
+      mode === "free_text" ? freeText : undefined
+    );
   };
 
   const setReportFile = useCallback((name: string, file: File) => {
@@ -100,7 +139,8 @@ export default function AuditChamber() {
 
   const canRun =
     entity.trim().length > 0 &&
-    (mode === "full_audit"
+    companyInputsValid &&
+    (mode === "structured_document"
       ? reportFileName !== null
       : freeText.trim().length > 0);
 
@@ -109,6 +149,11 @@ export default function AuditChamber() {
   /* ================================================================= */
 
   if (step === "complete") {
+    // v5.0 unified result — primary path
+    if (result) {
+      return <ComplianceResultView result={result} />;
+    }
+    // Legacy fallbacks — kept for backward compatibility
     if (complianceCheck) {
       return <ComplianceCheckView result={complianceCheck} />;
     }
@@ -135,11 +180,6 @@ export default function AuditChamber() {
   /* ================================================================= */
 
   if (step === "analyzing") {
-    const label =
-      mode === "compliance_check"
-        ? "Compliance Check"
-        : "CSRD Compliance Audit";
-
     return (
       <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
         <div className="animate-fade-in w-full max-w-2xl">
@@ -160,7 +200,7 @@ export default function AuditChamber() {
               <div className="flex items-center gap-2.5">
                 <div className="h-2 w-2 animate-pulse rounded-full bg-accent" />
                 <span className="text-sm font-medium text-slate-700">
-                  {label}{" "}
+                  Compliance Analysis{" "}
                   <span className="font-mono font-semibold text-accent">
                     {entity.toUpperCase() || "ENTITY"}
                   </span>
@@ -205,7 +245,7 @@ export default function AuditChamber() {
   }
 
   /* ================================================================= */
-  /* Render: Idle — Document Vault                                     */
+  /* Render: Idle — Input Form                                          */
   /* ================================================================= */
 
   return (
@@ -223,9 +263,9 @@ export default function AuditChamber() {
             CSRD Compliance Engine
           </h1>
           <p className="mt-2 text-sm text-muted">
-            {mode === "full_audit"
-              ? "Upload a pre-parsed Annual Management Report (JSON) to audit EU Taxonomy alignment against ESRS disclosures."
-              : "Describe your current sustainability situation to receive a prioritized CSRD compliance to-do list."}
+            {mode === "structured_document"
+              ? "Upload a pre-parsed Annual Management Report (JSON) and company details to receive a compliance score and prioritized recommendations."
+              : "Describe your current sustainability situation and company details to receive a compliance score and prioritized recommendations."}
           </p>
         </div>
 
@@ -241,24 +281,24 @@ export default function AuditChamber() {
           {/* Mode Toggle */}
           <div className="flex items-center justify-center gap-1 border-b border-slate-100 px-5 py-3">
             <button
-              onClick={() => setMode("full_audit")}
+              onClick={() => setMode("structured_document")}
               className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
-                mode === "full_audit"
+                mode === "structured_document"
                   ? "bg-accent text-white"
                   : "bg-slate-100 text-slate-500 hover:bg-slate-200"
               }`}
             >
-              Full Audit
+              Structured Document
             </button>
             <button
-              onClick={() => setMode("compliance_check")}
+              onClick={() => setMode("free_text")}
               className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
-                mode === "compliance_check"
+                mode === "free_text"
                   ? "bg-accent text-white"
                   : "bg-slate-100 text-slate-500 hover:bg-slate-200"
               }`}
             >
-              Compliance Check
+              Free Text
             </button>
           </div>
 
@@ -291,15 +331,54 @@ export default function AuditChamber() {
                 }
               `}
             >
-              {mode === "full_audit"
-                ? "Run Engine Audit"
-                : "Run Compliance Check"}
+              Run Analysis
             </button>
+          </div>
+
+          {/* Company Details — 2×2 grid */}
+          <div className="border-b border-slate-100 p-5">
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
+              Company Details
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <CompanyInput
+                id="employees"
+                label="Employees"
+                value={employees}
+                onChange={setEmployees}
+                placeholder="500"
+                type="number"
+              />
+              <CompanyInput
+                id="revenue"
+                label="Revenue (EUR)"
+                value={revenue}
+                onChange={setRevenue}
+                placeholder="85000000"
+                type="number"
+              />
+              <CompanyInput
+                id="assets"
+                label="Total Assets (EUR)"
+                value={assets}
+                onChange={setAssets}
+                placeholder="42000000"
+                type="number"
+              />
+              <CompanyInput
+                id="reporting-year"
+                label="Reporting Year"
+                value={reportingYear}
+                onChange={setReportingYear}
+                placeholder="2025"
+                type="number"
+              />
+            </div>
           </div>
 
           {/* Content Area — conditional on mode */}
           <div className="p-5">
-            {mode === "full_audit" ? (
+            {mode === "structured_document" ? (
               <>
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-xs font-medium uppercase tracking-widest text-muted">
@@ -349,6 +428,45 @@ export default function AuditChamber() {
           Skip to results
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ================================================================= */
+/* Company Input Field                                                 */
+/* ================================================================= */
+
+function CompanyInput({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="mb-1 block text-[11px] font-medium text-slate-500"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-9 w-full rounded-card border border-slate-200 bg-slate-50 px-3 font-mono text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+      />
     </div>
   );
 }

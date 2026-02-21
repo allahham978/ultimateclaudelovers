@@ -34,13 +34,23 @@ def extract_xhtml_to_json(file_path: str) -> dict:
         "facts": [],
     }
 
-    context = etree.iterparse(
-        file_path,
-        events=("end",),
-        tag=["{*}nonFraction", "{*}nonNumeric"],
-    )
+    # Parse the full tree with huge_tree=True to handle large XHTML files (e.g. 80MB+)
+    parser = etree.XMLParser(huge_tree=True)
+    tree = etree.parse(file_path, parser)
+    root = tree.getroot()
 
-    for _event, elem in context:
+    # Find all ix:nonFraction and ix:nonNumeric elements across any namespace
+    ns_tags = []
+    for ns in root.nsmap.values():
+        if ns:
+            ns_tags.append(f"{{{ns}}}nonFraction")
+            ns_tags.append(f"{{{ns}}}nonNumeric")
+
+    elements = []
+    for tag in ns_tags:
+        elements.extend(root.iter(tag))
+
+    for elem in elements:
         is_numeric = "nonFraction" in elem.tag
 
         fact: dict[str, Any] = {

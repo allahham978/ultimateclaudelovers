@@ -1,11 +1,80 @@
 // ============================================================================
-// EU CSRD Compliance Engine — API Contract v2.0
+// EU CSRD Compliance Engine — API Contract v3.0 (Unified Output)
+// ============================================================================
+
+// ============================================================================
+// v5.0 — Unified Output Contract (Iteration 11+)
+// Both input modes produce the same ComplianceResult.
 // ============================================================================
 
 // ---------------------------------------------------------------------------
-// 1. Top-Level Response
+// Company Inputs (structured fields from the user)
 // ---------------------------------------------------------------------------
 
+export interface CompanyInputs {
+  number_of_employees: number;
+  revenue_eur: number;
+  total_assets_eur: number;
+  reporting_year: number;
+}
+
+// ---------------------------------------------------------------------------
+// Compliance Score (0–100)
+// ---------------------------------------------------------------------------
+
+export interface ComplianceScore {
+  overall: number; // 0–100
+  size_category: string; // e.g. "large_undertaking"
+  applicable_standards_count: number;
+  disclosed_count: number;
+  partial_count: number;
+  missing_count: number;
+}
+
+// ---------------------------------------------------------------------------
+// Recommendation (grouped by priority tier in the UI)
+// ---------------------------------------------------------------------------
+
+export interface Recommendation {
+  id: string;
+  priority: Priority; // "critical" | "high" | "moderate" | "low"
+  esrs_id: string;
+  title: string;
+  description: string;
+  regulatory_reference: string;
+}
+
+// ---------------------------------------------------------------------------
+// ComplianceResult — Unified top-level response for both input modes
+// ---------------------------------------------------------------------------
+
+export interface ComplianceResult {
+  audit_id: string;
+  generated_at: string;
+  schema_version: string;
+  mode: "structured_document" | "free_text";
+  company: CompanyMeta;
+  company_inputs: CompanyInputs;
+  score: ComplianceScore;
+  recommendations: Recommendation[];
+  pipeline: PipelineTrace;
+}
+
+// ---------------------------------------------------------------------------
+// v5.0 Agent Names (3-agent pipeline)
+// ---------------------------------------------------------------------------
+
+export type V5AgentName = "extractor" | "scorer" | "advisor";
+
+// ============================================================================
+// DEPRECATED — Legacy v2.0 types below (kept for compilation, iteration 13 cleanup)
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// 1. Top-Level Response (DEPRECATED — use ComplianceResult)
+// ---------------------------------------------------------------------------
+
+/** @deprecated Use ComplianceResult instead — will be removed in iteration 13 */
 export interface CSRDAudit {
   audit_id: string;
   generated_at: string;
@@ -140,7 +209,8 @@ export interface AgentTiming {
   status: "completed" | "failed" | "skipped";
 }
 
-export type AgentName = "extractor" | "fetcher" | "auditor" | "consultant";
+/** @deprecated Use V5AgentName instead — will be removed in iteration 13 */
+export type AgentName = "extractor" | "fetcher" | "auditor" | "consultant" | "scorer" | "advisor";
 
 export interface AuditLog {
   timestamp: number;
@@ -167,8 +237,9 @@ export interface SSENodeCompleteEvent {
 
 export interface SSECompleteEvent {
   type: "complete";
-  audit?: CSRDAudit;
-  compliance_check?: ComplianceCheckResult;
+  result?: ComplianceResult; // v5.0 unified output
+  audit?: CSRDAudit; // deprecated — legacy v2.0
+  compliance_check?: ComplianceCheckResult; // deprecated — legacy v2.0
 }
 
 export interface SSEErrorEvent {
@@ -183,9 +254,10 @@ export type SSEEvent =
   | SSEErrorEvent;
 
 // ============================================================================
-// Compliance Check Mode — Output Contract
+// Compliance Check Mode — Output Contract (DEPRECATED — use ComplianceResult)
 // ============================================================================
 
+/** @deprecated Use ComplianceResult instead — will be removed in iteration 13 */
 export interface ComplianceCheckResult {
   audit_id: string;
   generated_at: string;
