@@ -990,49 +990,72 @@ Build the real Advisor agent that generates grouped recommendations.
 
 **Gate**: Advisor produces valid `Recommendation` list grouped by priority. Financial context enriches descriptions when available. `ComplianceResult` assembles correctly with pipeline timing.
 
-### Iteration 11 — Frontend: Unified Result View + Company Inputs
+### Iteration 11 — Frontend: Unified Result View + Company Inputs ✓ COMPLETE (2026-02-21)
 
 Rebuild the frontend for the unified output and structured company inputs.
 
-- [ ] **TypeScript types** (`types.ts`):
+- [x] **TypeScript types** (`types.ts`):
   - Add: `CompanyInputs`, `ComplianceScore`, `Recommendation`, `ComplianceResult`
   - Update `SSECompleteEvent`: `{ type: "complete", result: ComplianceResult }`
-  - Update `AgentName`: `"extractor" | "scorer" | "advisor"`
-  - Deprecate old types (keep for reference): `CSRDAudit`, `ComplianceCheckResult`, etc.
+  - Add `V5AgentName`: `"extractor" | "scorer" | "advisor"`
+  - Extended `AgentName` with `"scorer" | "advisor"` (kept legacy values for backward compat)
+  - Deprecate old types with `@deprecated` JSDoc: `CSRDAudit`, `ComplianceCheckResult`, `AgentName`
 
-- [ ] **Unified result component** (`compliance-result-view.tsx` — NEW):
-  - **Score section**: Large prominent score display (0–100), color-coded (green ≥ 70, amber ≥ 40, red < 40)
-  - **Recommendations section**: Grouped by priority tier with collapsible sections:
+- [x] **Unified result component** (`compliance-result-view.tsx` — NEW):
+  - **Score section**: Circular gauge (0–100), color-coded (green ≥ 70, amber ≥ 40, red < 40), KPI panel with disclosed/partial/missing breakdown bars
+  - **Recommendations section**: Grouped by priority tier with collapsible `RecommendationTier` sections:
     - Critical (red) — expanded by default
     - High (amber) — expanded by default
     - Moderate (yellow) — collapsed
     - Low (green) — collapsed
-  - Each recommendation card: title, ESRS ID badge, description, regulatory reference
+  - Each `RecommendationCard`: ESRS ID badge, title, description, regulatory reference with book icon
+  - Pipeline trace: 3-agent horizontal bar (Extractor → Scorer → Advisor)
   - Same component for both modes — no mode indicator needed
 
-- [ ] **Company inputs** (`audit-chamber.tsx`):
-  - Add 4 structured input fields (employees, revenue, assets, year) on same page
-  - Fields appear between entity input and document/text section
-  - 2×2 grid layout
-  - Required in both modes — `canRun` logic updated
+- [x] **Company inputs** (`audit-chamber.tsx`):
+  - Add 4 structured input fields via `CompanyInput` sub-component (employees, revenue, assets, year)
+  - Fields appear in "Company Details" section between entity input and document/text section
+  - 2×2 grid layout (`grid grid-cols-2 gap-3`)
+  - Required in both modes — `canRun` logic validates all 4 inputs + entity + mode-specific input
+  - `buildCompanyInputs()` parses form strings to `CompanyInputs` with validation (positive values, year ≥ 2020)
 
-- [ ] **Mode rename**:
+- [x] **Mode rename**:
   - Toggle labels: "Structured Document" / "Free Text" (replacing "Full Audit" / "Compliance Check")
+  - Internal mode values: `"structured_document" | "free_text"` (replacing `"full_audit" | "compliance_check"`)
+  - Button label: "Run Analysis" (replacing "Run Engine Audit" / "Run Compliance Check")
+  - Analyzing header: "Compliance Analysis" (replacing "CSRD Compliance Audit" / "Compliance Check")
 
-- [ ] **API layer** (`api.ts`):
-  - Both `startAuditRun()` and `startComplianceCheck()` → single `startAnalysis()` function
-  - Sends all company inputs as form fields
+- [x] **API layer** (`api.ts`):
+  - New `startAnalysis(params: AnalysisParams)` function sending mode + 4 company input fields
+  - `AnalysisParams` interface: `{ entity, mode, companyInputs, reportFile?, freeText? }`
+  - Response field: `audit_id` (matching PRD Section 8, was `run_id` in legacy)
+  - Legacy `startAuditRun()` and `startComplianceCheck()` kept with `@deprecated` JSDoc
 
-- [ ] **Hook** (`useAuditStream.ts`):
-  - Single `result: ComplianceResult | null` (replaces `audit` + `complianceCheck`)
-  - SSE handles `{"type":"complete","result":{...}}`
-  - Progress: always 3 agents
+- [x] **Hook** (`useAuditStream.ts`):
+  - New `result: ComplianceResult | null` state (primary v5.0 path)
+  - New `startAnalysis(entity, mode, companyInputs, reportFile?, freeText?)` action
+  - SSE handler: checks `event.result` first (v5.0), falls back to `event.audit`/`event.compliance_check` (legacy)
+  - Progress: always 3 agents (`AGENT_COUNT = 3`)
+  - Mock flow: `startMockAnalysis(mode)` uses `ANALYSIS_LOGS` / `FREE_TEXT_ANALYSIS_LOGS`, returns `MOCK_COMPLIANCE_RESULT`
+  - Free text mock variant: score 36/100 (vs. 72/100 for structured document)
+  - Legacy `audit`, `complianceCheck`, `startAudit`, `startComplianceCheck` kept for backward compat
+  - `skipToComplete(mode?)` updated to use v5.0 mode values and produce `ComplianceResult`
 
-- [ ] **Mock data** (`mock-data.ts`):
-  - Add `MOCK_COMPLIANCE_RESULT` with score + recommendations
-  - Update `MOCK_LOGS` for 3-agent pipeline
+- [x] **Mock data** (`mock-data.ts`):
+  - `MOCK_COMPLIANCE_RESULT`: score 72/100, 18 applicable standards (11 disclosed, 4 partial, 3 missing), 15 recommendations across all ESRS categories (E1–E5, S1–S4, G1, ESRS 2)
+  - `ANALYSIS_LOGS`: 14 entries for 3-agent structured document pipeline
+  - `FREE_TEXT_ANALYSIS_LOGS`: 11 entries for 3-agent free text pipeline
+  - Legacy `MOCK_AUDIT`, `AUDIT_LOGS`, `MOCK_COMPLIANCE_CHECK`, `COMPLIANCE_CHECK_LOGS` preserved
 
-- [ ] Remove old components: `results-view.tsx` (old audit view), `compliance-check-view.tsx` (old compliance view)
+- [x] **Utils** (`utils.ts`):
+  - `scoreColor(score)`: hex color for score gauge (green/amber/red thresholds)
+  - `scoreStyle(score)`: Tailwind classes + label for score badge ("Good" / "Needs Improvement" / "Critical Gaps")
+  - `priorityTierStyle(priority)`: Tailwind classes for recommendation tier headers (bg, text, border, dot, label)
+
+- [x] Old components preserved (NOT removed — per critical constraint, iteration 13 handles cleanup):
+  - `results-view.tsx` (old audit view) — still compiles, imported as legacy fallback
+  - `compliance-check-view.tsx` (old compliance view) — still compiles, imported as legacy fallback
+  - Complete state rendering priority: `result` (v5.0) → `complianceCheck` (legacy) → `audit` (legacy)
 
 **Frontend layout** (idle page):
 ```
@@ -1099,7 +1122,17 @@ Rebuild the frontend for the unified output and structured company inputs.
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**Gate**: Both modes produce identical `ComplianceResult` rendered by same component. Score displays prominently. Recommendations grouped by priority tier. Company inputs required and visible. Old result views removed.
+**Gate**: Both modes produce identical `ComplianceResult` rendered by same component. Score displays prominently. Recommendations grouped by priority tier. Company inputs required and visible. Old result views preserved (not removed — iteration 13 cleanup). `npx next build` passes cleanly. ✓
+
+**Implementation notes**:
+- `types.ts`: New v5.0 types (`CompanyInputs`, `ComplianceScore`, `Recommendation`, `ComplianceResult`, `V5AgentName`) placed at top of file before deprecated legacy types. `AgentName` union extended with `"scorer" | "advisor"` to support both v5.0 and legacy agent names in `AuditLog` and `AgentTiming`. `SSECompleteEvent` accepts `result?` (v5.0), `audit?` (legacy), `compliance_check?` (legacy).
+- `compliance-result-view.tsx`: Sub-components `ScoreCard` (circular gauge with animated SVG arc + KPI breakdown bars), `RecommendationTier` (collapsible via React `useState`), `RecommendationCard` (ESRS badge + title + description + regulatory reference). `groupByPriority()` utility splits recommendations into `Record<Priority, Recommendation[]>`.
+- `audit-chamber.tsx`: `CompanyInput` sub-component wraps labeled number inputs. `buildCompanyInputs()` parses string state to `CompanyInputs` with validation (NaN checks, positivity, year ≥ 2020). `canRun` requires entity + all 4 company inputs valid + mode-specific input. Complete state renders `ComplianceResultView` first (v5.0), then legacy views as fallbacks. Agent color/bg maps extended with `scorer` (blue) and `advisor` (emerald).
+- `api.ts`: `AnalysisParams` interface bundles all inputs. `startAnalysis()` appends company inputs as individual form fields (`number_of_employees`, `revenue_eur`, `total_assets_eur`, `reporting_year`). Response expects `{ audit_id }` (matching PRD Section 8).
+- `useAuditStream.ts`: Mock flow creates free-text variant of `MOCK_COMPLIANCE_RESULT` with lower score (36 vs 72) inline. Legacy `doStartAudit`/`doStartComplianceCheck` use rest params (`...args`) with `void args` to satisfy strict ESLint no-unused-vars rule. `skipToComplete` produces v5.0 `ComplianceResult` for both modes.
+- `utils.ts`: `scoreColor()`, `scoreStyle()`, `priorityTierStyle()` added for v5.0 result view. `priorityColor()` preserved for legacy views.
+- `mock-data.ts`: `MOCK_COMPLIANCE_RESULT` covers full ESRS scope: 2 critical (E1-6, S1-1), 3 high (E1-1, E2-4, G1-1), 4 moderate (E1-5, E3-1, S2-1, E4-1), 6 low (S1-6, ESRS 2, E5-1, S3-1, S4-1, E1-9). Pipeline trace: 3 agents, 6.1s total.
+- Build: `npx next build` passes — compiled successfully, 0 lint errors, all pages generated statically. Page bundle: 17.2 kB (104 kB first load).
 
 ### Iteration 12 — Real Extractor (Unified)
 
@@ -1118,6 +1151,10 @@ Upgrade the extractor to handle ALL ESRS standards and financial context extract
 ### Iteration 13 — Polish + End-to-End Testing
 - [ ] Remove deprecated agent files (`fetcher.py`, `auditor.py`, `consultant.py`) or archive
 - [ ] Remove deprecated schema models and state keys
+- [ ] Remove deprecated frontend types (`CSRDAudit`, `ComplianceCheckResult`, old `AgentName` values)
+- [ ] Remove legacy frontend components (`results-view.tsx`, `compliance-check-view.tsx`)
+- [ ] Remove legacy API functions (`startAuditRun`, `startComplianceCheck`) and legacy hook state (`audit`, `complianceCheck`, `startAudit`, `startComplianceCheck`)
+- [ ] Remove legacy mock data (`MOCK_AUDIT`, `AUDIT_LOGS`, `MOCK_COMPLIANCE_CHECK`, `COMPLIANCE_CHECK_LOGS`)
 - [ ] Add `.env` / `dotenv` for `ANTHROPIC_API_KEY`
 - [ ] Document `master_requirements.json` schema for knowledge base maintainers
 - [ ] End-to-end test: both modes with real data + structured company inputs
@@ -1134,6 +1171,9 @@ Upgrade the extractor to handle ALL ESRS standards and financial context extract
 | [frontend/src/lib/types.ts](../frontend/src/lib/types.ts) | **Source of truth** for all Pydantic model field names — must match exactly |
 | [frontend/src/lib/mock-data.ts](../frontend/src/lib/mock-data.ts) | Reference values for expected output shape |
 | [frontend/src/components/audit-chamber.tsx](../frontend/src/components/audit-chamber.tsx) | SSE event consumption logic + input form — defines expected field names |
+| [frontend/src/components/compliance-result-view.tsx](../frontend/src/components/compliance-result-view.tsx) | **v5.0 unified result view** — score gauge + grouped recommendations |
+| [frontend/src/lib/api.ts](../frontend/src/lib/api.ts) | `startAnalysis()` — sends company inputs + mode to backend |
+| [frontend/src/hooks/useAuditStream.ts](../frontend/src/hooks/useAuditStream.ts) | State machine for SSE streaming, mock mode, result handling |
 | [backend/data/master_requirements.json](../backend/data/master_requirements.json) | **Knowledge base** — all CSRD/ESRS thresholds, requirements, phase-in schedules |
 | [backend/tools/knowledge_base.py](../backend/tools/knowledge_base.py) | Knowledge base loader + query functions |
 | [contracts/audit-report.schema.ts](../contracts/audit-report.schema.ts) | Canonical re-export — confirms type names |
