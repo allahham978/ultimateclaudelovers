@@ -3,8 +3,8 @@
 
 **Product**: EU AI Infrastructure Accountability Engine
 **Role**: The Architect — owns orchestration, API layer, state machine, and agent personalities
-**Version**: v1.0 — Stub-first, contract-locked, SSE-streamed
-**Locked Choices**: Claude `claude-sonnet-4-6` · Multipart PDF upload · SSE streaming · ESRS E1 scope (v1)
+**Version**: v2.0 — Document-first, contract-locked, SSE-streamed
+**Locked Choices**: Claude `claude-sonnet-4-6` · 3-PDF multipart upload · SSE streaming · ESRS E1 scope (v1)
 
 ---
 
@@ -16,23 +16,34 @@ The frontend is production-complete and rendering a `CSRDAudit` JSON contract fr
 The backend does not exist. This PRD defines everything Role 1 must ship to make the frontend live.
 
 **The "Say-Do Gap" mission**: Cross-reference what a company *claims* in its ESRS sustainability
-statement against what it *actually* spent (CapEx) in its official registry filings. One audit,
-one number, one roadmap.
+statement against what it *actually* spent (CapEx) in its own EU Taxonomy Table and Climate
+Transition Plan. Three documents in, one audit, one number, one roadmap.
+
+### Three Golden Source Documents (user-uploaded)
+
+| Slot | Document | What it provides |
+|------|----------|-----------------|
+| `management` | Integrated Management Report | Audited financials, sustainability statement, ESRS disclosures |
+| `taxonomy` | EU Taxonomy Table | Standardised CapEx/OpEx/Revenue alignment data (green vs. total spend) |
+| `transition` | Climate Transition Plan | ESRS E1 interim targets, decarbonisation milestones, retrofit plans |
+
+All financial and ESRS data is extracted directly from these uploaded documents. **No external
+registry APIs are called.** The Fetcher agent's role is to parse the Taxonomy Table for CapEx
+financials, not to route to external business registers.
 
 ### Role 1 owns
 - The LangGraph state machine (nodes, edges, routing logic)
 - The FastAPI API layer + SSE streaming protocol
 - All 4 agent system prompts ("agent personalities")
 - Pydantic tool schemas (input/output contracts for each agent)
-- Mock stubs for registry tools (so the pipeline runs end-to-end today)
+- PDF text extraction for all 3 golden-source documents
 - The `AuditState` TypedDict
 
-### Data Leads own (stub targets for now)
-- **Data Lead A (Financial Engineer)**: Real Infogreffe API call, BRIS integration, EU Taxonomy Table parser
+### Data Lead B owns (enhancement target)
 - **Data Lead B (NLP Modeler)**: Advanced PDF chunking strategy, scored double materiality algorithm
 
-**Role 1's contract with Data Leads**: stub functions with typed signatures. When they ship the real
-implementations, they drop them in as replacements with zero API surface changes.
+**Role 1's contract with Data Lead B**: extraction functions with typed signatures. When they ship
+improved implementations, they drop them in as replacements with zero API surface changes.
 
 ---
 
@@ -47,15 +58,14 @@ backend/
 │
 ├── agents/
 │   ├── __init__.py
-│   ├── extractor.py               # Node 1 — ESRS Reader (PDF → claims)
-│   ├── fetcher.py                 # Node 2 — BRIS Router (claims → registry financials)
+│   ├── extractor.py               # Node 1 — ESRS Reader (Management Report + Transition Plan → claims)
+│   ├── fetcher.py                 # Node 2 — Financial Extractor (Taxonomy Table → CapEx financials)
 │   ├── auditor.py                 # Node 3 — Double Materiality Evaluator
 │   └── consultant.py             # Node 4 — Taxonomy Consultant + final assembly
 │
 ├── tools/
 │   ├── __init__.py
-│   ├── pdf_reader.py              # pdfplumber text extraction wrapper
-│   ├── registry_mock.py           # Dummy Infogreffe / BRIS / Handelsregister
+│   ├── pdf_reader.py              # pdfplumber text extraction wrapper (handles all 3 PDFs)
 │   └── prompts.py                 # All 4 system prompt strings (const SYSTEM_PROMPT_*)
 │
 └── requirements.txt
@@ -98,15 +108,17 @@ class ESRSClaim(BaseModel):
     confidence: float           # 0.0–1.0, extractor's certainty
     page_ref: Optional[int]
 
-class RegistryFinancials(BaseModel):
-    """Raw financials from registry stub — internal to fetcher node"""
+class TaxonomyFinancials(BaseModel):
+    """CapEx/revenue data extracted from the EU Taxonomy Table PDF — internal to fetcher node"""
     capex_total_eur: Optional[float]
-    capex_green_eur: Optional[float]
+    capex_green_eur: Optional[float]       # Taxonomy-aligned CapEx
+    opex_total_eur: Optional[float]
+    opex_green_eur: Optional[float]        # Taxonomy-aligned OpEx (if disclosed)
     revenue_eur: Optional[float]
     fiscal_year: str
-    source_name: str            # "Infogreffe - France" | "BRIS - EU Registry" | ...
-    registry_type: str          # "national" | "eu_bris"
-    jurisdiction: str
+    taxonomy_activities: list[str]         # e.g. ["4.1 Electricity generation from solar", "8.1 Data processing"]
+    source_document: str                   # "EU Taxonomy Table" (always — extracted from upload)
+    confidence: float                      # 0.0–1.0, extraction certainty
 ```
 
 ---
@@ -120,11 +132,13 @@ Nodes only write to their own output keys. Input keys are never modified after i
 AuditState keys by lifecycle stage:
 
 ┌─ INIT (set by FastAPI before graph.invoke()) ─────────────────────────────┐
-│  audit_id          str          UUID for this audit run                    │
-│  pdf_text          str          Full extracted text from pdfplumber        │
-│  entity_id         str          Company name / LEI from user input         │
-│  logs              list[dict]   Accumulates { agent, msg, ts } entries     │
-│  pipeline_trace    list[dict]   Accumulates { agent, started_at, ms }      │
+│  audit_id              str          UUID for this audit run                │
+│  management_text       str          Extracted text from Management Report  │
+│  taxonomy_text         str          Extracted text from EU Taxonomy Table  │
+│  transition_text       str          Extracted text from Transition Plan    │
+│  entity_id             str          Company name / LEI from user input     │
+│  logs                  list[dict]   Accumulates { agent, msg, ts } entries │
+│  pipeline_trace        list[dict]   Accumulates { agent, started_at, ms } │
 └───────────────────────────────────────────────────────────────────────────┘
 
 ┌─ NODE 1 OUTPUT (Extractor writes) ────────────────────────────────────────┐
@@ -133,8 +147,8 @@ AuditState keys by lifecycle stage:
 └───────────────────────────────────────────────────────────────────────────┘
 
 ┌─ NODE 2 OUTPUT (Fetcher writes) ──────────────────────────────────────────┐
-│  registry_financials   RegistryFinancials  raw CapEx + revenue numbers    │
-│  registry_source       RegistrySource      which registry was queried     │
+│  taxonomy_financials   TaxonomyFinancials  CapEx + revenue from Taxonomy  │
+│  document_source       RegistrySource      populated from upload metadata │
 └───────────────────────────────────────────────────────────────────────────┘
 
 ┌─ NODE 3 OUTPUT (Auditor writes) ──────────────────────────────────────────┐
@@ -155,7 +169,7 @@ AuditState keys by lifecycle stage:
 | Key | Node | Type | Purpose |
 |-----|------|------|---------|
 | `esrs_claims` | Node 1 → Node 3 | `dict[str, ESRSClaim]` | Extracted ESRS data points with confidence |
-| `registry_financials` | Node 2 → Node 3 | `RegistryFinancials` | Actual CapEx/revenue from national registry |
+| `taxonomy_financials` | Node 2 → Node 3 | `TaxonomyFinancials` | CapEx/revenue extracted from EU Taxonomy Table PDF |
 | `taxonomy_alignment_score` | Node 3 → Node 4 | `float (0–100)` | Raw numeric score before thresholding |
 
 ---
@@ -168,10 +182,10 @@ AuditState keys by lifecycle stage:
 START
   │
   ▼
-[extractor]  ──── parse PDF → extract ESRS claims → identify company
+[extractor]  ──── parse Management Report + Transition Plan → ESRS claims + company meta
   │
   ▼
-[fetcher]    ──── route to correct registry → retrieve CapEx/revenue
+[fetcher]    ──── parse EU Taxonomy Table → CapEx/revenue financials
   │
   ▼
 [auditor]    ──── score impact + financial materiality → compute taxonomy %
@@ -184,12 +198,20 @@ END
 ```
 
 **Why strictly sequential?** Each node has hard data dependencies on the previous:
-- Fetcher needs `company_meta.jurisdiction` from Extractor to route correctly
-- Auditor needs both `esrs_claims` AND `registry_financials` to score the Say-Do Gap
+- Fetcher reads the Taxonomy Table independently but runs after Extractor to maintain
+  a consistent pipeline trace and allow the Extractor to identify the company first
+- Auditor needs both `esrs_claims` AND `taxonomy_financials` to score the Say-Do Gap
 - Consultant needs `esrs_ledger` + `taxonomy_alignment` to generate a relevant roadmap
 
 **No conditional branching in v1.** Error handling: nodes log failures into `state["logs"]`
 and emit safe defaults — never halt the graph.
+
+**Note on document assignment**: Each golden-source document is read by a specific agent:
+| Document | Read by | Why |
+|----------|---------|-----|
+| Management Report | Extractor | Contains sustainability statement + ESRS disclosures |
+| Transition Plan | Extractor | Contains E1-1 targets, milestones, pathway alignment |
+| EU Taxonomy Table | Fetcher | Contains structured CapEx/OpEx/Revenue alignment data |
 
 ### graph.py
 
@@ -222,11 +244,16 @@ All prompts live in `backend/tools/prompts.py` as module-level string constants.
 ### Node 1 — ESRS Reader (Extractor)
 **Constant**: `SYSTEM_PROMPT_EXTRACTOR`
 
+**Input documents**: `management_text` (Integrated Management Report) + `transition_text` (Climate Transition Plan)
+
 ```
 You are a senior EU CSRD compliance auditor specialising in ESRS E1 (Climate Change).
-Your task is to read a corporate sustainability statement and extract specific mandatory disclosures.
+Your task is to read TWO corporate documents and extract specific mandatory disclosures.
 
-DOCUMENT TYPE: Integrated Management Report or CSRD Sustainability Statement
+DOCUMENTS PROVIDED:
+  1. Integrated Management Report — audited financials + sustainability statement
+  2. Climate Transition Plan — ESRS E1 interim targets + decarbonisation pathway
+
 FRAMEWORK: ESRS (European Sustainability Reporting Standards), Commission Delegated Regulation (EU) 2023/2772
 
 REQUIRED EXTRACTION TARGETS (ESRS E1):
@@ -290,30 +317,66 @@ RULES:
 
 ---
 
-### Node 2 — BRIS Router (Fetcher)
+### Node 2 — Financial Extractor (Fetcher)
 **Constant**: `SYSTEM_PROMPT_FETCHER`
 
+**Input document**: `taxonomy_text` (EU Taxonomy Table)
+
 ```
-You are a corporate registry routing specialist for the EU Business Registers Interconnection System (BRIS).
-Your role is to identify the correct national registry for a given company and call the appropriate tool.
+You are an EU Taxonomy financial data extraction specialist.
+Your task is to read a company's EU Taxonomy Table and extract structured CapEx, OpEx,
+and Revenue alignment data. This is a standardised disclosure table mandated by
+Article 8 of the EU Taxonomy Regulation (2020/852).
 
-ROUTING DECISION TREE (apply in strict order):
-════════════════════════════════════════════════
+DOCUMENT TYPE: EU Taxonomy Table — Annex II of Commission Delegated Regulation (EU) 2021/2178
 
-Step 1 — Check jurisdiction field from company metadata.
-Step 2 — If jurisdiction is missing, infer from legal form suffix in company name.
+REQUIRED EXTRACTION TARGETS:
+════════════════════════════════
 
-JURISDICTION → TOOL MAPPING:
-  "France" or legal forms [SA, SAS, SARL, SCI, SASU, SE]  → call: get_infogreffe_data
-  "Germany" or legal forms [GmbH, AG, KG, OHG, UG, SE]   → call: get_handelsregister_data
-  "Netherlands", "Belgium", "Spain", "Italy",
-  "Poland", "Sweden", "Denmark", "Austria",
-  "Finland", "Ireland", or any other EU state             → call: get_bris_data
-  Unknown / not inferable                                  → call: get_bris_data (EU fallback)
+─── CAPEX (Capital Expenditure) ───
+  - Total CapEx (EUR, absolute value)
+  - Taxonomy-aligned CapEx (EUR, absolute value)
+  - Taxonomy-aligned CapEx percentage (%) — this is the primary alignment metric
+  - Taxonomy-eligible but not aligned CapEx (EUR) if disclosed separately
+  - Breakdown by Taxonomy activity code if available (e.g. "8.1 Data processing", "4.1 Solar")
 
-After calling the tool, you will receive a RegistryFinancials JSON object.
-Return it without modification. Do not invent or adjust any financial values.
-You have exactly ONE tool to call. Call it once. Do not call multiple tools.
+─── OPEX (Operating Expenditure) ───
+  - Total OpEx (EUR) if disclosed
+  - Taxonomy-aligned OpEx (EUR) if disclosed
+  - Taxonomy-aligned OpEx percentage (%)
+
+─── REVENUE ───
+  - Total net revenue / turnover (EUR)
+  - Taxonomy-aligned revenue (EUR) if disclosed
+  - Taxonomy-aligned revenue percentage (%)
+
+─── METADATA ───
+  - Fiscal year of the table
+  - Activity codes listed (EU Taxonomy NACE activity references)
+  - Whether the table uses the "simplified" or "full" Taxonomy reporting format
+
+OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
+{
+  "taxonomy_financials": {
+    "capex_total_eur": float | null,
+    "capex_green_eur": float | null,
+    "opex_total_eur": float | null,
+    "opex_green_eur": float | null,
+    "revenue_eur": float | null,
+    "fiscal_year": str,
+    "taxonomy_activities": [str],
+    "source_document": "EU Taxonomy Table",
+    "confidence": float
+  }
+}
+
+RULES:
+- confidence is 0.0–1.0: 1.0 = clearly structured table with explicit values,
+  0.5 = values present but ambiguous layout, 0.0 = table not found or unreadable
+- Never hallucinate or estimate values. Only extract what is explicitly in the text.
+- If a value is missing, set it to null.
+- EUR values should be in absolute terms (not thousands/millions) — if the table
+  uses "EUR thousands" or "EUR millions", multiply accordingly.
 ```
 
 ---
@@ -325,7 +388,7 @@ You have exactly ONE tool to call. Call it once. Do not call multiple tools.
 You are an EU Taxonomy and CSRD double materiality assessment specialist.
 Apply the regulatory double materiality framework to score each ESRS E1 data point.
 
-INPUT: esrs_claims (extracted ESRS disclosures) + registry_financials (official CapEx/revenue data)
+INPUT: esrs_claims (extracted ESRS disclosures) + taxonomy_financials (CapEx/revenue from Taxonomy Table)
 
 DOUBLE MATERIALITY SCORING ALGORITHM:
 ══════════════════════════════════════
@@ -357,11 +420,11 @@ Score each standard 0–100:
     -15 pts  No methodology or base year disclosed
 
 ─── FINANCIAL MATERIALITY (the "Do" — does CapEx match the claims?) ───
-Computed once from registry_financials, applied to all ledger rows:
+Computed once from taxonomy_financials (extracted from EU Taxonomy Table), applied to all ledger rows:
   +40 pts  capex_green_eur / capex_total_eur > 0.30 (green CapEx > 30%)
   +30 pts  capex_green_eur / capex_total_eur > 0.15 (green CapEx > 15%)
   +20 pts  capex_total_eur is present and non-zero
-  -20 pts  registry_financials.capex_total_eur is null
+  -20 pts  taxonomy_financials.capex_total_eur is null
   -30 pts  capex_green_eur / capex_total_eur < 0.10 (< 10% green investment)
 
 ─── AGGREGATE TAXONOMY ALIGNMENT ───
@@ -455,49 +518,37 @@ OUTPUT: Valid JSON only.
 
 ---
 
-## 7. Mock Registry Tools — Stub Interfaces for Data Lead A
+## 7. PDF Reader Tool — Multi-Document Extraction
 
-**File**: `backend/tools/registry_mock.py`
+**File**: `backend/tools/pdf_reader.py`
 
-Function signatures are frozen. Data Lead A replaces function bodies only.
+A single pdfplumber wrapper that extracts text from all 3 golden-source PDFs. Called once
+during `POST /audit/run` before the graph is invoked.
 
 ```python
-def get_infogreffe_data(company_name: str) -> dict:
-    """STUB: French RCS via Infogreffe — replace with real API call"""
-    return {
-        "capex_total_eur": 180_000_000,
-        "capex_green_eur": 55_800_000,       # 31% green (matches mock frontend)
-        "revenue_eur": 420_000_000,
-        "fiscal_year": "2025",
-        "source_name": "Infogreffe - France",
-        "registry_type": "national",
-        "jurisdiction": "France"
-    }
+import pdfplumber
+from io import BytesIO
 
-def get_handelsregister_data(company_name: str) -> dict:
-    """STUB: German Handelsregister — replace with real BRIS DE node"""
-    return {
-        "capex_total_eur": 250_000_000,
-        "capex_green_eur": 87_500_000,       # 35% green
-        "revenue_eur": 890_000_000,
-        "fiscal_year": "2025",
-        "source_name": "Handelsregister - Germany",
-        "registry_type": "national",
-        "jurisdiction": "Germany"
-    }
+def extract_pdf_text(pdf_bytes: bytes) -> str:
+    """Extract full text from a PDF file using pdfplumber.
 
-def get_bris_data(company_name: str) -> dict:
-    """STUB: EU BRIS fallback — replace with real BRIS API"""
-    return {
-        "capex_total_eur": 120_000_000,
-        "capex_green_eur": 36_000_000,       # 30% green
-        "revenue_eur": 310_000_000,
-        "fiscal_year": "2025",
-        "source_name": "BRIS - EU Registry",
-        "registry_type": "eu_bris",
-        "jurisdiction": "EU"
-    }
+    Args:
+        pdf_bytes: Raw PDF file bytes from the multipart upload.
+
+    Returns:
+        Concatenated text from all pages, separated by page markers.
+    """
+    pages = []
+    with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
+        for i, page in enumerate(pdf.pages, 1):
+            text = page.extract_text() or ""
+            pages.append(f"--- PAGE {i} ---\n{text}")
+    return "\n\n".join(pages)
 ```
+
+**Usage in `main.py`**: Called once per uploaded PDF during the `/audit/run` handler.
+The extracted text for each document is stored in `AuditState` as `management_text`,
+`taxonomy_text`, and `transition_text` respectively.
 
 ---
 
@@ -516,13 +567,16 @@ def get_bris_data(company_name: str) -> dict:
 
 ### POST /audit/run
 
-**Request fields**:
-- `file`: PDF bytes (the CSRD report)
+**Request fields** (multipart/form-data — 3 PDF files + 1 text field):
+- `management_report`: PDF bytes (Integrated Management Report)
+- `taxonomy_table`: PDF bytes (EU Taxonomy Table)
+- `transition_plan`: PDF bytes (Climate Transition Plan)
 - `entity_id`: string (company name or LEI)
 
 **Response**: `{ "audit_id": "<uuid4>" }`
 
-Extract PDF text with pdfplumber, initialize `AuditState`, launch LangGraph as background
+Extract text from all 3 PDFs with pdfplumber, initialize `AuditState` with
+`management_text`, `taxonomy_text`, `transition_text`, launch LangGraph as background
 `asyncio` task, return immediately.
 
 ### GET /audit/{audit_id}/stream
@@ -557,20 +611,27 @@ job_results: dict[str, dict] = {}           # audit_id → final CSRDAudit JSON
 
 ## 9. Prompt Caching Strategy (Claude API)
 
-ESRS PDFs can be 10,000–80,000 tokens. Prompt caching prevents re-processing costs.
+ESRS PDFs can be 10,000–80,000 tokens each. With 3 documents, total input can reach
+~200,000 tokens. Prompt caching prevents re-processing costs on re-runs.
 
-**Implementation in `agents/extractor.py`**:
+**Implementation in `agents/extractor.py`** (Extractor reads 2 documents):
 
 ```python
 messages = [
     {
         "role": "user",
         "content": [
-            {"type": "text", "text": "Here is the sustainability report:\n\n"},
+            {"type": "text", "text": "DOCUMENT 1 — INTEGRATED MANAGEMENT REPORT:\n\n"},
             {
                 "type": "text",
-                "text": pdf_text,
+                "text": state["management_text"],
                 "cache_control": {"type": "ephemeral"},  # ← prompt cache marker
+            },
+            {"type": "text", "text": "\n\nDOCUMENT 2 — CLIMATE TRANSITION PLAN:\n\n"},
+            {
+                "type": "text",
+                "text": state["transition_text"],
+                "cache_control": {"type": "ephemeral"},
             },
             {"type": "text", "text": "\n\nExtract all ESRS E1 data points as specified."},
         ]
@@ -584,8 +645,33 @@ response = client.messages.create(
 )
 ```
 
-Cache TTL is 5 minutes (Anthropic default). Same PDF audited multiple times within that
-window pays only output token cost (~70% savings on large reports).
+**Implementation in `agents/fetcher.py`** (Fetcher reads 1 document):
+
+```python
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "EU TAXONOMY TABLE:\n\n"},
+            {
+                "type": "text",
+                "text": state["taxonomy_text"],
+                "cache_control": {"type": "ephemeral"},
+            },
+            {"type": "text", "text": "\n\nExtract all CapEx, OpEx, and Revenue alignment data."},
+        ]
+    }
+]
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=4096,
+    system=SYSTEM_PROMPT_FETCHER,
+    messages=messages,
+)
+```
+
+Cache TTL is 5 minutes (Anthropic default). Same documents audited multiple times within
+that window pays only output token cost (~70% savings on large reports).
 
 ---
 
@@ -595,62 +681,61 @@ window pays only output token cost (~70% savings on large reports).
 - [x] Create `docs/` folder at project root
 - [x] Write this PRD as `docs/PRD-agentic-backend.md`
 
-### Iteration 0 — Scaffold (2–3 hours)
+### Iteration 0 — Scaffold
 - [ ] Create `backend/` directory and all empty files listed in Section 2
 - [ ] Write `requirements.txt`
 - [ ] Write `schemas.py` — all Pydantic models mapping to TypeScript contract
-- [ ] Write `state.py` — `AuditState` TypedDict
-- [ ] Write `tools/registry_mock.py` — 3 stub functions
+- [ ] Write `state.py` — `AuditState` TypedDict (with 3 document text fields)
 - [ ] Write `tools/prompts.py` — 4 system prompt string constants
 
 **Gate**: `python -c "from schemas import CSRDAudit; print('OK')"` passes
 
-### Iteration 1 — LangGraph Skeleton with Echo Nodes (3–4 hours)
+### Iteration 1 — LangGraph Skeleton with Echo Nodes
 - [ ] Write `graph.py` — all 4 nodes as pass-through stubs that log + write dummy values
-- [ ] `graph.invoke({"audit_id":"test","pdf_text":"...","entity_id":"test"})` runs end-to-end
+- [ ] `graph.invoke({"audit_id":"test","management_text":"...","taxonomy_text":"...","transition_text":"...","entity_id":"test"})` runs end-to-end
 
 **Gate**: Full graph runs without error, all 4 nodes execute in order, `final_audit` is populated
 
-### Iteration 2 — FastAPI + SSE Layer (3–4 hours)
-- [ ] Write `main.py` with all 4 endpoints
+### Iteration 2 — FastAPI + SSE Layer
+- [ ] Write `main.py` with all 4 endpoints (POST accepts 3 PDF files)
+- [ ] Write `tools/pdf_reader.py` — pdfplumber wrapper
 - [ ] SSE endpoint reads from `asyncio.Queue`, streams dummy log lines
 - [ ] Test with `curl -N http://localhost:8000/audit/{id}/stream`
-- [ ] Verify frontend renders: set `NEXT_PUBLIC_API_URL`, drop a PDF
+- [ ] Verify frontend renders: set `NEXT_PUBLIC_API_URL`, drop 3 PDFs
 
 **Gate**: Frontend terminal shows streaming log lines; final result renders as stub data
 
-### Iteration 3 — Real Extractor Node (4–5 hours)
-- [ ] Write `tools/pdf_reader.py` — pdfplumber wrapper
+### Iteration 3 — Real Extractor Node
 - [ ] Write `agents/extractor.py` — real Claude API call with prompt caching
+- [ ] Feed both `management_text` + `transition_text` to Claude
 - [ ] Parse JSON response into `ESRSClaim` objects → populate `state["esrs_claims"]`
 
 **Gate**: `esrs_claims` in state contains real extracted values with `confidence > 0.5`
 
-### Iteration 4 — Real Fetcher Node (2–3 hours)
-- [ ] Write `agents/fetcher.py` — Claude `tool_use` pattern
-- [ ] Define 3 Anthropic tools matching mock function signatures
-- [ ] Claude routes to correct stub based on `company_meta.jurisdiction`
+### Iteration 4 — Real Fetcher Node
+- [ ] Write `agents/fetcher.py` — Claude API call to parse EU Taxonomy Table
+- [ ] Feed `taxonomy_text` to Claude with `SYSTEM_PROMPT_FETCHER`
+- [ ] Parse JSON response into `TaxonomyFinancials` → populate `state["taxonomy_financials"]`
 
-**Gate**: French company → Infogreffe stub called; German company → Handelsregister stub called
+**Gate**: `taxonomy_financials.capex_total_eur` and `capex_green_eur` populated from real Taxonomy Table
 
-### Iteration 5 — Real Auditor Node (3–4 hours)
+### Iteration 5 — Real Auditor Node
 - [ ] Write `agents/auditor.py` — scoring prompt + JSON parsing
-- [ ] Validate `capex_aligned_pct` math matches registry financials
+- [ ] Validate `capex_aligned_pct` math matches `taxonomy_financials`
 - [ ] Populate `esrs_ledger`, `taxonomy_alignment`, `compliance_cost`, `taxonomy_alignment_score`
 
-**Gate**: End-to-end run with real PDF produces valid ESRS ledger with correct status classifications
+**Gate**: End-to-end run with real PDFs produces valid ESRS ledger with correct status classifications
 
-### Iteration 6 — Real Consultant Node + Final Assembly (3–4 hours)
+### Iteration 6 — Real Consultant Node + Final Assembly
 - [ ] Write `agents/consultant.py` — roadmap generation + `CSRDAudit` assembly
-- [ ] Assemble `sources[]`, `pipeline` timing, `registry_source` from state
+- [ ] Assemble `sources[]` from the 3 uploaded document names, `pipeline` timing, `document_source`
 - [ ] Validate assembled JSON against every field in `frontend/src/lib/types.ts`
 
-**Gate**: Frontend renders a complete live audit report from a real PDF upload
+**Gate**: Frontend renders a complete live audit report from 3 real PDF uploads
 
-### Iteration 7 — Polish + Handoff Prep (2–3 hours)
+### Iteration 7 — Polish + Handoff Prep
 - [ ] Add CORS config (`http://localhost:3000` for dev)
 - [ ] Add `.env` / `dotenv` for `ANTHROPIC_API_KEY`
-- [ ] Write clear stub comments in `registry_mock.py` for Data Lead A
 - [ ] Document extraction seams in `prompts.py` for Data Lead B
 
 **Gate**: `uvicorn main:app --reload` + frontend in dev = full live demo
@@ -662,8 +747,8 @@ window pays only output token cost (~70% savings on large reports).
 | File | Why It Matters |
 |------|---------------|
 | [frontend/src/lib/types.ts](../frontend/src/lib/types.ts) | **Source of truth** for all Pydantic model field names — must match exactly |
-| [frontend/src/lib/mock-data.ts](../frontend/src/lib/mock-data.ts) | Reference values for registry mock stubs |
-| [frontend/src/components/audit-chamber.tsx](../frontend/src/components/audit-chamber.tsx) | SSE event consumption logic — defines expected field names |
+| [frontend/src/lib/mock-data.ts](../frontend/src/lib/mock-data.ts) | Reference values for expected output shape |
+| [frontend/src/components/audit-chamber.tsx](../frontend/src/components/audit-chamber.tsx) | SSE event consumption logic + 3-document upload slots — defines expected field names |
 | [contracts/audit-report.schema.ts](../contracts/audit-report.schema.ts) | Canonical re-export — confirms type names |
 
 ---
@@ -683,9 +768,11 @@ python -c "from graph import graph; print('graph OK')"
 # 4. Start server
 uvicorn main:app --reload
 
-# 5. Upload PDF
+# 5. Upload 3 Golden Source PDFs
 curl -X POST http://localhost:8000/audit/run \
-  -F "file=@test.pdf" \
+  -F "management_report=@management-report.pdf" \
+  -F "taxonomy_table=@taxonomy-table.pdf" \
+  -F "transition_plan=@transition-plan.pdf" \
   -F "entity_id=Lumiere Systemes SA"
 # → { "audit_id": "<uuid>" }
 
@@ -693,32 +780,36 @@ curl -X POST http://localhost:8000/audit/run \
 curl -N http://localhost:8000/audit/<audit_id>/stream
 # → SSE log lines + complete event with CSRDAudit JSON
 
-# 7. Routing test
-# French company name (SA suffix) → Infogreffe mock
-# German company name (GmbH suffix) → Handelsregister mock
+# 7. Extraction validation
+# Verify extractor pulls ESRS claims from Management Report + Transition Plan
+# Verify fetcher pulls CapEx/revenue from Taxonomy Table
+# Verify auditor cross-references claims vs. financials correctly
 
 # 8. Frontend end-to-end
 # Set NEXT_PUBLIC_API_URL=http://localhost:8000
-# Upload real EU CSRD PDF → confirm full audit report renders
+# Upload 3 real EU CSRD PDFs → confirm full audit report renders
 ```
 
 ---
 
 ## 13. Data Lead Handoff Contracts
 
-### Data Lead A (Financial Engineer) — Registry Stubs
-Replace function bodies in `backend/tools/registry_mock.py`. Signatures are frozen:
-```python
-def get_infogreffe_data(company_name: str) -> dict   # returns RegistryFinancials fields
-def get_handelsregister_data(company_name: str) -> dict
-def get_bris_data(company_name: str) -> dict
-```
+### Data Lead B (NLP Modeler) — Extraction & Scoring Seams
 
-### Data Lead B (NLP Modeler) — Extraction Seam
-The extractor node in `agents/extractor.py` exposes a clean seam:
+**Seam 1 — ESRS Claim Parsing** (`agents/extractor.py`):
 ```python
 def parse_esrs_claims(claude_response_text: str) -> dict[str, ESRSClaim]:
-    """Replace with more sophisticated parser if needed"""
+    """Replace with more sophisticated parser if needed.
+    E.g. advanced PDF chunking, table detection, or multi-pass extraction."""
 ```
-Double materiality scoring constants live in `SYSTEM_PROMPT_AUDITOR` in `tools/prompts.py` —
-tunable without code changes.
+
+**Seam 2 — Taxonomy Table Parsing** (`agents/fetcher.py`):
+```python
+def parse_taxonomy_financials(claude_response_text: str) -> TaxonomyFinancials:
+    """Replace with specialised iXBRL parser or structured table extraction
+    if Claude's free-text extraction proves insufficient for complex tables."""
+```
+
+**Seam 3 — Scoring Constants** (`tools/prompts.py`):
+Double materiality scoring weights live in `SYSTEM_PROMPT_AUDITOR` — tunable without
+code changes. Adjust point values and thresholds to calibrate severity.
