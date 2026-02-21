@@ -10,6 +10,7 @@ import {
 import { useAuditStream } from "@/hooks/useAuditStream";
 import type { AgentName } from "@/lib/types";
 import ResultsView from "@/components/results-view";
+import ComplianceCheckView from "@/components/compliance-check-view";
 
 /* ================================================================= */
 /* Constants                                                          */
@@ -56,15 +57,21 @@ export default function AuditChamber() {
   const [entity, setEntity] = useState("");
   const [reportFileName, setReportFileName] = useState<string | null>(null);
   const reportFileRef = useRef<File | null>(null);
+  const [mode, setMode] = useState<"full_audit" | "compliance_check">(
+    "full_audit"
+  );
+  const [freeText, setFreeText] = useState("");
 
   const {
     step,
     logs,
     audit,
+    complianceCheck,
     error,
     progress,
     totalLogs,
     startAudit,
+    startComplianceCheck,
     skipToComplete,
     reset,
   } = useAuditStream();
@@ -77,9 +84,13 @@ export default function AuditChamber() {
   }, [logs]);
 
   /* ---- handlers ---- */
-  const handleAudit = () => {
-    if (!canAudit) return;
-    startAudit(entity, reportFileRef.current);
+  const handleRun = () => {
+    if (!canRun) return;
+    if (mode === "full_audit") {
+      startAudit(entity, reportFileRef.current);
+    } else {
+      startComplianceCheck(entity, freeText);
+    }
   };
 
   const setReportFile = useCallback((name: string, file: File) => {
@@ -87,29 +98,36 @@ export default function AuditChamber() {
     reportFileRef.current = file;
   }, []);
 
-  const canAudit = entity.trim().length > 0 && reportFileName !== null;
+  const canRun =
+    entity.trim().length > 0 &&
+    (mode === "full_audit"
+      ? reportFileName !== null
+      : freeText.trim().length > 0);
 
   /* ================================================================= */
   /* Render: Complete                                                   */
   /* ================================================================= */
 
   if (step === "complete") {
-    if (!audit) {
-      return (
-        <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
-          <div className="text-center">
-            <p className="text-sm text-muted">No audit data available.</p>
-            <button
-              onClick={reset}
-              className="mt-4 rounded-card bg-accent px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-            >
-              Start Over
-            </button>
-          </div>
-        </div>
-      );
+    if (complianceCheck) {
+      return <ComplianceCheckView result={complianceCheck} />;
     }
-    return <ResultsView audit={audit} />;
+    if (audit) {
+      return <ResultsView audit={audit} />;
+    }
+    return (
+      <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
+        <div className="text-center">
+          <p className="text-sm text-muted">No data available.</p>
+          <button
+            onClick={reset}
+            className="mt-4 rounded-card bg-accent px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          >
+            Start Over
+          </button>
+        </div>
+      </div>
+    );
   }
 
   /* ================================================================= */
@@ -117,6 +135,11 @@ export default function AuditChamber() {
   /* ================================================================= */
 
   if (step === "analyzing") {
+    const label =
+      mode === "compliance_check"
+        ? "Compliance Check"
+        : "CSRD Compliance Audit";
+
     return (
       <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
         <div className="animate-fade-in w-full max-w-2xl">
@@ -131,15 +154,15 @@ export default function AuditChamber() {
 
             {/* Header — click to skip */}
             <button
-              onClick={skipToComplete}
+              onClick={() => skipToComplete()}
               className="flex w-full items-center justify-between border-b border-slate-100 px-5 py-3 text-left transition-colors hover:bg-slate-50"
             >
               <div className="flex items-center gap-2.5">
                 <div className="h-2 w-2 animate-pulse rounded-full bg-accent" />
                 <span className="text-sm font-medium text-slate-700">
-                  CSRD Compliance Audit{" "}
+                  {label}{" "}
                   <span className="font-mono font-semibold text-accent">
-                    {entity.toUpperCase() || "LUMI"}
+                    {entity.toUpperCase() || "ENTITY"}
                   </span>
                 </span>
               </div>
@@ -200,8 +223,9 @@ export default function AuditChamber() {
             CSRD Compliance Engine
           </h1>
           <p className="mt-2 text-sm text-muted">
-            Upload a pre-parsed Annual Management Report (JSON) to audit EU
-            Taxonomy alignment against ESRS disclosures.
+            {mode === "full_audit"
+              ? "Upload a pre-parsed Annual Management Report (JSON) to audit EU Taxonomy alignment against ESRS disclosures."
+              : "Describe your current sustainability situation to receive a prioritized CSRD compliance to-do list."}
           </p>
         </div>
 
@@ -214,7 +238,31 @@ export default function AuditChamber() {
 
         {/* Chamber Card */}
         <div className="card overflow-hidden">
-          {/* Entity Search + Audit Button */}
+          {/* Mode Toggle */}
+          <div className="flex items-center justify-center gap-1 border-b border-slate-100 px-5 py-3">
+            <button
+              onClick={() => setMode("full_audit")}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                mode === "full_audit"
+                  ? "bg-accent text-white"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              }`}
+            >
+              Full Audit
+            </button>
+            <button
+              onClick={() => setMode("compliance_check")}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                mode === "compliance_check"
+                  ? "bg-accent text-white"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              }`}
+            >
+              Compliance Check
+            </button>
+          </div>
+
+          {/* Entity Search + Run Button */}
           <div className="flex items-center gap-3 border-b border-slate-100 p-5">
             <label
               htmlFor="entity-input"
@@ -227,49 +275,75 @@ export default function AuditChamber() {
               type="text"
               value={entity}
               onChange={(e) => setEntity(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAudit()}
+              onKeyDown={(e) => e.key === "Enter" && handleRun()}
               placeholder="LEI or company name"
               className="h-9 flex-1 rounded-card border border-slate-200 bg-slate-50 px-3 font-mono text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
             <button
-              onClick={handleAudit}
-              disabled={!canAudit}
+              onClick={handleRun}
+              disabled={!canRun}
               className={`
                 h-9 shrink-0 rounded-card px-5 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 focus:ring-offset-2
                 ${
-                  canAudit
+                  canRun
                     ? "bg-accent text-white hover:bg-indigo-700"
                     : "border border-slate-200 bg-white text-slate-400 cursor-not-allowed"
                 }
               `}
             >
-              Run Engine Audit
+              {mode === "full_audit"
+                ? "Run Engine Audit"
+                : "Run Compliance Check"}
             </button>
           </div>
 
-          {/* Document Vault — Single Report Upload */}
+          {/* Content Area — conditional on mode */}
           <div className="p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-medium uppercase tracking-widest text-muted">
-                Document Vault
-              </p>
-              <p className="text-xs text-muted">
-                <span className="font-mono font-semibold text-slate-700">
-                  {reportFileName ? "1" : "0"}
-                </span>
-                /1 uploaded
-              </p>
-            </div>
-            <ReportUploadCard
-              fileName={reportFileName}
-              onFile={setReportFile}
-            />
+            {mode === "full_audit" ? (
+              <>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted">
+                    Document Vault
+                  </p>
+                  <p className="text-xs text-muted">
+                    <span className="font-mono font-semibold text-slate-700">
+                      {reportFileName ? "1" : "0"}
+                    </span>
+                    /1 uploaded
+                  </p>
+                </div>
+                <ReportUploadCard
+                  fileName={reportFileName}
+                  onFile={setReportFile}
+                />
+              </>
+            ) : (
+              <>
+                <div className="mb-3">
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted">
+                    Sustainability Description
+                  </p>
+                </div>
+                <textarea
+                  value={freeText}
+                  onChange={(e) => setFreeText(e.target.value)}
+                  placeholder="Paste or describe your current sustainability situation, goals, emissions data, energy consumption, transition plans — whatever information you have available..."
+                  rows={8}
+                  className="w-full rounded-card border border-slate-200 bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                />
+                <p className="mt-2 text-[11px] text-muted">
+                  The more detail you provide, the more accurate the compliance
+                  assessment will be. Include any emissions figures, energy data,
+                  targets, and transition plans you have.
+                </p>
+              </>
+            )}
           </div>
         </div>
 
         {/* Dev shortcut */}
         <button
-          onClick={skipToComplete}
+          onClick={() => skipToComplete(mode)}
           className="mt-6 w-full text-center text-xs text-slate-400 transition-colors hover:text-accent"
         >
           Skip to results

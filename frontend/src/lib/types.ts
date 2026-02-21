@@ -167,7 +167,8 @@ export interface SSENodeCompleteEvent {
 
 export interface SSECompleteEvent {
   type: "complete";
-  audit: CSRDAudit;
+  audit?: CSRDAudit;
+  compliance_check?: ComplianceCheckResult;
 }
 
 export interface SSEErrorEvent {
@@ -180,3 +181,54 @@ export type SSEEvent =
   | SSENodeCompleteEvent
   | SSECompleteEvent
   | SSEErrorEvent;
+
+// ============================================================================
+// Compliance Check Mode — Output Contract
+// ============================================================================
+
+export interface ComplianceCheckResult {
+  audit_id: string;
+  generated_at: string;
+  schema_version: "2.0";
+  mode: "compliance_check";
+
+  company: CompanyMeta;
+  extracted_goals: ExtractedGoal[];
+  esrs_coverage: ESRSCoverageItem[];
+  todo_list: ComplianceTodo[];
+  estimated_compliance_cost: ComplianceCostEstimate;
+  pipeline: PipelineTrace;
+}
+
+export interface ExtractedGoal {
+  id: string;
+  description: string;
+  esrs_relevance: string | null;
+  confidence: number;
+}
+
+export type CoverageLevel = "covered" | "partial" | "not_covered";
+
+export interface ESRSCoverageItem {
+  esrs_id: string;
+  standard_name: string;
+  coverage: CoverageLevel;
+  details: string;
+}
+
+export interface ComplianceTodo {
+  id: string;
+  priority: Priority;
+  esrs_id: string;
+  title: string;
+  description: string;
+  regulatory_reference: string;
+  estimated_effort: "low" | "medium" | "high";
+}
+
+export interface ComplianceCostEstimate {
+  estimated_range_low_eur: number;
+  estimated_range_high_eur: number;
+  basis: string;
+  caveat: string;
+}

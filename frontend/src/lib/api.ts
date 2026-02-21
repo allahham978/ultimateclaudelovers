@@ -29,6 +29,34 @@ export async function startAuditRun(
 }
 
 /**
+ * POST /audit/run — kicks off a compliance check and returns the run_id for SSE streaming.
+ *
+ * Sends entity identifier + mode + free-text description (no file upload).
+ */
+export async function startComplianceCheck(
+  entity: string,
+  freeText: string
+): Promise<string> {
+  const form = new FormData();
+  form.append("entity_id", entity);
+  form.append("mode", "compliance_check");
+  form.append("free_text", freeText);
+
+  const res = await fetch(`${config.apiUrl}/audit/run`, {
+    method: "POST",
+    body: form,
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`POST /audit/run failed (${res.status}): ${body}`);
+  }
+
+  const data: { run_id: string } = await res.json();
+  return data.run_id;
+}
+
+/**
  * GET /audit/{run_id}/stream — opens an EventSource for real-time SSE events.
  * Calls `onEvent` for each parsed event; calls `onError` on failure.
  * Returns a cleanup function that closes the connection.
