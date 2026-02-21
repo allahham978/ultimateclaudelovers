@@ -43,7 +43,7 @@ _SAMPLE_REPORT_JSON = {
 
 
 # ---------------------------------------------------------------------------
-# Mock Claude API helpers (shared across iteration 3, 6, etc.)
+# Mock Claude API helpers (shared across iteration 3, 6, 7, etc.)
 # ---------------------------------------------------------------------------
 
 
@@ -109,6 +109,132 @@ MOCK_FETCHER_RESPONSE_JSON = json.dumps({
     }
 })
 
+# Reference JSON for auditor full audit (iteration 7)
+MOCK_AUDITOR_RESPONSE_JSON = {
+    "esrs_ledger": [
+        {
+            "id": "mock-ledger-e1-1",
+            "esrs_id": "E1-1",
+            "data_point": "Transition Plan for Climate Change Mitigation",
+            "impact_materiality": "medium",
+            "financial_materiality": "medium",
+            "status": "partial",
+            "evidence_source": "management_report",
+            "registry_evidence": "Net-zero 2040 target found; CapEx commitment not fully quantified against Taxonomy activities",
+        },
+        {
+            "id": "mock-ledger-e1-5",
+            "esrs_id": "E1-5",
+            "data_point": "Energy Consumption and Mix",
+            "impact_materiality": "high",
+            "financial_materiality": "medium",
+            "status": "disclosed",
+            "evidence_source": "management_report",
+            "registry_evidence": "Total energy 45,000 MWh disclosed; 38% renewable mix below 70% Taxonomy threshold",
+        },
+        {
+            "id": "mock-ledger-e1-6",
+            "esrs_id": "E1-6",
+            "data_point": "Gross Scopes 1, 2, 3 GHG Emissions",
+            "impact_materiality": "low",
+            "financial_materiality": "medium",
+            "status": "partial",
+            "evidence_source": "management_report",
+            "registry_evidence": "Scope 1 and Scope 2 (market-based) disclosed; Scope 3 categories not consolidated",
+        },
+    ],
+    "taxonomy_alignment": {"capex_aligned_pct": 35.0, "status": "partially_aligned", "label": "35.0% EU Taxonomy-aligned CapEx"},
+    "compliance_cost": {"projected_fine_eur": 0.0, "basis": "Art. 51 CSRD Directive (EU) 2022/2464"},
+    "taxonomy_alignment_score": 35.0,
+}
+
+# Reference JSON for auditor compliance check mode (iteration 7)
+MOCK_AUDITOR_LITE_RESPONSE_JSON = {
+    "esrs_coverage": [
+        {"esrs_id": "E1-1", "standard_name": "Transition Plan for Climate Change Mitigation", "coverage": "partial", "details": "Net-zero target mentioned but CapEx commitment missing."},
+        {"esrs_id": "E1-5", "standard_name": "Energy Consumption and Mix", "coverage": "not_covered", "details": "No energy data found in the provided text."},
+        {"esrs_id": "E1-6", "standard_name": "Gross Scopes 1, 2, 3 GHG Emissions", "coverage": "not_covered", "details": "No GHG emissions data found."},
+    ],
+    "compliance_cost_estimate": {
+        "estimated_range_low_eur": 833333.33,
+        "estimated_range_high_eur": 3333333.33,
+        "basis": "Art. 51 CSRD Directive (EU) 2022/2464 — indicative range based on disclosure gaps",
+        "caveat": "This estimate is based on incomplete, unstructured data.",
+    },
+}
+
+# Stub TaxonomyFinancials matching fetcher output (35% CapEx aligned)
+STUB_TAXONOMY_FINANCIALS = TaxonomyFinancials(
+    capex_total_eur=50_000_000.0,
+    capex_green_eur=17_500_000.0,
+    opex_total_eur=120_000_000.0,
+    opex_green_eur=24_000_000.0,
+    revenue_eur=250_000_000.0,
+    fiscal_year="2024",
+    taxonomy_activities=[
+        "8.1 Data processing, hosting and related activities",
+        "4.1 Electricity generation using solar photovoltaic technology",
+    ],
+    source_document="Annual Management Report — Taxonomy Section",
+    confidence=0.92,
+)
+
+# Stub ESRSClaims matching extractor output (full audit)
+STUB_ESRS_CLAIMS = {
+    "E1-1": ESRSClaim(
+        standard="E1-1",
+        data_point="Transition Plan for Climate Change Mitigation",
+        disclosed_value="Net-zero by 2040; 50% reduction by 2030 vs 2019 baseline",
+        unit=None,
+        confidence=0.85,
+        xbrl_concept="esrs_E1-1_01_TransitionPlan",
+    ),
+    "E1-5": ESRSClaim(
+        standard="E1-5",
+        data_point="Energy Consumption and Mix",
+        disclosed_value="Total energy: 45,000 MWh; Renewable mix: 38%",
+        unit="MWh",
+        confidence=0.90,
+        xbrl_concept="esrs_E1-5_04_TotalEnergyConsumption",
+    ),
+    "E1-6": ESRSClaim(
+        standard="E1-6",
+        data_point="Gross Scopes 1, 2, 3 GHG Emissions",
+        disclosed_value="Scope 1: 1,200 tCO2eq; Scope 2 (market-based): 8,500 tCO2eq",
+        unit="tCO2eq",
+        confidence=0.80,
+        xbrl_concept="esrs_E1-6_01_GrossScope1GHGEmissions",
+    ),
+}
+
+# Stub ESRSClaims for compliance check mode (lower confidence)
+STUB_COMPLIANCE_ESRS_CLAIMS = {
+    "E1-1": ESRSClaim(
+        standard="E1-1",
+        data_point="Transition Plan for Climate Change Mitigation",
+        disclosed_value="Net-zero target mentioned",
+        unit=None,
+        confidence=0.5,
+        xbrl_concept=None,
+    ),
+    "E1-5": ESRSClaim(
+        standard="E1-5",
+        data_point="Energy Consumption and Mix",
+        disclosed_value=None,
+        unit=None,
+        confidence=0.0,
+        xbrl_concept=None,
+    ),
+    "E1-6": ESRSClaim(
+        standard="E1-6",
+        data_point="Gross Scopes 1, 2, 3 GHG Emissions",
+        disclosed_value=None,
+        unit=None,
+        confidence=0.0,
+        xbrl_concept=None,
+    ),
+}
+
 
 # ---------------------------------------------------------------------------
 # Full Audit mode fixtures
@@ -158,17 +284,19 @@ def state_after_auditor(state_after_fetcher) -> AuditState:
 
 
 # ---------------------------------------------------------------------------
-# Mock Anthropic client fixture
+# Mock Anthropic client fixture — patches BOTH fetcher and auditor
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
 def mock_anthropic_client():
-    """Patch anthropic.Anthropic to return a mock client with a realistic response."""
+    """Patch Anthropic client for both fetcher and auditor, return mock."""
     mock_client = MagicMock()
+    # Default response works for fetcher (iteration 6 tests)
     mock_client.messages.create.return_value = _make_mock_claude_response(MOCK_FETCHER_RESPONSE_JSON)
 
-    with patch("agents.fetcher.anthropic.Anthropic", return_value=mock_client):
+    with patch("agents.fetcher.anthropic.Anthropic", return_value=mock_client), \
+         patch("agents.auditor.Anthropic", return_value=mock_client):
         yield mock_client
 
 
@@ -216,179 +344,8 @@ def compliance_state_after_auditor(compliance_state_after_extractor) -> AuditSta
 
 
 # ---------------------------------------------------------------------------
-# Mock Claude API helpers (shared across iteration 3+ tests)
+# Iteration 7 — Auditor-specific fixtures
 # ---------------------------------------------------------------------------
-
-def _make_mock_claude_response(text: str) -> MagicMock:
-    """Create a mock Anthropic API response with the given text content."""
-    content_block = MagicMock()
-    content_block.text = text
-    response = MagicMock()
-    response.content = [content_block]
-    return response
-
-
-# Reference JSON that a mock Claude API returns for extractor tests
-MOCK_EXTRACTOR_RESPONSE_JSON = {
-    "company_meta": {
-        "name": "TestCorp SA",
-        "lei": None,
-        "sector": "AI Infrastructure",
-        "fiscal_year": 2024,
-        "jurisdiction": "EU",
-        "report_title": "Annual Management Report 2024",
-    },
-    "esrs_claims": {
-        "E1-1": {
-            "data_point": "Transition Plan for Climate Change Mitigation",
-            "disclosed_value": "Net-zero by 2040; 50% reduction by 2030 vs 2019 baseline",
-            "unit": None,
-            "confidence": 0.85,
-            "xbrl_concept": "esrs_E1-1_01_TransitionPlan",
-        },
-        "E1-5": {
-            "data_point": "Energy Consumption and Mix",
-            "disclosed_value": "Total energy: 45,000 MWh; Renewable mix: 38%",
-            "unit": "MWh",
-            "confidence": 0.90,
-            "xbrl_concept": "esrs_E1-5_04_TotalEnergyConsumption",
-        },
-        "E1-6": {
-            "data_point": "Gross Scopes 1, 2, 3 GHG Emissions",
-            "disclosed_value": "Scope 1: 1,200 tCO2eq; Scope 2 (market-based): 8,500 tCO2eq",
-            "unit": "tCO2eq",
-            "confidence": 0.80,
-            "xbrl_concept": "esrs_E1-6_01_GrossScope1GHGEmissions",
-        },
-    },
-}
-
-# Reference JSON that a mock Claude API returns for auditor full audit
-MOCK_AUDITOR_RESPONSE_JSON = {
-    "esrs_ledger": [
-        {
-            "id": "mock-ledger-e1-1",
-            "esrs_id": "E1-1",
-            "data_point": "Transition Plan for Climate Change Mitigation",
-            "impact_materiality": "medium",
-            "financial_materiality": "medium",
-            "status": "partial",
-            "evidence_source": "management_report",
-            "registry_evidence": "Net-zero 2040 target found; CapEx commitment not fully quantified against Taxonomy activities",
-        },
-        {
-            "id": "mock-ledger-e1-5",
-            "esrs_id": "E1-5",
-            "data_point": "Energy Consumption and Mix",
-            "impact_materiality": "high",
-            "financial_materiality": "medium",
-            "status": "disclosed",
-            "evidence_source": "management_report",
-            "registry_evidence": "Total energy 45,000 MWh disclosed; 38% renewable mix below 70% Taxonomy threshold",
-        },
-        {
-            "id": "mock-ledger-e1-6",
-            "esrs_id": "E1-6",
-            "data_point": "Gross Scopes 1, 2, 3 GHG Emissions",
-            "impact_materiality": "low",
-            "financial_materiality": "medium",
-            "status": "partial",
-            "evidence_source": "management_report",
-            "registry_evidence": "Scope 1 and Scope 2 (market-based) disclosed; Scope 3 categories not consolidated",
-        },
-    ],
-    "taxonomy_alignment": {"capex_aligned_pct": 35.0, "status": "partially_aligned", "label": "35.0% EU Taxonomy-aligned CapEx"},
-    "compliance_cost": {"projected_fine_eur": 0.0, "basis": "Art. 51 CSRD Directive (EU) 2022/2464"},
-    "taxonomy_alignment_score": 35.0,
-}
-
-# Reference JSON for auditor compliance check mode
-MOCK_AUDITOR_LITE_RESPONSE_JSON = {
-    "esrs_coverage": [
-        {"esrs_id": "E1-1", "standard_name": "Transition Plan for Climate Change Mitigation", "coverage": "partial", "details": "Net-zero target mentioned but CapEx commitment missing."},
-        {"esrs_id": "E1-5", "standard_name": "Energy Consumption and Mix", "coverage": "not_covered", "details": "No energy data found in the provided text."},
-        {"esrs_id": "E1-6", "standard_name": "Gross Scopes 1, 2, 3 GHG Emissions", "coverage": "not_covered", "details": "No GHG emissions data found."},
-    ],
-    "compliance_cost_estimate": {
-        "estimated_range_low_eur": 833333.33,
-        "estimated_range_high_eur": 3333333.33,
-        "basis": "Art. 51 CSRD Directive (EU) 2022/2464 — indicative range based on disclosure gaps",
-        "caveat": "This estimate is based on incomplete, unstructured data.",
-    },
-}
-
-
-# Fixture: stub TaxonomyFinancials matching fetcher stub output
-STUB_TAXONOMY_FINANCIALS = TaxonomyFinancials(
-    capex_total_eur=50_000_000.0,
-    capex_green_eur=17_500_000.0,
-    opex_total_eur=120_000_000.0,
-    opex_green_eur=24_000_000.0,
-    revenue_eur=250_000_000.0,
-    fiscal_year="2024",
-    taxonomy_activities=[
-        "8.1 Data processing, hosting and related activities",
-        "4.1 Electricity generation using solar photovoltaic technology",
-    ],
-    source_document="Annual Management Report — Taxonomy Section",
-    confidence=0.92,
-)
-
-# Fixture: stub ESRSClaims matching extractor stub output (full audit)
-STUB_ESRS_CLAIMS = {
-    "E1-1": ESRSClaim(
-        standard="E1-1",
-        data_point="Transition Plan for Climate Change Mitigation",
-        disclosed_value="Net-zero by 2040; 50% reduction by 2030 vs 2019 baseline",
-        unit=None,
-        confidence=0.85,
-        xbrl_concept="esrs_E1-1_01_TransitionPlan",
-    ),
-    "E1-5": ESRSClaim(
-        standard="E1-5",
-        data_point="Energy Consumption and Mix",
-        disclosed_value="Total energy: 45,000 MWh; Renewable mix: 38%",
-        unit="MWh",
-        confidence=0.90,
-        xbrl_concept="esrs_E1-5_04_TotalEnergyConsumption",
-    ),
-    "E1-6": ESRSClaim(
-        standard="E1-6",
-        data_point="Gross Scopes 1, 2, 3 GHG Emissions",
-        disclosed_value="Scope 1: 1,200 tCO2eq; Scope 2 (market-based): 8,500 tCO2eq",
-        unit="tCO2eq",
-        confidence=0.80,
-        xbrl_concept="esrs_E1-6_01_GrossScope1GHGEmissions",
-    ),
-}
-
-# Fixture: stub ESRSClaims for compliance check mode (lower confidence)
-STUB_COMPLIANCE_ESRS_CLAIMS = {
-    "E1-1": ESRSClaim(
-        standard="E1-1",
-        data_point="Transition Plan for Climate Change Mitigation",
-        disclosed_value="Net-zero target mentioned",
-        unit=None,
-        confidence=0.5,
-        xbrl_concept=None,
-    ),
-    "E1-5": ESRSClaim(
-        standard="E1-5",
-        data_point="Energy Consumption and Mix",
-        disclosed_value=None,
-        unit=None,
-        confidence=0.0,
-        xbrl_concept=None,
-    ),
-    "E1-6": ESRSClaim(
-        standard="E1-6",
-        data_point="Gross Scopes 1, 2, 3 GHG Emissions",
-        disclosed_value=None,
-        unit=None,
-        confidence=0.0,
-        xbrl_concept=None,
-    ),
-}
 
 
 @pytest.fixture
@@ -409,7 +366,7 @@ def auditor_full_audit_state() -> AuditState:
         "entity_id": "TestCorp SA",
         "esrs_claims": STUB_ESRS_CLAIMS,
         "taxonomy_financials": STUB_TAXONOMY_FINANCIALS,
-        "company_meta": None,  # not used by auditor
+        "company_meta": None,
         "logs": [],
         "pipeline_trace": [],
     }
@@ -433,15 +390,3 @@ def auditor_compliance_state() -> AuditState:
         "logs": [],
         "pipeline_trace": [],
     }
-
-
-@pytest.fixture
-def mock_anthropic_client():
-    """Patch Anthropic client and return mock with default response."""
-    with patch("agents.auditor.Anthropic") as MockClass:
-        mock_client = MagicMock()
-        MockClass.return_value = mock_client
-        mock_client.messages.create.return_value = _make_mock_claude_response(
-            json.dumps(MOCK_AUDITOR_RESPONSE_JSON)
-        )
-        yield mock_client
