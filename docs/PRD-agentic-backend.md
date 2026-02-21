@@ -864,15 +864,15 @@ cache hit rates since the content is deterministic (no PDF extraction variance).
 - `backend/tests/test_iteration4.py` — 96 unit tests (schemas, state, prompts, graph routing, all 3 agents in compliance mode, FastAPI dual-mode endpoints, SSE compliance events, full audit regression), all passing
 - All 198 tests across iterations 1, 2, 4 passing; all 4 PRD gate checks green (`schemas OK`, `graph OK`, `parser OK`, `compliance_check gate OK`)
 
-### Iteration 5 — Compliance Check Frontend
-- [ ] Add new TypeScript types to `frontend/src/lib/types.ts` — `ComplianceCheckResult`, `ExtractedGoal`, `ESRSCoverageItem`, `ComplianceTodo`, `ComplianceCostEstimate`, updated `SSECompleteEvent`
-- [ ] Update `audit-chamber.tsx` — add mode toggle switch, text area for compliance check mode, conditional rendering
-- [ ] Update `api.ts` — add `startComplianceCheck()` function
-- [ ] Update `useAuditStream.ts` — handle `complianceCheck` result, dynamic progress (3 vs 4 agents), new `startComplianceCheck` action
-- [ ] Create `ComplianceCheckView` component — renders extracted goals, ESRS coverage table, to-do list, cost estimate with caveat
-- [ ] Add mock data — `MOCK_COMPLIANCE_CHECK` and `COMPLIANCE_CHECK_LOGS` in `mock-data.ts`
+### Iteration 5 — Compliance Check Frontend ✓ COMPLETE
+- [x] Add new TypeScript types to `frontend/src/lib/types.ts` — `ComplianceCheckResult`, `ExtractedGoal`, `ESRSCoverageItem`, `ComplianceTodo`, `ComplianceCostEstimate`, updated `SSECompleteEvent`
+- [x] Update `audit-chamber.tsx` — add mode toggle switch, text area for compliance check mode, conditional rendering
+- [x] Update `api.ts` — add `startComplianceCheck()` function
+- [x] Update `useAuditStream.ts` — handle `complianceCheck` result, dynamic progress (3 vs 4 agents), new `startComplianceCheck` action
+- [x] Create `ComplianceCheckView` component — renders extracted goals, ESRS coverage table, to-do list, cost estimate with caveat
+- [x] Add mock data — `MOCK_COMPLIANCE_CHECK` and `COMPLIANCE_CHECK_LOGS` in `mock-data.ts`
 
-**Gate**: Toggle between modes on UI. Compliance check with stub agents produces mock to-do list via SSE. Full audit path unchanged (zero regression).
+**Gate**: Toggle between modes on UI. Compliance check with stub agents produces mock to-do list via SSE. Full audit path unchanged (zero regression). ✓
 
 ### Iteration 6 — Real Fetcher Node
 - [ ] Write `agents/fetcher.py` — Claude API call to validate Taxonomy financials
