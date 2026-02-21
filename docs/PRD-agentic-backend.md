@@ -681,20 +681,33 @@ that window pays only output token cost (~70% savings on large reports).
 - [x] Create `docs/` folder at project root
 - [x] Write this PRD as `docs/PRD-agentic-backend.md`
 
-### Iteration 0 — Scaffold
-- [ ] Create `backend/` directory and all empty files listed in Section 2
-- [ ] Write `requirements.txt`
-- [ ] Write `schemas.py` — all Pydantic models mapping to TypeScript contract
-- [ ] Write `state.py` — `AuditState` TypedDict (with 3 document text fields)
-- [ ] Write `tools/prompts.py` — 4 system prompt string constants
+### Iteration 0 — Scaffold ✓ COMPLETE (2026-02-21)
+- [x] Create `backend/` directory and all empty files listed in Section 2
+- [x] Write `requirements.txt`
+- [x] Write `schemas.py` — all Pydantic models mapping to TypeScript contract
+- [x] Write `state.py` — `AuditState` TypedDict (with 3 document text fields)
+- [x] Write `tools/prompts.py` — 4 system prompt string constants
 
-**Gate**: `python -c "from schemas import CSRDAudit; print('OK')"` passes
+**Gate**: `python -c "from schemas import CSRDAudit; print('OK')"` passes ✓
 
-### Iteration 1 — LangGraph Skeleton with Echo Nodes
-- [ ] Write `graph.py` — all 4 nodes as pass-through stubs that log + write dummy values
-- [ ] `graph.invoke({"audit_id":"test","management_text":"...","taxonomy_text":"...","transition_text":"...","entity_id":"test"})` runs end-to-end
+**Implementation notes**:
+- `ESRSLedgerItem` includes `evidence_source: EvidenceSource` (present in `types.ts` but omitted from PRD table) — TypeScript source of truth takes precedence
+- Internal schemas `ESRSClaim` and `TaxonomyFinancials` live in `schemas.py`
+- `backend/.venv` created; activate with `source backend/.venv/bin/activate`
+- `tools/pdf_reader.py` stub includes full pdfplumber implementation (ready for Iter 2)
 
-**Gate**: Full graph runs without error, all 4 nodes execute in order, `final_audit` is populated
+### Iteration 1 — LangGraph Skeleton with Echo Nodes ✓ COMPLETE (2026-02-21)
+- [x] Write `graph.py` — all 4 nodes as pass-through stubs that log + write dummy values
+- [x] `graph.invoke({"audit_id":"test","management_text":"...","taxonomy_text":"...","transition_text":"...","entity_id":"test"})` runs end-to-end
+
+**Gate**: Full graph runs without error, all 4 nodes execute in order, `final_audit` is populated ✓
+
+**Implementation notes**:
+- Each stub node accumulates `logs` and `pipeline_trace` from prior nodes (no reducer needed — each node reads, extends, and returns the full list)
+- Auditor derives `capex_aligned_pct` directly from `taxonomy_financials` written by Fetcher
+- Consultant assembles the full `CSRDAudit` Pydantic model including `PipelineTrace` from accumulated `pipeline_trace`
+- `backend/tests/test_iteration1.py` — 72 unit tests (node isolation + end-to-end), all passing
+- Warning: `langchain_core` Pydantic v1 shim is incompatible with Python 3.14; cosmetic only, does not affect runtime
 
 ### Iteration 2 — FastAPI + SSE Layer
 - [ ] Write `main.py` with all 4 endpoints (POST accepts 3 PDF files)
