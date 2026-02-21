@@ -1,40 +1,39 @@
-# AI Infrastructure Accountability Engine
+```markdown
+# 🔌 EU AI Infrastructure Accountability Engine
 
 ## Scope
 
-A B2B consulting platform that audits the gap between corporate sustainability claims and financial reality. A company uploads their ESG report as a PDF. Four specialized AI agents extract claims, fetch CapEx data, score alignment, and generate a three-pillar optimization roadmap.
+A B2B consulting platform that automates **CSRD (Corporate Sustainability Reporting Directive)** compliance and **EU Taxonomy** alignment for European AI infrastructure. The engine audits the gap between corporate sustainability claims and financial reality by cross-referencing mandatory **ESRS (European Sustainability Reporting Standards)** disclosures against official financial reporting to quantify the "Say-Do Gap".
 
-The output is a single-page audit report showing the **Compute-to-Carbon Gap** — one number that answers: *are you spending where you're promising?*
+The output is a single-page audit report showing the **Taxonomy Alignment Percentage** — one number that answers: *are you legally spending where you're promising?*
 
 ## Architecture
 
+```mermaid
+graph TD
+    subgraph FRONTEND [FRONTEND: Next.js + TypeScript]
+        A[Taxonomy Alignment] --- B[ESRS vs. Do Ledger] --- C[Taxonomy Roadmap]
+        D[Pipeline Timeline]
+    end
+
+    FRONTEND -- AuditReport typed JSON contract --> BACKEND
+
+    subgraph BACKEND [BACKEND: LangGraph Multi-Agent Pipeline]
+        E[Inputs] --> F[Extractor: Parse ESRS]
+        F --> G[Fetcher: Fetch CapEx]
+        G --> H[Auditor: Score Gaps]
+        H --> I[Consultant: Gen Roadmap]
+    end
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      FRONTEND                           │
-│                  Next.js + TypeScript                    │
-│                                                         │
-│  ┌──────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │ Gap Score │  │ Say vs. Do   │  │ Three-Pillar Plan │  │
-│  │  0-100    │  │   Ledger     │  │ HW / Power / Work │  │
-│  └──────────┘  └──────────────┘  └───────────────────┘  │
-│                  ┌──────────────┐                        │
-│                  │   Pipeline   │                        │
-│                  │   Timeline   │                        │
-│                  └──────────────┘                        │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-                       │  AuditReport (typed JSON contract)
-                       │
-┌──────────────────────┴──────────────────────────────────┐
-│                      BACKEND                            │
-│              LangGraph Multi-Agent Pipeline              │
-│              Anthropic Claude 3.5 Sonnet                 │
-│                                                         │
-│  PDF ──▶ [Extractor] ──▶ [Fetcher] ──▶ [Auditor] ──▶ [Consultant] │
-│           parse ESG      fetch CapEx    score gaps    gen roadmap   │
-│           claims         from filings   0-100 each   3 pillars     │
-└─────────────────────────────────────────────────────────┘
-```
+
+## Input Layer
+
+The system is designed to ingest the three "Golden Sources" of truth required for a high-fidelity EU audit:
+
+* **Integrated Management Report**: The primary corporate filing combining audited financial statements ("The Do") with the mandatory Sustainability Statement ("The Say").
+* **EU Taxonomy Table**: A standardized mandatory disclosure providing the precise percentage of a company’s **CapEx** that is legally defined as "Green" under EU classification.
+* **Climate Transition Plan**: The strategic roadmap mandated by **ESRS E1**, detailing specific interim targets and planned financial investments (e.g., hardware retrofits) to achieve net-zero.
 
 ## Contract-First Workflow
 
@@ -44,52 +43,47 @@ The frontend and backend are decoupled by a single TypeScript interface: **`Audi
 contracts/
 ├── audit-report.schema.ts   ← the typed contract (source of truth)
 └── audit-report.mock.ts     ← realistic mock data for UI development
+
 ```
 
-The frontend team builds against mock data. The backend team builds agents that produce the same shape. Neither blocks the other.
-
-### AuditReport Shape
+### AuditReport Shape (EU Updated)
 
 | Section | Purpose | Key Fields |
-|---|---|---|
-| `company` | Profile metadata | `name`, `ticker`, `sector`, `fiscal_year`, `report_title` |
-| `gap_score` | Single headline metric (0-100) | `value`, `label` |
-| `ledger[]` | 3-5 Say vs. Do rows | `the_say.claim`, `the_do.finding`, `alignment_score` |
-| `recommendations` | Three-pillar roadmap | `hardware`, `power`, `workload` — each with `title`, `summary`, `priority` |
-| `sources[]` | Consolidated citations | `document_name`, `document_type`, `url` |
+| --- | --- | --- |
+| `company` | Profile metadata | `name`, `ticker`, `sector`, `fiscal_year`, `registry_source` |
+| `taxonomy_alignment` | Headline metric (%) | `value`, `label` (e.g., "Taxonomy Aligned") |
+| `esrs_ledger[]` | Double Materiality Rows | `esrs_id`, `materiality_impact`, `financial_risk`, `status` |
+| `taxonomy_roadmap` | Three-pillar roadmap | `hardware`, `power`, `workload` — each with `projected_alignment_increase` |
+| `sources[]` | Consolidated citations | `document_name`, `document_type`, `registry_id` |
 | `pipeline` | Agent execution timeline | `agents[]` with `name`, `duration_ms`, `status` |
 
-### UI Rendering Rules
+## Execution Workflow
 
-- **alignment_score** drives a red-to-green color gradient (0 = stark red, 100 = crisp green)
-- **Ledger items** are ordered worst-first (lowest score at the top)
-- **Priority** on each pillar is one of: `critical`, `high`, `moderate`, `low`
-- **Pipeline timeline** is visible to the user to build trust in the agent process
-
-## Agent Pipeline
-
-| Agent | Input | Output | Tools |
-|---|---|---|---|
-| **Extractor** | Raw ESG PDF | Parsed sustainability claims | PDF parser, Claude prompt cache |
-| **Fetcher** | Company identifiers | CapEx line items from public filings | SEC EDGAR, financial APIs |
-| **Auditor** | Claims + CapEx data | Scored ledger (0-100 per claim) + aggregate gap score | Claude financial reasoning |
-| **Consultant** | Scored ledger | Three-pillar recommendation summaries | Claude synthesis |
-
-Agents run sequentially. Each agent's output is the next agent's input. The pipeline trace records duration and status for each step.
+1. **User Ingestion**: The user uploads the official PDF/XHTML versions of the three required documents into the "Audit Chamber."
+2. **Verification**: The system cross-references targets in the **Transition Plan** against actuals in the **Taxonomy Table**.
+3. **Gap Analysis**: The system flags specific areas where current CapEx fails to support stated climate goals or ESRS requirements.
+4. **Strategy**: The engine outputs a plan to reallocate budget into taxonomy-aligned infrastructure to increase compliance scores and reduce potential CSRD fines.
 
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
 | Frontend | Next.js, TypeScript |
 | Backend Orchestration | LangGraph (Python) |
 | LLM | Anthropic Claude 3.5 Sonnet |
-| LLM Optimization | Prompt Caching, XML-tag processing |
+| LLM Optimization | Prompt Caching (for 100+ page reports), XML-tag processing |
 | Contract | TypeScript interfaces (`contracts/`) |
+
+## Team & Roles
+
+* **The Architect (Agentic & Frontend)**: Responsible for the state machine orchestration, API layer, and the "Enterprise Modernist" interface.
+* **The Financial Engineer (Data Lead A)**: Owns the structured financial data mapping and the logic for processing national registry filings and EU Taxonomy tables.
+* **The NLP Modeler (Data Lead B)**: Owns the ESRS parsing logic, PDF chunking strategies, and the defensible "Double Materiality" scoring algorithm.
 
 ## Project Philosophy
 
-- **Less is better.** One page, one score, one ledger, one plan. No dashboard clutter.
-- **Truly agentic.** Agents use tool calling and multi-step reasoning, not prompt chaining.
-- **Anthropic-first.** Optimized for Claude's strengths: prompt caching, XML tags, financial reasoning.
-- **Contract-first.** Frontend and backend teams never block each other.
+* **Less is better.** One page, one score, one ledger, one plan. No dashboard clutter.
+* **Truly agentic.** Agents use tool calling and multi-step reasoning, optimized for Claude's strengths: prompt caching, XML tags, and financial reasoning.
+* **Regulatory First.** We don't just provide "scores"; we provide automated, enterprise-grade compliance that protects against CSRD regulatory fines.
+
+`
