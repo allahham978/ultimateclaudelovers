@@ -1,21 +1,18 @@
 import { config } from "./config";
 import type { SSEEvent } from "./types";
 
-type DocumentSlot = "management" | "taxonomy" | "transition";
-
 /**
  * POST /audit/run — kicks off an audit and returns the run_id for SSE streaming.
+ *
+ * Sends a single pre-parsed management report JSON file + entity identifier.
  */
 export async function startAuditRun(
   entity: string,
-  files: Record<DocumentSlot, File | null>
+  reportFile: File
 ): Promise<string> {
   const form = new FormData();
-  form.append("entity", entity);
-
-  if (files.management) form.append("management_report", files.management);
-  if (files.taxonomy) form.append("taxonomy_table", files.taxonomy);
-  if (files.transition) form.append("transition_plan", files.transition);
+  form.append("entity_id", entity);
+  form.append("report_json", reportFile);
 
   const res = await fetch(`${config.apiUrl}/audit/run`, {
     method: "POST",
@@ -32,7 +29,7 @@ export async function startAuditRun(
 }
 
 /**
- * GET /audit/stream/{run_id} — opens an EventSource for real-time SSE events.
+ * GET /audit/{run_id}/stream — opens an EventSource for real-time SSE events.
  * Calls `onEvent` for each parsed event; calls `onError` on failure.
  * Returns a cleanup function that closes the connection.
  */
@@ -41,7 +38,7 @@ export function streamAuditEvents(
   onEvent: (event: SSEEvent) => void,
   onError: (err: string) => void
 ): () => void {
-  const url = `${config.apiUrl}/audit/stream/${runId}`;
+  const url = `${config.apiUrl}/audit/${runId}/stream`;
   const source = new EventSource(url);
 
   source.onmessage = (e) => {

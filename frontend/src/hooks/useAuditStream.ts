@@ -11,7 +11,6 @@ import type { AuditLog, CSRDAudit, SSEEvent } from "@/lib/types";
 /* ------------------------------------------------------------------ */
 
 export type Step = "idle" | "analyzing" | "complete";
-export type DocumentSlot = "management" | "taxonomy" | "transition";
 
 export interface AuditStreamState {
   step: Step;
@@ -20,7 +19,7 @@ export interface AuditStreamState {
   error: string | null;
   progress: number;
   totalLogs: number;
-  startAudit: (entity: string, files: Record<DocumentSlot, File | null>) => void;
+  startAudit: (entity: string, reportFile: File | null) => void;
   skipToComplete: () => void;
   reset: () => void;
 }
@@ -79,7 +78,7 @@ export function useAuditStream(): AuditStreamState {
 
   /* ---- real flow ---- */
   const startReal = useCallback(
-    async (entity: string, files: Record<DocumentSlot, File | null>) => {
+    async (entity: string, reportFile: File) => {
       setLogs([]);
       setAudit(null);
       setError(null);
@@ -88,7 +87,7 @@ export function useAuditStream(): AuditStreamState {
 
       let runId: string;
       try {
-        runId = await startAuditRun(entity, files);
+        runId = await startAuditRun(entity, reportFile);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to start audit.");
         setStep("idle");
@@ -139,12 +138,15 @@ export function useAuditStream(): AuditStreamState {
 
   /* ---- public API ---- */
   const startAudit = useCallback(
-    (entity: string, files: Record<DocumentSlot, File | null>) => {
+    (entity: string, reportFile: File | null) => {
       cleanup();
       if (config.useMock) {
         startMock();
       } else {
-        startReal(entity, files);
+        if (!reportFile) {
+          return;
+        }
+        startReal(entity, reportFile);
       }
     },
     [cleanup, startMock, startReal]

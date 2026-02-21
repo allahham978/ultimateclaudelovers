@@ -804,14 +804,26 @@ cache hit rates since the content is deterministic (no PDF extraction variance).
 - `backend/tests/test_iteration1.py` — 72 unit tests (node isolation + end-to-end), all passing
 - Warning: `langchain_core` Pydantic v1 shim is incompatible with Python 3.14; cosmetic only, does not affect runtime
 
-### Iteration 2 — FastAPI + SSE Layer
-- [ ] Write `main.py` with all 4 endpoints (POST accepts 1 JSON file + entity_id)
-- [ ] Integrate `report_parser.py` in the `/audit/run` handler (clean → route → init state)
-- [ ] SSE endpoint reads from `asyncio.Queue`, streams dummy log lines
-- [ ] Test with `curl -N http://localhost:8000/audit/{id}/stream`
-- [ ] Update frontend: single upload slot, send 1 JSON file instead of 3 PDFs
+### Iteration 2 — FastAPI + SSE Layer ✓ COMPLETE (2026-02-21)
+- [x] Write `main.py` with all 4 endpoints (POST accepts 1 JSON file + entity_id)
+- [x] Integrate `report_parser.py` in the `/audit/run` handler (clean → route → init state)
+- [x] SSE endpoint streams log lines, node_complete events, and final CSRDAudit JSON
+- [x] Test with `curl -N http://localhost:8000/audit/{id}/stream`
+- [x] Update frontend: single upload slot, send 1 JSON file instead of 3 PDFs
 
-**Gate**: Frontend terminal shows streaming log lines; final result renders as stub data
+**Gate**: Frontend terminal shows streaming log lines; final result renders as stub data ✓
+
+**Implementation notes**:
+- `main.py`: FastAPI app with CORS (localhost:3000), 4 endpoints matching PRD Section 8
+- Background graph execution via `threading.Thread` + `graph.invoke()` — events collected in a thread-safe `_AuditJob` object with `threading.Event` completion signal
+- SSE streaming via `StreamingResponse` with async generator polling `job.events` list; yields `data: {json}\n\n` per SSE spec
+- In-memory job store: `_jobs: dict[str, _AuditJob]` holding events list + completion flag + cached result
+- Log events grouped by agent execution order; `node_complete` emitted after each agent's logs; `complete` event last
+- Frontend updated: `api.ts` sends single `report_json` file + `entity_id`; `useAuditStream.ts` accepts `File | null`; `audit-chamber.tsx` single upload card replacing 3-slot Document Vault
+- SSE URL updated from `/audit/stream/{id}` to `/audit/{id}/stream` (matching PRD endpoint table)
+- Added `httpx>=0.27.0` and `pytest>=8.0.0` to `requirements.txt` for TestClient
+- `backend/tests/test_iteration2.py` — 39 unit tests (health, POST validation, cached result, SSE format, CORS, parser integration, end-to-end), all passing
+- All 72 iteration 1 tests remain green (zero regressions); all 4 PRD gate checks pass
 
 ### Iteration 3 — Real Extractor Node
 - [ ] Write `agents/extractor.py` — real Claude API call with prompt caching

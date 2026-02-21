@@ -7,42 +7,13 @@ import {
   useCallback,
   type DragEvent,
 } from "react";
-import { useAuditStream, type DocumentSlot } from "@/hooks/useAuditStream";
+import { useAuditStream } from "@/hooks/useAuditStream";
 import type { AgentName } from "@/lib/types";
 import ResultsView from "@/components/results-view";
 
 /* ================================================================= */
 /* Constants                                                          */
 /* ================================================================= */
-
-type Documents = Record<DocumentSlot, string | null>;
-
-const EMPTY_DOCS: Documents = {
-  management: null,
-  taxonomy: null,
-  transition: null,
-};
-
-const SLOT_META: Record<
-  DocumentSlot,
-  { number: string; title: string; subtitle: string }
-> = {
-  management: {
-    number: "01",
-    title: "Integrated Management Report",
-    subtitle: "Audited Financials + Sustainability Statement",
-  },
-  taxonomy: {
-    number: "02",
-    title: "EU Taxonomy Table",
-    subtitle: "Standardized Green-Spend Disclosure",
-  },
-  transition: {
-    number: "03",
-    title: "Climate Transition Plan",
-    subtitle: "ESRS E1 Interim Targets & Retrofit Plans",
-  },
-};
 
 const AGENT_COLORS: Record<AgentName, string> = {
   extractor: "text-cyan-400",
@@ -83,12 +54,8 @@ function EUFlag({ className }: { className?: string }) {
 
 export default function AuditChamber() {
   const [entity, setEntity] = useState("");
-  const [docs, setDocs] = useState<Documents>(EMPTY_DOCS);
-  const filesRef = useRef<Record<DocumentSlot, File | null>>({
-    management: null,
-    taxonomy: null,
-    transition: null,
-  });
+  const [reportFileName, setReportFileName] = useState<string | null>(null);
+  const reportFileRef = useRef<File | null>(null);
 
   const {
     step,
@@ -112,22 +79,15 @@ export default function AuditChamber() {
   /* ---- handlers ---- */
   const handleAudit = () => {
     if (!canAudit) return;
-    startAudit(entity, filesRef.current);
+    startAudit(entity, reportFileRef.current);
   };
 
-  const setDoc = useCallback((slot: DocumentSlot, name: string, file: File) => {
-    setDocs((prev) => ({ ...prev, [slot]: name }));
-    filesRef.current[slot] = file;
+  const setReportFile = useCallback((name: string, file: File) => {
+    setReportFileName(name);
+    reportFileRef.current = file;
   }, []);
 
-  const allDocsReady =
-    docs.management !== null &&
-    docs.taxonomy !== null &&
-    docs.transition !== null;
-  const canAudit = entity.trim().length > 0 && allDocsReady;
-  const docsUploaded = [docs.management, docs.taxonomy, docs.transition].filter(
-    Boolean
-  ).length;
+  const canAudit = entity.trim().length > 0 && reportFileName !== null;
 
   /* ================================================================= */
   /* Render: Complete                                                   */
@@ -240,8 +200,8 @@ export default function AuditChamber() {
             CSRD Compliance Engine
           </h1>
           <p className="mt-2 text-sm text-muted">
-            Audit EU Taxonomy alignment against ESRS disclosures and national
-            registry filings.
+            Upload a pre-parsed Annual Management Report (JSON) to audit EU
+            Taxonomy alignment against ESRS disclosures.
           </p>
         </div>
 
@@ -287,7 +247,7 @@ export default function AuditChamber() {
             </button>
           </div>
 
-          {/* Document Vault */}
+          {/* Document Vault — Single Report Upload */}
           <div className="p-5">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-xs font-medium uppercase tracking-widest text-muted">
@@ -295,21 +255,15 @@ export default function AuditChamber() {
               </p>
               <p className="text-xs text-muted">
                 <span className="font-mono font-semibold text-slate-700">
-                  {docsUploaded}
+                  {reportFileName ? "1" : "0"}
                 </span>
-                /3 uploaded
+                /1 uploaded
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {(Object.keys(SLOT_META) as DocumentSlot[]).map((slot) => (
-                <DocumentSlotCard
-                  key={slot}
-                  slot={slot}
-                  fileName={docs[slot]}
-                  onFile={(name, file) => setDoc(slot, name, file)}
-                />
-              ))}
-            </div>
+            <ReportUploadCard
+              fileName={reportFileName}
+              onFile={setReportFile}
+            />
           </div>
         </div>
 
@@ -326,19 +280,16 @@ export default function AuditChamber() {
 }
 
 /* ================================================================= */
-/* Document Slot Card                                                 */
+/* Report Upload Card                                                  */
 /* ================================================================= */
 
-function DocumentSlotCard({
-  slot,
+function ReportUploadCard({
   fileName,
   onFile,
 }: {
-  slot: DocumentSlot;
   fileName: string | null;
   onFile: (name: string, file: File) => void;
 }) {
-  const meta = SLOT_META[slot];
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -347,7 +298,7 @@ function DocumentSlotCard({
       e.preventDefault();
       setDragging(false);
       const file = e.dataTransfer.files[0];
-      if (file?.type === "application/pdf") {
+      if (file) {
         onFile(file.name, file);
       }
     },
@@ -374,7 +325,7 @@ function DocumentSlotCard({
       onDrop={handleDrop}
       onClick={() => inputRef.current?.click()}
       className={`
-        flex cursor-pointer flex-col justify-between rounded-card p-5 transition-all
+        flex cursor-pointer flex-col justify-between rounded-card p-6 transition-all
         ${
           dragging
             ? "border-2 border-accent bg-indigo-50/40"
@@ -387,19 +338,19 @@ function DocumentSlotCard({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.xhtml"
+        accept=".json,.xhtml"
         onChange={handleSelect}
         className="hidden"
       />
 
       {/* Number */}
       <span className="font-mono text-[10px] font-semibold text-slate-300">
-        {meta.number}
+        01
       </span>
 
       {/* Title */}
       <p className="mt-3 text-sm font-medium leading-snug text-slate-800">
-        {meta.title}
+        Annual Management Report
       </p>
 
       {/* Subtitle or file feedback */}
@@ -414,7 +365,8 @@ function DocumentSlotCard({
         </div>
       ) : (
         <p className="mt-3 text-xs leading-relaxed text-muted">
-          {meta.subtitle}
+          Pre-parsed XHTML/iXBRL management report (JSON format). Contains ESRS
+          sustainability statement, EU Taxonomy table, and audited financials.
         </p>
       )}
     </div>
