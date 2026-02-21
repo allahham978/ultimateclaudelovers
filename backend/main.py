@@ -1,8 +1,9 @@
 """
-FastAPI app — EU CSRD Audit Engine.
+FastAPI app — EU CSRD Audit Engine (dual-mode).
 
 Endpoints:
-  POST  /audit/run               Accept report JSON + entity_id, start audit
+  POST  /audit/run               Accept report JSON + entity_id (full_audit)
+                                  OR free_text + entity_id (compliance_check)
   GET   /audit/{audit_id}/stream  SSE stream of log lines + final result
   GET   /audit/{audit_id}         Return cached result (for reconnects)
   GET   /health                   Liveness probe
@@ -107,12 +108,18 @@ def _run_graph(audit_id: str, state: AuditState, job: _AuditJob) -> None:
                 }
             )
 
-        # Complete event with the full CSRDAudit JSON
+        # Complete event — check which mode produced the result
         final_audit = result.get("final_audit")
+        final_check = result.get("final_compliance_check")
+
         if final_audit:
             audit_dict = final_audit.model_dump()
             job.result = audit_dict
             job.events.append({"type": "complete", "audit": audit_dict})
+        elif final_check:
+            check_dict = final_check.model_dump() if hasattr(final_check, "model_dump") else final_check
+            job.result = check_dict
+            job.events.append({"type": "complete", "compliance_check": check_dict})
 
     except Exception as exc:
         job.events.append({"type": "error", "message": str(exc)})
@@ -133,32 +140,59 @@ async def health():
 
 @app.post("/audit/run")
 async def audit_run(
-    report_json: UploadFile = File(...),
     entity_id: str = Form(...),
+    mode: str = Form("full_audit"),
+    report_json: UploadFile | None = File(None),
+    free_text: str | None = Form(None),
 ):
-    """Accept a pre-parsed management report JSON + entity identifier, start audit."""
+    """Accept a report JSON (full_audit) or free text (compliance_check), start audit."""
+    # Validate mode
+    if mode not in ("full_audit", "compliance_check"):
+        raise HTTPException(400, f"Invalid mode: {mode}. Must be 'full_audit' or 'compliance_check'.")
+
     audit_id = str(uuid.uuid4())
 
-    # Parse uploaded JSON file
-    raw_bytes = await report_json.read()
-    try:
-        raw_json = json.loads(raw_bytes)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(400, f"Invalid JSON in uploaded file: {exc}")
+    if mode == "full_audit":
+        # full_audit requires report_json file
+        if report_json is None:
+            raise HTTPException(400, "mode=full_audit requires a report_json file upload.")
 
-    # Clean + route sections via report_parser
-    cleaned, esrs_data, taxonomy_data = parse_report(raw_json)
+        raw_bytes = await report_json.read()
+        try:
+            raw_json = json.loads(raw_bytes)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(400, f"Invalid JSON in uploaded file: {exc}")
 
-    # Initialise AuditState
-    initial_state: AuditState = {
-        "audit_id": audit_id,
-        "report_json": cleaned,
-        "esrs_data": esrs_data,
-        "taxonomy_data": taxonomy_data,
-        "entity_id": entity_id,
-        "logs": [],
-        "pipeline_trace": [],
-    }
+        # Clean + route sections via report_parser
+        cleaned, esrs_data, taxonomy_data = parse_report(raw_json)
+
+        initial_state: AuditState = {
+            "audit_id": audit_id,
+            "mode": "full_audit",
+            "report_json": cleaned,
+            "esrs_data": esrs_data,
+            "taxonomy_data": taxonomy_data,
+            "entity_id": entity_id,
+            "logs": [],
+            "pipeline_trace": [],
+        }
+
+    else:
+        # compliance_check requires free_text
+        if not free_text or not free_text.strip():
+            raise HTTPException(400, "mode=compliance_check requires a non-empty free_text field.")
+
+        initial_state = {
+            "audit_id": audit_id,
+            "mode": "compliance_check",
+            "free_text_input": free_text,
+            "entity_id": entity_id,
+            "report_json": {},
+            "esrs_data": {},
+            "taxonomy_data": {},
+            "logs": [],
+            "pipeline_trace": [],
+        }
 
     # Create job + launch background thread
     job = _AuditJob()
@@ -176,7 +210,7 @@ async def audit_run(
 
 @app.get("/audit/{audit_id}/stream")
 async def audit_stream(audit_id: str):
-    """SSE stream — emits log lines, node completions, and the final CSRDAudit JSON."""
+    """SSE stream — emits log lines, node completions, and the final result JSON."""
     if audit_id not in _jobs:
         raise HTTPException(404, f"Audit {audit_id} not found")
 
@@ -214,7 +248,7 @@ async def audit_stream(audit_id: str):
 
 @app.get("/audit/{audit_id}")
 async def get_audit(audit_id: str):
-    """Return cached CSRDAudit JSON (for reconnects after stream ends)."""
+    """Return cached result (for reconnects after stream ends)."""
     if audit_id not in _jobs:
         raise HTTPException(404, f"Audit {audit_id} not found")
 

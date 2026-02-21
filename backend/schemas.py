@@ -175,3 +175,60 @@ class TaxonomyFinancials(BaseModel):
     taxonomy_activities: list[str] = []
     source_document: str = "Annual Management Report — Taxonomy Section"
     confidence: float           # 0.0–1.0
+
+
+# ---------------------------------------------------------------------------
+# Compliance Check Mode — New models for dual-mode support
+# ---------------------------------------------------------------------------
+
+CoverageLevel = Literal["covered", "partial", "not_covered"]
+EffortLevel = Literal["low", "medium", "high"]
+
+
+class ExtractedGoal(BaseModel):
+    """Sustainability goal/claim extracted from free-text input — compliance check mode."""
+    id: str
+    description: str
+    esrs_relevance: Optional[str] = None
+    confidence: float  # 0.0–1.0
+
+
+class ESRSCoverageItem(BaseModel):
+    """ESRS standard coverage assessment — compliance check mode."""
+    esrs_id: str
+    standard_name: str
+    coverage: CoverageLevel
+    details: str
+
+
+class ComplianceTodo(BaseModel):
+    """Prioritised regulatory action item — compliance check mode."""
+    id: str
+    priority: Priority
+    esrs_id: str
+    title: str
+    description: str
+    regulatory_reference: str
+    estimated_effort: EffortLevel
+
+
+class ComplianceCostEstimate(BaseModel):
+    """Rough compliance cost range — compliance check mode (no structured financial data)."""
+    estimated_range_low_eur: float
+    estimated_range_high_eur: float
+    basis: str
+    caveat: str
+
+
+class ComplianceCheckResult(BaseModel):
+    """Top-level response for compliance check mode — mirrors TypeScript ComplianceCheckResult."""
+    audit_id: str
+    generated_at: str  # ISO 8601
+    schema_version: str = "2.0"
+    mode: str = "compliance_check"
+    company: CompanyMeta
+    extracted_goals: list[ExtractedGoal]
+    esrs_coverage: list[ESRSCoverageItem]
+    todo_list: list[ComplianceTodo]
+    estimated_compliance_cost: ComplianceCostEstimate
+    pipeline: PipelineTrace

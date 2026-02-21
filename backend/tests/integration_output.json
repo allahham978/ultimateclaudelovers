@@ -1,0 +1,65 @@
+{
+  "company_meta": {
+    "name": "ASML Holding NV",
+    "lei": null,
+    "sector": "Semiconductor Equipment / Technology Manufacturing",
+    "fiscal_year": 2024,
+    "jurisdiction": "the Netherlands",
+    "report_title": "ASML Annual Report 2024"
+  },
+  "esrs_claims": {
+    "E1-1": {
+      "standard": "E1-1",
+      "data_point": "Transition Plan for Climate Change Mitigation \u2014 Net-zero/GHG neutrality target year: 2040 (full value chain); interim milestones: Scope 1+2 and Scope 3 Cat.6+7 GHG neutral by 2025; Scope 3 upstream supply chain GHG neutral by 2030; Scope 3 downstream product use GHG neutral by 2040. SBTi-approved near-term gross reduction targets (base year 2019): Scope 1+2 -90% by 2040; Scope 3 intensity per gross profit -97% by 2040. Internal carbon price: \u20ac200/tCO2e (2024), indexed +4%/year. Total CapEx committed to green transition: not explicitly quantified in the data provided. EU Taxonomy-aligned CapEx %: not explicitly stated in the data provided. Specific EU Taxonomy activities: not listed in the data provided. Note: ASML states it is not excluded from EU Paris-aligned benchmarks (DR16g).",
+      "disclosed_value": "GHG neutrality target year: 2040 (value chain); 2025 (Scope 1, 2, and Scope 3 Cat. 6 & 7); 2030 (Scope 3 upstream Cat. 1, 2, 4); Scope 1+2 gross reduction target: -90% vs. 2019 base year; Scope 3 intensity reduction target: -97% vs. 2019 base year; Internal carbon price: \u20ac200/tCO2e (2024), +4%/year indexation; CapEx committed to green transition: null; EU Taxonomy-aligned CapEx %: null",
+      "unit": "year / % reduction / EUR per tCO2e",
+      "confidence": 0.7,
+      "xbrl_concept": null
+    },
+    "E1-5": {
+      "standard": "E1-5",
+      "data_point": "Energy Consumption and Mix \u2014 Total annual energy consumption: not explicitly disclosed as a standalone consolidated figure in the data provided. NXE energy use per wafer pass: 5.9 kWh (2024 actual; 2025 target: 5.1 kWh). Renewable energy percentage: not explicitly stated as a total mix percentage in the data provided. Breakdown by source (natural gas, electricity, on-site renewables in MWh): not provided in the data provided. Year-on-year energy intensity change: not explicitly stated as a percentage in the data provided; however NXE energy use per wafer pass of 5.9 kWh is disclosed against a 2025 target of 5.1 kWh.",
+      "disclosed_value": "NXE energy use per wafer pass: 5.9 kWh (2024, NXE:3800E); 2025 target: 5.1 kWh; Total energy consumption (MWh/GWh): null; Renewable energy %: null; Natural gas (MWh): null; Grid electricity (MWh): null; On-site renewables (MWh): null; YoY energy intensity change (%): null",
+      "unit": "kWh per wafer pass",
+      "confidence": 0.7,
+      "xbrl_concept": null
+    },
+    "E1-6": {
+      "standard": "E1-6",
+      "data_point": "Gross GHG Emissions \u2014 Scope 1+2 combined: 32.8 kt CO2e (2024); Scope 3 total: 12.0 Mt CO2e (2024). Scope 3 categories disclosed: Cat. 1 (purchased goods & services), Cat. 2 (capital goods implied), Cat. 4 (upstream transportation/logistics), Cat. 6 (business travel), Cat. 7 (employee commuting), Cat. 11 (use of sold products) \u2014 explicitly named in the transition plan and compensation framework; smaller categories (fuel- and energy-related activities, waste in operations, end-of-life treatment) acknowledged as <0.1% of total Scope 3. Scope 2 market-based: not separately disclosed in the data provided. Scope 2 location-based: not separately disclosed in the data provided. Scope 1 standalone: not separately disclosed in the data provided (only combined Scope 1+2 = 32.8 kt CO2e). GHG intensity: Scope 3 intensity = 0.83 kt CO2e per \u20acm gross profit (2024); 2025 target: 0.93 kt CO2e per \u20acm gross profit. Base year: 2019.",
+      "disclosed_value": "Scope 1+2 combined gross emissions: 32.8 kt CO2e (2024); Scope 3 total gross emissions: 12.0 Mt CO2e (2024); Scope 1 standalone: null; Scope 2 market-based: null; Scope 2 location-based: null; Scope 3 categories disclosed: Cat. 1, Cat. 2 (implied), Cat. 4, Cat. 6, Cat. 7, Cat. 11 (explicitly named); GHG intensity (Scope 3): 0.83 kt CO2e per \u20acm gross profit; Base year: 2019",
+      "unit": "tCO2e / kt CO2e / Mt CO2e / kt CO2e per EUR million gross profit",
+      "confidence": 0.7,
+      "xbrl_concept": null
+    }
+  },
+  "logs": [
+    {
+      "agent": "extractor",
+      "msg": "Initializing ESRS E1 extraction from management report...",
+      "ts": 1771700662195
+    },
+    {
+      "agent": "extractor",
+      "msg": "Sending data to Claude: 2 iXBRL facts, narrative=yes...",
+      "ts": 1771700662195
+    },
+    {
+      "agent": "extractor",
+      "msg": "Parsing Claude response and validating ESRS claims...",
+      "ts": 1771700687719
+    },
+    {
+      "agent": "extractor",
+      "msg": "Extraction complete in 25523ms",
+      "ts": 1771700687719
+    }
+  ],
+  "pipeline_trace": [
+    {
+      "agent": "extractor",
+      "started_at": 1771700662.195581,
+      "ms": 25523
+    }
+  ]
+}

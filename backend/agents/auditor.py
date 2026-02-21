@@ -1,12 +1,8 @@
 """
-Node 3 — Double Materiality Evaluator (Auditor) — Iteration 1 stub.
+Node 3 — Double Materiality Evaluator (Auditor) — dual-mode stub.
 
-Reads: state["esrs_claims"] + state["taxonomy_financials"]
-Writes: state["esrs_ledger"], state["taxonomy_alignment"],
-        state["compliance_cost"], state["taxonomy_alignment_score"]
-
-Iteration 5 will replace the dummy values with a real Claude API call using
-SYSTEM_PROMPT_AUDITOR and the full double materiality scoring algorithm.
+Full Audit:       Reads esrs_claims + taxonomy_financials → esrs_ledger, taxonomy_alignment, compliance_cost
+Compliance Check: Reads esrs_claims + extracted_goals → esrs_coverage, compliance_cost_estimate
 """
 
 import time
@@ -18,13 +14,77 @@ from state import AuditState
 
 
 def auditor_node(state: AuditState) -> dict[str, Any]:
-    """Pass-through stub: computes alignment from fetcher output, writes dummy ledger."""
+    """Dual-mode stub: full audit scores materiality; compliance check assesses coverage."""
     started_at = time.time()
+    mode = state.get("mode", "full_audit")
 
     logs: list[dict] = list(state.get("logs") or [])
     pipeline_trace: list[dict] = list(state.get("pipeline_trace") or [])
 
     ts = lambda: int(time.time() * 1000)  # noqa: E731
+
+    if mode == "compliance_check":
+        logs.append({"agent": "auditor", "msg": "Assessing ESRS E1 coverage from free-text claims...", "ts": ts()})
+        logs.append({"agent": "auditor", "msg": "Classifying coverage: covered / partial / not_covered...", "ts": ts()})
+        logs.append({"agent": "auditor", "msg": "Estimating compliance cost range...", "ts": ts()})
+
+        # Assess coverage based on stub esrs_claims confidence
+        esrs_claims = state.get("esrs_claims") or {}
+
+        esrs_coverage = []
+        for esrs_id, standard_name in [
+            ("E1-1", "Transition Plan for Climate Change Mitigation"),
+            ("E1-5", "Energy Consumption and Mix"),
+            ("E1-6", "Gross Scopes 1, 2, 3 GHG Emissions"),
+        ]:
+            claim = esrs_claims.get(esrs_id)
+            if claim and claim.confidence >= 0.7:
+                coverage = "covered"
+                details = f"{standard_name}: adequately addressed in the provided description."
+            elif claim and claim.confidence >= 0.3:
+                coverage = "partial"
+                details = f"{standard_name}: partially mentioned but key metrics or figures are missing."
+            else:
+                coverage = "not_covered"
+                details = f"{standard_name}: no relevant information found in the provided text."
+
+            esrs_coverage.append({
+                "esrs_id": esrs_id,
+                "standard_name": standard_name,
+                "coverage": coverage,
+                "details": details,
+            })
+
+        # Compute cost estimate
+        not_covered_count = sum(1 for c in esrs_coverage if c["coverage"] == "not_covered")
+        partial_count = sum(1 for c in esrs_coverage if c["coverage"] == "partial")
+        total = len(esrs_coverage)
+        severity = (not_covered_count * 1.0 + partial_count * 0.5) / total if total > 0 else 1.0
+        industry_multiplier = 2.0  # default: tech/infrastructure
+
+        compliance_cost_estimate = {
+            "estimated_range_low_eur": round(500_000 * severity * industry_multiplier, 2),
+            "estimated_range_high_eur": round(2_000_000 * severity * industry_multiplier, 2),
+            "basis": "Art. 51 CSRD Directive (EU) 2022/2464 — indicative range based on disclosure gaps",
+            "caveat": (
+                "This estimate is based on incomplete, unstructured data and should "
+                "not be used for financial planning. A full audit with structured XHTML/iXBRL "
+                "management report data is required for accurate compliance cost assessment."
+            ),
+        }
+
+        duration_ms = int((time.time() - started_at) * 1000)
+        pipeline_trace.append({"agent": "auditor", "started_at": started_at, "ms": duration_ms})
+        logs.append({"agent": "auditor", "msg": f"Coverage assessment complete in {duration_ms}ms", "ts": ts()})
+
+        return {
+            "esrs_coverage": esrs_coverage,
+            "compliance_cost_estimate": compliance_cost_estimate,
+            "logs": logs,
+            "pipeline_trace": pipeline_trace,
+        }
+
+    # ── Full Audit mode (default) ────────────────────────────────────────
     logs.append({"agent": "auditor", "msg": "Applying double materiality scoring framework...", "ts": ts()})
     logs.append({"agent": "auditor", "msg": "Computing impact and financial materiality per ESRS standard...", "ts": ts()})
     logs.append({"agent": "auditor", "msg": "Calculating EU Taxonomy alignment percentage...", "ts": ts()})

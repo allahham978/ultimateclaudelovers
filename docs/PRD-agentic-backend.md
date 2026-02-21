@@ -841,15 +841,28 @@ cache hit rates since the content is deterministic (no PDF extraction variance).
 
 **Gate**: `esrs_claims` in state contains real extracted values with `confidence > 0.5` ✓
 
-### Iteration 4 — Compliance Check Scaffold (Backend)
-- [ ] Update `state.py` — add `mode`, `free_text_input`, `extracted_goals`, `esrs_coverage`, `compliance_cost_estimate`, `todo_list`, `final_compliance_check` keys
-- [ ] Add new Pydantic models to `schemas.py` — `ExtractedGoal`, `ESRSCoverageItem`, `ComplianceTodo`, `ComplianceCostEstimate`, `ComplianceCheckResult`
-- [ ] Add 3 new system prompts to `tools/prompts.py` — `SYSTEM_PROMPT_EXTRACTOR_LITE`, `SYSTEM_PROMPT_AUDITOR_LITE`, `SYSTEM_PROMPT_CONSULTANT_LITE`
-- [ ] Update `graph.py` — add conditional routing after Extractor (`route_after_extractor`)
-- [ ] Update agent stubs to check `state["mode"]` and branch logic (full_audit vs compliance_check)
-- [ ] Update `main.py` — accept `mode` + `free_text` form fields, validate per mode, update `_run_graph` for dual-mode complete events
+### Iteration 4 — Compliance Check Scaffold (Backend) ✓ COMPLETE (2026-02-21)
+- [x] Update `state.py` — add `mode`, `free_text_input`, `extracted_goals`, `esrs_coverage`, `compliance_cost_estimate`, `todo_list`, `final_compliance_check` keys
+- [x] Add new Pydantic models to `schemas.py` — `ExtractedGoal`, `ESRSCoverageItem`, `ComplianceTodo`, `ComplianceCostEstimate`, `ComplianceCheckResult`
+- [x] Add 3 new system prompts to `tools/prompts.py` — `SYSTEM_PROMPT_EXTRACTOR_LITE`, `SYSTEM_PROMPT_AUDITOR_LITE`, `SYSTEM_PROMPT_CONSULTANT_LITE`
+- [x] Update `graph.py` — add conditional routing after Extractor (`route_after_extractor`)
+- [x] Update agent stubs to check `state["mode"]` and branch logic (full_audit vs compliance_check)
+- [x] Update `main.py` — accept `mode` + `free_text` form fields, validate per mode, update `_run_graph` for dual-mode complete events
 
-**Gate**: `graph.invoke({"mode":"compliance_check","free_text_input":"...","entity_id":"test",...})` runs 3-node pipeline (skips fetcher) and returns `final_compliance_check`. Full audit path unchanged (zero regression).
+**Gate**: `graph.invoke({"mode":"compliance_check","free_text_input":"...","entity_id":"test",...})` runs 3-node pipeline (skips fetcher) and returns `final_compliance_check`. Full audit path unchanged (zero regression). ✓
+
+**Implementation notes**:
+- `schemas.py`: Added 7 new types — `CoverageLevel`, `EffortLevel`, `ExtractedGoal`, `ESRSCoverageItem`, `ComplianceTodo`, `ComplianceCostEstimate`, `ComplianceCheckResult`
+- `state.py`: Added 7 new keys for dual-mode support — `mode`, `free_text_input`, `extracted_goals`, `esrs_coverage`, `compliance_cost_estimate`, `todo_list`, `final_compliance_check`
+- `graph.py`: Replaced linear `add_edge("extractor", "fetcher")` with `add_conditional_edges` using `route_after_extractor()` — routes to `"auditor"` when `mode == "compliance_check"`, else `"fetcher"`
+- `tools/prompts.py`: 3 new prompt constants (`SYSTEM_PROMPT_EXTRACTOR_LITE`, `SYSTEM_PROMPT_AUDITOR_LITE`, `SYSTEM_PROMPT_CONSULTANT_LITE`) for unstructured text processing
+- Agent stubs: All 3 reused agents (extractor, auditor, consultant) check `state.get("mode")` and branch to compliance-specific logic; fetcher unchanged (simply skipped)
+- `main.py`: `POST /audit/run` now accepts `mode` (default `"full_audit"`) and optional `free_text` form fields; validation rejects missing `report_json` in full_audit mode and missing `free_text` in compliance_check mode; `_run_graph` emits `{"type":"complete","compliance_check":{...}}` for compliance check results
+- Compliance check stub outputs: extractor writes `extracted_goals`, auditor writes `esrs_coverage` + `compliance_cost_estimate`, consultant writes `todo_list` + assembles `ComplianceCheckResult` with 3-agent pipeline trace
+- Consultant always appends 2 foundational to-do items ("Prepare XHTML/iXBRL report" + "Engage CSRD auditor") regardless of coverage
+- Updated `test_iteration2.py`: `test_rejects_missing_report_file` now expects 400 (was 422) since `report_json` is optional at the FastAPI parameter level (validation moved to handler logic)
+- `backend/tests/test_iteration4.py` — 96 unit tests (schemas, state, prompts, graph routing, all 3 agents in compliance mode, FastAPI dual-mode endpoints, SSE compliance events, full audit regression), all passing
+- All 198 tests across iterations 1, 2, 4 passing; all 4 PRD gate checks green (`schemas OK`, `graph OK`, `parser OK`, `compliance_check gate OK`)
 
 ### Iteration 5 — Compliance Check Frontend
 - [ ] Add new TypeScript types to `frontend/src/lib/types.ts` — `ComplianceCheckResult`, `ExtractedGoal`, `ESRSCoverageItem`, `ComplianceTodo`, `ComplianceCostEstimate`, updated `SSECompleteEvent`

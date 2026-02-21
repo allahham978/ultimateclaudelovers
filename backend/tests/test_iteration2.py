@@ -185,8 +185,8 @@ class TestAuditRunEndpoint:
         assert r1.json()["run_id"] != r2.json()["run_id"]
 
     def test_rejects_missing_report_file(self):
-        r = client.post("/audit/run", data={"entity_id": "Test"})
-        assert r.status_code == 422
+        r = client.post("/audit/run", data={"entity_id": "Test", "mode": "full_audit"})
+        assert r.status_code == 400
 
     def test_rejects_missing_entity_id(self):
         file_content = json.dumps(_SAMPLE_REPORT_JSON).encode()

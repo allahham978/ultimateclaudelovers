@@ -1,11 +1,8 @@
 """
-Node 4 — Taxonomy Consultant + Final Assembly — Iteration 1 stub.
+Node 4 — Taxonomy Consultant + Final Assembly — dual-mode stub.
 
-Reads: state["esrs_ledger"] + state["taxonomy_alignment"] + state["company_meta"]
-Writes: state["roadmap"], state["final_audit"]
-
-Iteration 6 will replace the dummy roadmap with a real Claude API call using
-SYSTEM_PROMPT_CONSULTANT and assemble a fully live CSRDAudit from real data.
+Full Audit:       Reads esrs_ledger + taxonomy_alignment → roadmap + final_audit (CSRDAudit)
+Compliance Check: Reads esrs_coverage + company_meta → todo_list + final_compliance_check (ComplianceCheckResult)
 """
 
 import time
@@ -17,6 +14,11 @@ from schemas import (
     CSRDAudit,
     CompanyMeta,
     ComplianceCost,
+    ComplianceCheckResult,
+    ComplianceCostEstimate,
+    ComplianceTodo,
+    ESRSCoverageItem,
+    ExtractedGoal,
     PipelineTrace,
     RegistrySource,
     RoadmapPillar,
@@ -28,13 +30,168 @@ from state import AuditState
 
 
 def consultant_node(state: AuditState) -> dict[str, Any]:
-    """Pass-through stub: generates dummy roadmap, assembles final CSRDAudit."""
+    """Dual-mode stub: full audit generates roadmap; compliance check generates to-do list."""
     started_at = time.time()
+    mode = state.get("mode", "full_audit")
 
     logs: list[dict] = list(state.get("logs") or [])
     pipeline_trace: list[dict] = list(state.get("pipeline_trace") or [])
 
     ts = lambda: int(time.time() * 1000)  # noqa: E731
+
+    if mode == "compliance_check":
+        logs.append({"agent": "consultant", "msg": "Analysing ESRS coverage gaps for to-do list...", "ts": ts()})
+        logs.append({"agent": "consultant", "msg": "Generating prioritised compliance action items...", "ts": ts()})
+        logs.append({"agent": "consultant", "msg": "Assembling final ComplianceCheckResult...", "ts": ts()})
+
+        # Generate to-do list from coverage assessment
+        esrs_coverage_raw = state.get("esrs_coverage") or []
+        todo_list: list[dict] = []
+        todo_idx = 1
+
+        for item in esrs_coverage_raw:
+            coverage = item.get("coverage", "not_covered")
+            esrs_id = item.get("esrs_id", "E1-1")
+
+            if coverage == "not_covered":
+                priority = "critical"
+                effort = "high"
+                title = f"Establish {esrs_id} disclosure — currently missing"
+                description = (
+                    f"No relevant {item.get('standard_name', '')} data was found in your description. "
+                    f"This is a mandatory CSRD disclosure under ESRS {esrs_id}. "
+                    f"Begin by conducting a baseline assessment and data collection exercise."
+                )
+            elif coverage == "partial":
+                priority = "high"
+                effort = "medium"
+                title = f"Complete {esrs_id} disclosure — key metrics missing"
+                description = (
+                    f"Some {item.get('standard_name', '')} information was found but critical metrics are absent. "
+                    f"Review ESRS {esrs_id} disclosure requirements and fill the identified gaps."
+                )
+            else:
+                continue  # covered — no action needed
+
+            todo_list.append({
+                "id": f"todo-{todo_idx}",
+                "priority": priority,
+                "esrs_id": esrs_id,
+                "title": title,
+                "description": description,
+                "regulatory_reference": f"ESRS {esrs_id}, Commission Delegated Regulation (EU) 2023/2772",
+                "estimated_effort": effort,
+            })
+            todo_idx += 1
+
+        # Always include foundational to-do items
+        todo_list.append({
+            "id": f"todo-{todo_idx}",
+            "priority": "critical",
+            "esrs_id": "CSRD",
+            "title": "Prepare XHTML/iXBRL Annual Management Report",
+            "description": (
+                "Your company currently lacks a properly formatted Annual Management Report in XHTML/iXBRL format. "
+                "This is the legally mandated filing format under CSRD. Engage a qualified XBRL tagging service "
+                "provider to prepare the report."
+            ),
+            "regulatory_reference": "CSRD Art. 29d, ESEF Regulation (EU) 2019/815",
+            "estimated_effort": "high",
+        })
+        todo_idx += 1
+
+        todo_list.append({
+            "id": f"todo-{todo_idx}",
+            "priority": "critical",
+            "esrs_id": "CSRD",
+            "title": "Engage CSRD-qualified auditor for limited assurance",
+            "description": (
+                "CSRD requires limited assurance on sustainability reporting from a qualified auditor. "
+                "Begin the engagement process early to ensure timely filing. "
+                "Select an auditor with ESRS and EU Taxonomy expertise."
+            ),
+            "regulatory_reference": "CSRD Art. 34, Directive (EU) 2022/2464",
+            "estimated_effort": "high",
+        })
+
+        # Finalise pipeline trace
+        duration_ms = int((time.time() - started_at) * 1000)
+        pipeline_trace.append({"agent": "consultant", "started_at": started_at, "ms": duration_ms})
+
+        # Build agent timings (3 agents — fetcher skipped)
+        agent_timings: list[AgentTiming] = []
+        valid_agents = {"extractor", "auditor", "consultant"}
+        for entry in pipeline_trace:
+            if entry.get("agent") in valid_agents:
+                agent_timings.append(
+                    AgentTiming(
+                        agent=entry["agent"],
+                        duration_ms=entry["ms"],
+                        status="completed",
+                    )
+                )
+        total_ms = sum(t.duration_ms for t in agent_timings)
+
+        company_meta: CompanyMeta = state.get("company_meta") or CompanyMeta(
+            name=state.get("entity_id") or "Unknown Entity",
+            lei=None,
+            sector="Unknown",
+            fiscal_year=2024,
+            jurisdiction="EU",
+            report_title="User-Provided Sustainability Description",
+        )
+
+        # Build typed models for the final result
+        extracted_goals_raw = state.get("extracted_goals") or []
+        extracted_goals_typed = [
+            ExtractedGoal(**g) if isinstance(g, dict) else g
+            for g in extracted_goals_raw
+        ]
+
+        esrs_coverage_typed = [
+            ESRSCoverageItem(**c) if isinstance(c, dict) else c
+            for c in esrs_coverage_raw
+        ]
+
+        todo_list_typed = [
+            ComplianceTodo(**t) if isinstance(t, dict) else t
+            for t in todo_list
+        ]
+
+        cost_est_raw = state.get("compliance_cost_estimate") or {
+            "estimated_range_low_eur": 0.0,
+            "estimated_range_high_eur": 0.0,
+            "basis": "Art. 51 CSRD Directive (EU) 2022/2464 — indicative range based on disclosure gaps",
+            "caveat": "Insufficient data for cost estimation.",
+        }
+        cost_estimate_typed = (
+            ComplianceCostEstimate(**cost_est_raw)
+            if isinstance(cost_est_raw, dict) else cost_est_raw
+        )
+
+        final_compliance_check = ComplianceCheckResult(
+            audit_id=state.get("audit_id") or "unknown",
+            generated_at=datetime.now(timezone.utc).isoformat(),
+            schema_version="2.0",
+            mode="compliance_check",
+            company=company_meta,
+            extracted_goals=extracted_goals_typed,
+            esrs_coverage=esrs_coverage_typed,
+            todo_list=todo_list_typed,
+            estimated_compliance_cost=cost_estimate_typed,
+            pipeline=PipelineTrace(total_duration_ms=total_ms, agents=agent_timings),
+        )
+
+        logs.append({"agent": "consultant", "msg": f"Compliance check assembled in {duration_ms}ms", "ts": ts()})
+
+        return {
+            "todo_list": todo_list,
+            "final_compliance_check": final_compliance_check,
+            "logs": logs,
+            "pipeline_trace": pipeline_trace,
+        }
+
+    # ── Full Audit mode (default) ────────────────────────────────────────
     logs.append({"agent": "consultant", "msg": "Analysing ESRS gaps for roadmap generation...", "ts": ts()})
     logs.append({"agent": "consultant", "msg": "Generating three-pillar EU Taxonomy roadmap...", "ts": ts()})
     logs.append({"agent": "consultant", "msg": "Assembling final CSRDAudit contract...", "ts": ts()})
@@ -99,7 +256,7 @@ def consultant_node(state: AuditState) -> dict[str, Any]:
     total_ms = sum(t.duration_ms for t in agent_timings)
 
     # Pull accumulated state — fall back to safe defaults so the stub always assembles
-    company_meta: CompanyMeta = state.get("company_meta") or CompanyMeta(
+    company_meta = state.get("company_meta") or CompanyMeta(
         name=state.get("entity_id") or "Unknown Entity",
         lei=None,
         sector="AI Infrastructure",

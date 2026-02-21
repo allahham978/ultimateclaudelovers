@@ -39,11 +39,17 @@ _SAMPLE_REPORT_JSON = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Full Audit mode fixtures
+# ---------------------------------------------------------------------------
+
+
 @pytest.fixture
 def minimal_state() -> AuditState:
-    """Minimal valid AuditState for testing — only INIT keys set."""
+    """Minimal valid AuditState for testing — only INIT keys set (full_audit mode)."""
     return {
         "audit_id": "test-audit-001",
+        "mode": "full_audit",
         "report_json": _SAMPLE_REPORT_JSON,
         "esrs_data": _SAMPLE_ESRS_FACTS,
         "taxonomy_data": _SAMPLE_TAXONOMY_FACTS,
@@ -78,3 +84,46 @@ def state_after_auditor(state_after_fetcher) -> AuditState:
 
     result = auditor_node(state_after_fetcher)
     return {**state_after_fetcher, **result}
+
+
+# ---------------------------------------------------------------------------
+# Compliance Check mode fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def compliance_check_state() -> AuditState:
+    """Minimal valid AuditState for compliance_check mode."""
+    return {
+        "audit_id": "test-compliance-001",
+        "mode": "compliance_check",
+        "free_text_input": (
+            "We are an AI infrastructure company based in France. "
+            "We have set a net-zero target for 2040. "
+            "Our data centers consume approximately 120 GWh annually with 29% renewable energy."
+        ),
+        "entity_id": "Lumiere Systemes SA",
+        "report_json": {},
+        "esrs_data": {},
+        "taxonomy_data": {},
+        "logs": [],
+        "pipeline_trace": [],
+    }
+
+
+@pytest.fixture
+def compliance_state_after_extractor(compliance_check_state) -> AuditState:
+    """Compliance check state after extractor node has run."""
+    from agents.extractor import extractor_node
+
+    result = extractor_node(compliance_check_state)
+    return {**compliance_check_state, **result}
+
+
+@pytest.fixture
+def compliance_state_after_auditor(compliance_state_after_extractor) -> AuditState:
+    """Compliance check state after auditor node has run (fetcher skipped)."""
+    from agents.auditor import auditor_node
+
+    result = auditor_node(compliance_state_after_extractor)
+    return {**compliance_state_after_extractor, **result}
