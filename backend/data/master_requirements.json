@@ -1,0 +1,1320 @@
+{
+  "_schema_version": "2.0",
+  "_description": "CSRD / ESRS reporting document requirements. All monetary thresholds in EUR. All durations in calendar days unless stated. Frequency fields use structured objects, not free text.",
+  "csrd_reporting_requirements": [
+    {
+      "document_type": "Sustainability Report",
+      "document_id": "SR-001",
+      "governing_standards": [
+        "ESRS 1 - General Requirements",
+        "ESRS 2 - General Disclosures"
+      ],
+      "mandatory": true,
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120,
+        "note": "Must align exactly with the financial reporting period; filed within the Management Report"
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "lookback_comparative_years_recommended": 3,
+        "forward_looking_horizon_years": [1, 3, 5, 10]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "label": "Large PIEs (NFRD in-scope)",
+          "first_data_collection_year": 2024,
+          "first_filing_year": 2025,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "total_assets_threshold_eur": 20000000,
+          "size_criteria_required_of_3": 2
+        },
+        {
+          "csrd_phase": 2,
+          "label": "Other large EU companies",
+          "first_data_collection_year": 2025,
+          "first_filing_year": 2026,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "total_assets_threshold_eur": 20000000,
+          "size_criteria_required_of_3": 2
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "first_data_collection_year": 2026,
+          "first_filing_year": 2027,
+          "opt_out_available": true,
+          "opt_out_until_year": 2029,
+          "employee_threshold_max": 249,
+          "net_turnover_threshold_eur_max": 40000000,
+          "total_assets_threshold_eur_max": 20000000,
+          "simplified_standard_applies": true,
+          "simplified_standard_name": "ESRS LSME"
+        },
+        {
+          "csrd_phase": 4,
+          "label": "Non-EU parent companies with EU presence",
+          "first_data_collection_year": 2028,
+          "first_filing_year": 2029,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "eu_net_turnover_consecutive_years": 2,
+          "requires_qualifying_eu_subsidiary_or_branch": true
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "areas": [
+          "All material ESG topics per Double Materiality Assessment",
+          "EU Taxonomy disclosures (eligibility and alignment KPIs)",
+          "Environmental: ESRS E1-E5",
+          "Social: ESRS S1-S4",
+          "Governance: ESRS G1"
+        ],
+        "key_disclosures": [
+          "GOV-1: Board composition and sustainability oversight",
+          "GOV-2: Management roles and responsibilities",
+          "GOV-3: Sustainability performance in remuneration",
+          "GOV-4: Statement on due diligence",
+          "GOV-5: Risk and opportunity management",
+          "SBM-1: Strategy, business model and value chain",
+          "SBM-2: Stakeholder engagement",
+          "SBM-3: Material impacts, risks and opportunities",
+          "IRO-1: Identification and assessment of material IROs",
+          "IRO-2: Disclosure requirements and data points index"
+        ]
+      },
+      "format": {
+        "filing_format": "XHTML",
+        "tagging_format": "iXBRL",
+        "taxonomy_reference": "ESRS XBRL Taxonomy (Commission Delegated Regulation)",
+        "embedded_in": "Management Report"
+      },
+      "assurance": {
+        "required": true,
+        "current_level": "limited",
+        "future_level": "reasonable",
+        "standard": "ISAE 3000 (Revised) / ISSA 5000"
+      }
+    },
+    {
+      "document_type": "Double Materiality Assessment (DMA)",
+      "document_id": "SR-002",
+      "governing_standards": [
+        "ESRS 1 - General Requirements, Section 3: Double Materiality",
+        "ESRS 2 - IRO-1: Identification and assessment of material IROs"
+      ],
+      "mandatory": true,
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "prior_to_sustainability_report_preparation",
+        "max_filing_lag_days": null,
+        "note": "Completed before the reporting cycle begins; outputs determine which ESRS topics are included"
+      },
+      "timeframe": {
+        "period_covered": "current_and_historical",
+        "lookback_comparative_years_minimum": null,
+        "lookback_comparative_years_recommended": 3,
+        "forward_looking_horizon_years": [1, 3, 5, 10],
+        "note": "No fixed historical minimum; forward-looking horizons must cover short, medium, and long term"
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_esrs_topics_assessed": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_esrs_topics_assessed": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_standard_applies": true,
+          "simplified_standard_name": "ESRS LSME",
+          "full_esrs_topics_assessed": false,
+          "note": "Simplified DMA process; proportionate to SME scale"
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_esrs_topics_assessed": true,
+          "note": "DMA scoped to EU operations as minimum"
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "materiality_dimensions": {
+          "impact_materiality": {
+            "description": "Company effects on environment and society (actual and potential, positive and negative)",
+            "scoring_criteria": ["magnitude", "likelihood", "scope", "irremediability"]
+          },
+          "financial_materiality": {
+            "description": "ESG risks and opportunities affecting company financial performance, position or cash flows",
+            "scoring_criteria": ["financial_effect_size", "probability", "time_horizon"]
+          }
+        },
+        "topics_assessed": [
+          "ESRS E1 - Climate Change",
+          "ESRS E2 - Pollution",
+          "ESRS E3 - Water and Marine Resources",
+          "ESRS E4 - Biodiversity and Ecosystems",
+          "ESRS E5 - Resource Use and Circular Economy",
+          "ESRS S1 - Own Workforce",
+          "ESRS S2 - Workers in the Value Chain",
+          "ESRS S3 - Affected Communities",
+          "ESRS S4 - Consumers and End-users",
+          "ESRS G1 - Business Conduct"
+        ],
+        "process_requirements": [
+          "Stakeholder engagement to inform impact identification",
+          "Documented scoring methodology for impact and financial materiality",
+          "Validation by senior management and board",
+          "Rationale for topics assessed as not material (disclosed per ESRS 1 omission rules)"
+        ]
+      },
+      "assurance": {
+        "required": true,
+        "current_level": "limited",
+        "note": "Outputs feed into assured Sustainability Report; DMA process itself is subject to limited assurance review"
+      }
+    },
+    {
+      "document_type": "ESRS E1 - Climate Change Disclosure",
+      "document_id": "E1-001",
+      "governing_standards": ["ESRS E1 - Climate Change"],
+      "mandatory_if_material": true,
+      "mandatory_regardless_of_materiality": false,
+      "phase_in_reliefs": [
+        {
+          "relief": "Scope 3 GHG category-level breakdown",
+          "phase_in_years": 1,
+          "applies_to_phases": [1, 2, 3, 4]
+        },
+        {
+          "relief": "Value chain GHG data from external partners",
+          "phase_in_years": 3,
+          "applies_to_phases": [1, 2, 3, 4]
+        }
+      ],
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "ghg_base_year_required": true,
+        "ghg_base_year_note": "Earliest available year; typically 2019 or company-specific base year per GHG Protocol",
+        "forward_looking_target_years": [2030, 2040, 2050]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true,
+          "mandatory_kpis": ["Scope 1 GHG (tCO2e)", "Scope 2 GHG market-based (tCO2e)", "Total energy consumption (MWh)"]
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true,
+          "scope_note": "Minimum coverage: EU operations; group-level preferred"
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "key_disclosures": [
+          "E1-1: Transition plan for climate change mitigation",
+          "E1-2: Policies related to climate change mitigation and adaptation",
+          "E1-3: Actions and resources for climate change mitigation and adaptation",
+          "E1-4: Targets related to climate change mitigation and adaptation",
+          "E1-5: Energy consumption and mix (MWh by source, % renewables, intensity ratio)",
+          "E1-6: Gross Scope 1, 2 (market-based and location-based), and Scope 3 GHG emissions (tCO2e per category)",
+          "E1-7: GHG removals and carbon credits (tCO2e, registry, vintage)",
+          "E1-8: Internal carbon price (EUR/tCO2e, scope of application)",
+          "E1-9: Anticipated financial effects of climate-related physical and transition risks (EUR)"
+        ],
+        "primary_units": ["tCO2e", "MWh", "GJ", "EUR", "%"]
+      },
+      "alignment": ["GHG Protocol Corporate Standard", "TCFD", "Science Based Targets initiative (SBTi)", "EU Climate Benchmarks Regulation (EU) 2016/1011"]
+    },
+    {
+      "document_type": "ESRS E2 - Pollution Disclosure",
+      "document_id": "E2-001",
+      "governing_standards": ["ESRS E2 - Pollution"],
+      "mandatory_if_material": true,
+      "mandatory_regardless_of_materiality": false,
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "forward_looking_target_years": [2030, 2040, 2050]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true,
+          "note": "Disclose only if material per simplified DMA"
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "key_disclosures": [
+          "E2-1: Policies related to pollution prevention and control",
+          "E2-2: Actions and resources related to pollution",
+          "E2-3: Targets related to pollution reduction",
+          "E2-4: Pollution of air, water, and soil (pollutant name, quantity, unit, medium)",
+          "E2-5: Substances of concern (SoC) and substances of very high concern (SVHC) — kg/tonnes released",
+          "E2-6: Anticipated financial effects of pollution-related risks and opportunities (EUR)"
+        ],
+        "primary_units": ["kg", "tonnes", "mg/L", "µg/m³", "EUR"]
+      },
+      "alignment": ["EU Industrial Emissions Directive (2010/75/EU)", "REACH Regulation (EC) 1907/2006", "EU Zero Pollution Action Plan 2021"]
+    },
+    {
+      "document_type": "ESRS E3 - Water and Marine Resources Disclosure",
+      "document_id": "E3-001",
+      "governing_standards": ["ESRS E3 - Water and Marine Resources"],
+      "mandatory_if_material": true,
+      "mandatory_regardless_of_materiality": false,
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "forward_looking_target_years": [2030, 2040, 2050]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true,
+          "note": "Disclose only if material per simplified DMA"
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "key_disclosures": [
+          "E3-1: Policies related to water and marine resources",
+          "E3-2: Actions and resources related to water and marine resources",
+          "E3-3: Targets related to water and marine resources",
+          "E3-4: Water consumption (m³ total; m³ in water-stressed areas; intensity per unit output)",
+          "E3-5: Anticipated financial effects of water and marine resource risks (EUR)"
+        ],
+        "primary_units": ["m³", "m³/unit", "EUR"]
+      },
+      "alignment": ["EU Water Framework Directive (2000/60/EC)", "CDP Water Security Framework", "Alliance for Water Stewardship (AWS) Standard"]
+    },
+    {
+      "document_type": "ESRS E4 - Biodiversity and Ecosystems Disclosure",
+      "document_id": "E4-001",
+      "governing_standards": ["ESRS E4 - Biodiversity and Ecosystems"],
+      "mandatory_if_material": true,
+      "mandatory_regardless_of_materiality": false,
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "historical_baseline_required": true,
+        "historical_baseline_note": "Site-level ecosystem baseline required for sensitive and protected areas",
+        "forward_looking_target_years": [2030, 2040, 2050]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true,
+          "site_level_data_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true,
+          "site_level_data_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true,
+          "site_level_data_required": false,
+          "note": "Disclose only if material per simplified DMA; site-level data not required at SME level"
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true,
+          "site_level_data_required": true
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "key_disclosures": [
+          "E4-1: Transition plan and consideration of biodiversity in strategy",
+          "E4-2: Policies related to biodiversity and ecosystems",
+          "E4-3: Actions and resources related to biodiversity and ecosystems",
+          "E4-4: Targets related to biodiversity and ecosystems",
+          "E4-5: Impact metrics (land use in hectares; land use change; species affected; area in/near protected zones)",
+          "E4-6: Anticipated financial effects of biodiversity and ecosystem risks (EUR)"
+        ],
+        "primary_units": ["ha", "km²", "number_of_species", "EUR"]
+      },
+      "alignment": ["Kunming-Montreal Global Biodiversity Framework (GBF) 2022", "TNFD Framework v1.0", "EU Biodiversity Strategy 2030", "EU Nature Restoration Law 2024"]
+    },
+    {
+      "document_type": "ESRS E5 - Resource Use and Circular Economy Disclosure",
+      "document_id": "E5-001",
+      "governing_standards": ["ESRS E5 - Resource Use and Circular Economy"],
+      "mandatory_if_material": true,
+      "mandatory_regardless_of_materiality": false,
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "forward_looking_target_years": [2030, 2040, 2050]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true,
+          "note": "Disclose only if material per simplified DMA"
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "key_disclosures": [
+          "E5-1: Policies related to resource use and circular economy",
+          "E5-2: Actions and resources related to resource use and circular economy",
+          "E5-3: Targets related to resource use and circular economy",
+          "E5-4: Resource inflows (total materials in tonnes; % virgin vs. recycled; % renewable vs. non-renewable)",
+          "E5-5: Resource outflows (total waste in tonnes by type; disposal method; % recycled/reused/landfilled)",
+          "E5-6: Anticipated financial effects of resource use and circular economy risks (EUR)"
+        ],
+        "primary_units": ["tonnes", "%", "EUR"]
+      },
+      "alignment": ["EU Circular Economy Action Plan 2020", "EU Waste Framework Directive (2008/98/EC)", "EU Ecodesign for Sustainable Products Regulation 2024"]
+    },
+    {
+      "document_type": "ESRS S1 - Own Workforce Disclosure",
+      "document_id": "S1-001",
+      "governing_standards": ["ESRS S1 - Own Workforce"],
+      "mandatory_if_material": true,
+      "mandatory_regardless_of_materiality": false,
+      "phase_in_reliefs": [
+        {
+          "relief": "Gender pay gap and CEO pay ratio (S1-16)",
+          "phase_in_years": 1,
+          "applies_to_phases": [1, 2]
+        },
+        {
+          "relief": "Health and safety management system coverage data (S1-14)",
+          "phase_in_years": 1,
+          "applies_to_phases": [1, 2]
+        }
+      ],
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120,
+        "hr_data_collection_cadence": "monthly",
+        "note": "Underlying HR data collected monthly; consolidated annually for reporting"
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "forward_looking_target_years": [2025, 2030]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true,
+          "headcount_breakdowns_required": ["gender", "country", "employment_type", "age_group", "management_level"]
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true,
+          "headcount_breakdowns_required": ["gender", "country", "employment_type", "age_group", "management_level"]
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true,
+          "simplified_standard_name": "ESRS LSME",
+          "mandatory_kpis": ["total_headcount", "gender_split_%", "total_recordable_incident_rate", "training_hours_per_employee"]
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true,
+          "scope_note": "Minimum: EU-based employees; group-level encouraged"
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "key_disclosures": [
+          "S1-1: Policies related to own workforce",
+          "S1-2: Processes for engaging with own workers and workers' representatives",
+          "S1-3: Processes to remediate negative impacts and channels to raise concerns",
+          "S1-4: Action plans and resources on material impacts on own workforce",
+          "S1-5: Targets related to managing material impacts on own workforce",
+          "S1-6: Employee headcount by gender, country, full-time/part-time, permanent/temporary, non-guaranteed hours",
+          "S1-7: Non-employee worker characteristics (contractors, agency workers)",
+          "S1-8: Collective bargaining coverage (%) and social dialogue presence",
+          "S1-9: Diversity metrics: gender by management level (%), age distribution (%)",
+          "S1-10: Adequate wages: % of employees earning below living wage benchmark",
+          "S1-11: Social protection coverage (%) by country",
+          "S1-12: Employees with disabilities (%)",
+          "S1-13: Training metrics (avg hours/employee/year; % covered by training; types of training)",
+          "S1-14: Health and safety metrics (TRIR per 200,000 hrs; lost-time injury rate; fatalities; work-related ill health cases)",
+          "S1-15: Work-life balance: parental leave take-up rate by gender (%)",
+          "S1-16: Compensation: CEO pay ratio; gender pay gap (%)"
+        ],
+        "primary_units": ["headcount", "%", "hours", "rate_per_200k_hours", "ratio"]
+      },
+      "alignment": ["ILO Core Labour Standards (8 Fundamental Conventions)", "UN Guiding Principles on Business and Human Rights", "EU Pay Transparency Directive (2023/970/EU)", "EU Work-Life Balance Directive (2019/1158/EU)"]
+    },
+    {
+      "document_type": "ESRS S2 - Workers in the Value Chain Disclosure",
+      "document_id": "S2-001",
+      "governing_standards": ["ESRS S2 - Workers in the Value Chain"],
+      "mandatory_if_material": true,
+      "mandatory_regardless_of_materiality": false,
+      "phase_in_reliefs": [
+        {
+          "relief": "Full S2 disclosures",
+          "phase_in_years": 1,
+          "applies_to_phases": [1, 2],
+          "note": "1-year phase-in for Phase 1 and 2 companies in their first reporting year"
+        },
+        {
+          "relief": "Value chain data collection from external partners",
+          "phase_in_years": 3,
+          "applies_to_phases": [1, 2, 4]
+        }
+      ],
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120,
+        "supplier_audit_cadence": "varies_by_risk_tier",
+        "note": "Supplier audit data collected on risk-based cadence; consolidated annually"
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "forward_looking_target_years": [2025, 2030]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true,
+          "note": "Disclose only if material per simplified DMA"
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "key_disclosures": [
+          "S2-1: Policies related to value chain workers",
+          "S2-2: Processes for engaging with value chain workers",
+          "S2-3: Processes to remediate negative impacts and grievance channels",
+          "S2-4: Action plans and resources on material impacts on value chain workers",
+          "S2-5: Targets related to managing material impacts on value chain workers"
+        ],
+        "primary_units": ["number_of_suppliers_audited", "number_of_corrective_actions", "%"]
+      },
+      "alignment": ["UN Guiding Principles on Business and Human Rights", "OECD Guidelines for Multinational Enterprises 2023", "EU Corporate Sustainability Due Diligence Directive (CS3D) 2024"]
+    },
+    {
+      "document_type": "ESRS S3 - Affected Communities Disclosure",
+      "document_id": "S3-001",
+      "governing_standards": ["ESRS S3 - Affected Communities"],
+      "mandatory_if_material": true,
+      "mandatory_regardless_of_materiality": false,
+      "phase_in_reliefs": [
+        {
+          "relief": "Full S3 disclosures",
+          "phase_in_years": 1,
+          "applies_to_phases": [1, 2]
+        }
+      ],
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "forward_looking_target_years": [2025, 2030]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true,
+          "note": "Disclose only if material per simplified DMA"
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "key_disclosures": [
+          "S3-1: Policies related to affected communities",
+          "S3-2: Processes for engaging with affected communities (including indigenous peoples — FPIC requirements)",
+          "S3-3: Processes to remediate negative impacts and grievance channels",
+          "S3-4: Action plans and resources on material impacts on affected communities",
+          "S3-5: Targets related to managing material impacts on affected communities"
+        ]
+      },
+      "alignment": ["UN Declaration on the Rights of Indigenous Peoples (UNDRIP)", "IFC Performance Standards (PS1, PS5, PS7)", "UN Guiding Principles on Business and Human Rights"]
+    },
+    {
+      "document_type": "ESRS S4 - Consumers and End-users Disclosure",
+      "document_id": "S4-001",
+      "governing_standards": ["ESRS S4 - Consumers and End-users"],
+      "mandatory_if_material": true,
+      "mandatory_regardless_of_materiality": false,
+      "phase_in_reliefs": [
+        {
+          "relief": "Full S4 disclosures",
+          "phase_in_years": 1,
+          "applies_to_phases": [1, 2]
+        }
+      ],
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "forward_looking_target_years": [2025, 2030]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true,
+          "note": "Disclose only if material per simplified DMA"
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": true,
+        "key_disclosures": [
+          "S4-1: Policies related to consumers and end-users",
+          "S4-2: Processes for engaging with consumers and end-users",
+          "S4-3: Processes to remediate negative impacts and channels to raise concerns",
+          "S4-4: Action plans and resources on material impacts on consumers and end-users",
+          "S4-5: Targets related to managing material impacts on consumers and end-users"
+        ],
+        "primary_units": ["number_of_complaints", "number_of_product_recalls", "number_of_data_breaches"]
+      },
+      "alignment": ["EU General Product Safety Regulation (2023/988/EU)", "GDPR (2016/679/EU)", "EU AI Act 2024", "Consumer Rights Directive (2011/83/EU)"]
+    },
+    {
+      "document_type": "ESRS G1 - Business Conduct Disclosure",
+      "document_id": "G1-001",
+      "governing_standards": ["ESRS G1 - Business Conduct"],
+      "mandatory_if_material": true,
+      "mandatory_regardless_of_materiality": false,
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1,
+        "forward_looking_target_years": [2025, 2030]
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true,
+          "mandatory_kpis": ["anti_corruption_policy_in_place", "confirmed_corruption_incidents_count", "anti_corruption_training_%"]
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": true,
+        "forward_looking": false,
+        "key_disclosures": [
+          "G1-1: Corporate culture and business conduct policies (code of conduct, anti-corruption, anti-bribery)",
+          "G1-2: Management of relationships with suppliers (payment terms, SME treatment)",
+          "G1-3: Prevention and detection of corruption and bribery (% employees trained; whistleblowing mechanism in place)",
+          "G1-4: Incidents of corruption and bribery (confirmed cases; sanctions; criminal proceedings initiated)",
+          "G1-5: Political influence and lobbying activities (EUR spent; positions taken)",
+          "G1-6: Payment practices (average payment period in days vs. contractual terms; % invoices paid late; EUR value of late payments to SMEs)"
+        ],
+        "primary_units": ["number_of_incidents", "%", "days", "EUR"]
+      },
+      "alignment": ["UN Convention Against Corruption (UNCAC)", "OECD Anti-Bribery Convention 1997", "EU Whistleblower Protection Directive (2019/1937/EU)", "UK Bribery Act 2010 (where applicable)"]
+    },
+    {
+      "document_type": "EU Taxonomy Disclosure",
+      "document_id": "TAX-001",
+      "governing_standards": [
+        "EU Taxonomy Regulation (EU) 2020/852",
+        "Delegated Act for Climate Change Mitigation and Adaptation (EU) 2021/2139",
+        "Delegated Act for remaining four objectives (EU) 2023/2485",
+        "ESRS 2 - Appendix B: Mandatory EU Taxonomy KPI disclosures"
+      ],
+      "mandatory": true,
+      "mandatory_note": "Mandatory for all CSRD in-scope companies regardless of materiality; no opt-out",
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year",
+        "lookback_comparative_years_minimum": 1
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_kpi_disclosure_required": true,
+          "eligibility_and_alignment_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_kpi_disclosure_required": true,
+          "eligibility_and_alignment_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "full_kpi_disclosure_required": true,
+          "simplified_presentation_permitted": true,
+          "note": "Full Taxonomy KPIs required but simplified narrative permitted"
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_kpi_disclosure_required": true,
+          "scope_note": "KPIs cover EU-nexus economic activities only"
+        }
+      ],
+      "content": {
+        "qualitative": false,
+        "quantitative": true,
+        "forward_looking": false,
+        "six_environmental_objectives": [
+          "1. Climate Change Mitigation",
+          "2. Climate Change Adaptation",
+          "3. Sustainable Use and Protection of Water and Marine Resources",
+          "4. Transition to a Circular Economy",
+          "5. Pollution Prevention and Control",
+          "6. Protection and Restoration of Biodiversity and Ecosystems"
+        ],
+        "dnsh_required": true,
+        "minimum_social_safeguards_required": true,
+        "minimum_safeguards_reference": "OECD Guidelines for MNEs and UN Guiding Principles on Business and Human Rights",
+        "key_kpis": [
+          "Taxonomy-eligible turnover (%)",
+          "Taxonomy-aligned turnover (%)",
+          "Taxonomy-eligible capex (%)",
+          "Taxonomy-aligned capex (%)",
+          "Taxonomy-eligible opex (%)",
+          "Taxonomy-aligned opex (%)"
+        ],
+        "primary_units": ["%", "EUR"]
+      }
+    },
+    {
+      "document_type": "Narrative Strategy and Governance Document",
+      "document_id": "GOV-001",
+      "governing_standards": [
+        "ESRS 1 - General Requirements, Sections 4-5: Strategy, Governance, Materiality integration",
+        "ESRS 2 - GOV-1 to GOV-5, SBM-1 to SBM-3, IRO-1 to IRO-2"
+      ],
+      "mandatory": true,
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "end_of_financial_year",
+        "max_filing_lag_days": 120,
+        "board_review_cadence": "at_minimum_annual",
+        "note": "Strategy reviewed at least annually; governance structures updated as changes occur"
+      },
+      "timeframe": {
+        "period_covered": "full_financial_year_plus_forward_looking",
+        "lookback_comparative_years_minimum": 1,
+        "forward_looking_horizon_short_years": 1,
+        "forward_looking_horizon_medium_years": 5,
+        "forward_looking_horizon_long_years": 10
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_disclosure_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_disclosure_required": true
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_disclosure_required": true
+        }
+      ],
+      "content": {
+        "qualitative": true,
+        "quantitative": false,
+        "forward_looking": true,
+        "areas": [
+          "Integration of sustainability in overall business strategy and business model",
+          "Board and senior management sustainability oversight (committee names, meeting frequency, topics reviewed)",
+          "Risk and opportunity identification, assessment, and management processes for all material ESRS topics",
+          "Linkage between sustainability targets and financial planning cycles",
+          "Stakeholder engagement approach, frequency, and outcomes that informed strategy"
+        ]
+      },
+      "assurance": {
+        "required": true,
+        "current_level": "limited",
+        "note": "Narrative sections included in the assured Sustainability Report perimeter"
+      }
+    },
+    {
+      "document_type": "Assurance Documentation Package",
+      "document_id": "ASS-001",
+      "governing_standards": [
+        "ESRS 1 - General Requirements, Section 9: Assurance",
+        "ISAE 3000 (Revised) - Assurance Engagements Other than Audits or Reviews (IAASB)",
+        "ISSA 5000 - International Standard on Sustainability Assurance (IAASB, forthcoming)"
+      ],
+      "mandatory": true,
+      "frequency": {
+        "cadence": "annual",
+        "collections_per_year": 1,
+        "trigger": "concurrent_with_sustainability_report_finalization",
+        "max_filing_lag_days": 120,
+        "internal_controls_review_cadence": "quarterly",
+        "note": "Internal controls tested quarterly; external assurance engagement completed annually before filing"
+      },
+      "timeframe": {
+        "period_covered": "same_as_sustainability_report",
+        "lookback_comparative_years_minimum": null
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "assurance_level_required": "limited",
+          "transition_to_reasonable": true,
+          "transition_year_tbc": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "assurance_level_required": "limited",
+          "transition_to_reasonable": true,
+          "transition_year_tbc": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "assurance_level_required": "limited",
+          "transition_to_reasonable": false
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "assurance_level_required": "limited",
+          "transition_to_reasonable": true,
+          "transition_year_tbc": true
+        }
+      ],
+      "content": {
+        "areas": [
+          "Verification of all reported ESG KPIs (Scope 1/2/3 GHG, energy, water, waste, social and governance metrics)",
+          "Internal controls design adequacy and operating effectiveness",
+          "Calculation methodologies documented with reference to GHG Protocol, ESRS, and applicable conversion factors",
+          "Third-party assurance engagement evidence and assurance report",
+          "Management representation letters",
+          "Audit trails linking reported figures to source systems and data owners"
+        ]
+      }
+    },
+    {
+      "document_type": "Data Collection Logs",
+      "document_id": "DCL-001",
+      "governing_standards": [
+        "ESRS 1 - General Requirements, Section 7: Reporting Quality Principles",
+        "Internal data governance policy (no single ESRS reference; supports all ESRS disclosures)"
+      ],
+      "mandatory": true,
+      "mandatory_note": "Internal document required to demonstrate accuracy and verifiability; not published but reviewed by assurance provider",
+      "frequency": {
+        "cadence": "ongoing",
+        "collections_per_year": null,
+        "environmental_data_collection_cadence": "monthly",
+        "hr_data_collection_cadence": "monthly",
+        "safety_incident_data_cadence": "real_time_then_monthly_consolidated",
+        "supplier_data_cadence": "annually_or_per_audit_cycle",
+        "annual_consolidation_required": true,
+        "trigger": "continuous",
+        "max_filing_lag_days": null
+      },
+      "timeframe": {
+        "period_covered": "current_and_historical",
+        "lookback_years_minimum": 3,
+        "lookback_years_recommended": 5,
+        "ghg_base_year_data_retained": true,
+        "ghg_base_year_retention_note": "GHG base year data retained indefinitely for recalculation purposes"
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "granularity": "full",
+          "scope_3_categories_required_minimum": [1, 11]
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "granularity": "full",
+          "scope_3_categories_required_minimum": [1, 11]
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "granularity": "simplified",
+          "scope_3_required": false,
+          "note": "Data collection proportionate to ESRS LSME disclosure requirements"
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "granularity": "full",
+          "scope_note": "Minimum: EU operations data; group-level consolidation preferred"
+        }
+      ],
+      "content": {
+        "data_domains": [
+          {
+            "domain": "Energy",
+            "metrics": ["electricity_kwh", "heat_kwh", "fuel_by_type_litres", "total_energy_mwh", "renewable_energy_%"],
+            "collection_cadence": "monthly",
+            "source_systems": ["utility_meters", "fuel_cards", "energy_management_system"]
+          },
+          {
+            "domain": "GHG Emissions Scope 1",
+            "metrics": ["direct_combustion_tco2e", "process_emissions_tco2e", "fugitive_emissions_tco2e"],
+            "collection_cadence": "monthly",
+            "source_systems": ["fuel_consumption_data", "process_monitoring", "refrigerant_logs"]
+          },
+          {
+            "domain": "GHG Emissions Scope 2",
+            "metrics": ["market_based_tco2e", "location_based_tco2e", "renewable_energy_certificates_used"],
+            "collection_cadence": "monthly",
+            "source_systems": ["electricity_invoices", "energy_attribute_certificates"]
+          },
+          {
+            "domain": "GHG Emissions Scope 3",
+            "metrics": ["category_1_purchased_goods_tco2e", "category_11_use_of_sold_products_tco2e", "all_15_categories_where_material_tco2e"],
+            "collection_cadence": "annual",
+            "source_systems": ["spend_data", "supplier_surveys", "product_LCA_data", "logistics_data"]
+          },
+          {
+            "domain": "Water",
+            "metrics": ["withdrawal_m3_by_source", "consumption_m3", "discharge_m3_by_destination", "water_stressed_area_m3"],
+            "collection_cadence": "monthly",
+            "source_systems": ["water_meters", "utility_invoices", "environmental_permits"]
+          },
+          {
+            "domain": "Waste",
+            "metrics": ["total_waste_tonnes_by_type", "hazardous_waste_tonnes", "disposal_route_%_by_method"],
+            "collection_cadence": "monthly",
+            "source_systems": ["waste_manifests", "contractor_certificates", "weighbridge_data"]
+          },
+          {
+            "domain": "HR Metrics",
+            "metrics": ["headcount_by_gender_country_type", "turnover_rate_%", "absenteeism_rate_%", "training_hours_total_and_per_employee", "gender_pay_gap_%", "ceo_pay_ratio"],
+            "collection_cadence": "monthly",
+            "source_systems": ["hris", "payroll_system", "lms"]
+          },
+          {
+            "domain": "Health and Safety",
+            "metrics": ["trir_per_200k_hours", "lost_time_injury_rate", "fatalities_count", "near_miss_count", "work_related_ill_health_cases"],
+            "collection_cadence": "real_time_incident_reporting_monthly_consolidated",
+            "source_systems": ["hse_management_system", "incident_reporting_tool"]
+          },
+          {
+            "domain": "Supply Chain ESG",
+            "metrics": ["suppliers_screened_count", "suppliers_audited_count", "critical_findings_count", "corrective_actions_open_count", "corrective_actions_closed_count"],
+            "collection_cadence": "per_audit_event_annual_summary",
+            "source_systems": ["supplier_audit_platform", "crm", "procurement_system"]
+          }
+        ]
+      }
+    },
+    {
+      "document_type": "Control and QA Procedure Documentation",
+      "document_id": "QA-001",
+      "governing_standards": [
+        "ESRS 1 - General Requirements, Section 7: Reporting Quality (accuracy, completeness, verifiability)",
+        "ISAE 3000 (Revised) - internal control requirements for assurance readiness"
+      ],
+      "mandatory": true,
+      "mandatory_note": "Internal document; reviewed by assurance provider as part of limited/reasonable assurance engagement",
+      "frequency": {
+        "cadence": "ongoing",
+        "collections_per_year": null,
+        "formal_review_cadence": "annual",
+        "update_trigger": "on_process_or_methodology_change",
+        "internal_audit_cadence": "annual",
+        "controls_testing_cadence": "quarterly"
+      },
+      "timeframe": {
+        "period_covered": "current_and_historical",
+        "version_history_retained": true,
+        "version_history_minimum_years": 5
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "controls_scope": "full_esrs_kpi_population",
+          "external_assurance_required": true
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "controls_scope": "full_esrs_kpi_population",
+          "external_assurance_required": true
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "controls_scope": "esrs_lsme_kpi_population",
+          "external_assurance_required": true
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "controls_scope": "full_esrs_kpi_population_eu_nexus",
+          "external_assurance_required": true
+        }
+      ],
+      "content": {
+        "areas": [
+          "Data quality controls: completeness checks, outlier detection thresholds, gap estimation methodology and triggers",
+          "Calculation verification: formula documentation, unit conversion factors and sources, third-party emission factor references and vintage",
+          "Scope boundary definitions: consolidation approach (operational control / financial control / equity share) and rationale",
+          "Audit trail and version control: change log for all reported data points including who changed, what, and when",
+          "Escalation and restatement procedures: criteria for prior period corrections and mandatory disclosure of restatements per ESRS 1 Section 6"
+        ]
+      }
+    },
+    {
+      "document_type": "Historical Records for Trend Analysis",
+      "document_id": "HIS-001",
+      "governing_standards": [
+        "ESRS 1 - General Requirements, Section 6: Comparative Information",
+        "ESRS E1-6 (GHG base year inventory retention)",
+        "EU Taxonomy Regulation (year-on-year KPI tracking requirement)"
+      ],
+      "mandatory": true,
+      "frequency": {
+        "cadence": "ongoing",
+        "collections_per_year": null,
+        "formal_review_cadence": "annual",
+        "trigger": "continuous_maintenance_with_annual_reconciliation"
+      },
+      "timeframe": {
+        "period_covered": "all_previous_csrd_reporting_years",
+        "lookback_years_minimum": 3,
+        "lookback_years_recommended": 5,
+        "ghg_base_year_retained_indefinitely": true,
+        "taxonomy_kpi_history_minimum_years": 3
+      },
+      "company_applicability": [
+        {
+          "csrd_phase": 1,
+          "employee_threshold_min": 500,
+          "net_turnover_threshold_eur": 40000000,
+          "full_historical_record_required": true,
+          "first_comparative_year": 2023
+        },
+        {
+          "csrd_phase": 2,
+          "employee_threshold_min": 250,
+          "net_turnover_threshold_eur": 40000000,
+          "full_historical_record_required": true,
+          "first_comparative_year": 2024
+        },
+        {
+          "csrd_phase": 3,
+          "label": "Listed SMEs",
+          "employee_threshold_max": 249,
+          "simplified_historical_record_required": true,
+          "first_comparative_year": 2025
+        },
+        {
+          "csrd_phase": 4,
+          "eu_net_turnover_threshold_eur": 150000000,
+          "full_historical_record_required": true,
+          "first_comparative_year": 2027
+        }
+      ],
+      "content": {
+        "areas": [
+          "All previously reported ESRS E1-E5, S1-S4, G1 KPIs by year",
+          "EU Taxonomy KPIs (turnover %, capex %, opex %) by year and objective",
+          "Policy changes, governance updates, and strategy revisions (dated)",
+          "Materiality decisions from prior DMA cycles with rationale",
+          "Changes in material topic scope year-on-year",
+          "Target trajectories and milestone progress by year"
+        ]
+      },
+      "restatement_rules": {
+        "restatement_required_when": [
+          "Methodology change that affects comparability",
+          "Acquisition or disposal that alters consolidation boundary",
+          "Discovery and correction of material errors"
+        ],
+        "restatement_disclosure_required": true,
+        "restatement_standard_reference": "ESRS 1 Section 6",
+        "restatement_flag_in_report": true
+      }
+    }
+  ]
+}

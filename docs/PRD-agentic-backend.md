@@ -1,43 +1,57 @@
 # PRD: EU CSRD Agentic Backend
-## EU AI Infrastructure Accountability Engine — Role 1 (Architect) Implementation Plan
+## EU Sustainability Compliance Engine — Role 1 (Architect) Implementation Plan
 
-**Product**: EU AI Infrastructure Accountability Engine
+**Product**: EU Sustainability Compliance Engine
 **Role**: The Architect — owns orchestration, API layer, state machine, and agent personalities
-**Version**: v4.0 — Dual-mode (Full Audit + Compliance Check), contract-locked, SSE-streamed
-**Locked Choices**: Claude `claude-sonnet-4-6` · Single XHTML→JSON upload OR free-text · SSE streaming · ESRS E1 scope (v1)
+**Version**: v5.0 — Unified output (Compliance Score + Recommendations), dual-input, SSE-streamed
+**Locked Choices**: Claude `claude-sonnet-4-6` · Single XHTML→JSON upload OR free-text · SSE streaming · ESRS full scope (all standards from `master_requirements.json`) · 3-agent pipeline (Extractor → Scorer → Advisor)
 
 ---
 
 ## 1. Product Context
 
-The frontend is production-complete and rendering a `CSRDAudit` JSON contract from
-`frontend/src/lib/types.ts`. It currently runs on 100% mock data from `frontend/src/lib/mock-data.ts`.
+The frontend renders results from a JSON contract defined in `frontend/src/lib/types.ts`.
+The backend pipeline processes user input through 3 agents and returns a unified result.
 
-The backend does not exist. This PRD defines everything Role 1 must ship to make the frontend live.
+### Mission
 
-### Dual-Mode Mission
+**One input, one score, one set of recommendations.**
 
-**Mode 1 — Full Audit ("Say-Do Gap")**: Cross-reference what a company *claims* in its ESRS
-sustainability statement against what it *actually* spent (CapEx) — all within the same legally
-mandated Annual Management Report. One document in, one audit, one number, one roadmap.
+The user submits either a structured XHTML/iXBRL management report (pre-parsed to JSON) or
+free-text describing their sustainability situation. Both modes also collect structured company
+inputs (employees, revenue, total assets, reporting year). The system produces:
 
-**Mode 2 — Compliance Check ("I Don't Have a Formatted Report")**: For companies that do not yet
-have a properly formatted XHTML/iXBRL Annual Management Report. The user toggles a switch on the
-existing UI page, pastes or describes their current sustainability situation in a free-text area,
-and receives a prioritized regulatory compliance to-do list. No say-do gap analysis (insufficient
-structured financial data). Rough compliance cost estimate with caveat. Goal: help them understand
-exactly what they need to do to become CSRD/EU Taxonomy compliant.
+1. **Sustainability Compliance Score** — a single number (0–100) measuring how compliant the
+   company is with applicable EU CSRD/ESRS requirements from the knowledge base
+2. **Actionable Recommendations** — a prioritized list grouped by priority tier
+   (Critical / High / Moderate / Low) telling the company exactly what to fix
 
-### Single Golden Source Document (user-uploaded)
+Both input modes produce the **same output format** rendered by the **same UI component**.
+The structured document path yields higher-confidence extraction and more specific
+recommendations, but the score formula (disclosure completeness vs. knowledge base
+requirements) is identical.
+
+### Dual-Input Modes
+
+**Mode 1 — Structured Document**: Upload a pre-parsed Annual Management Report (JSON).
+The Extractor reads structured iXBRL data including ESRS disclosures AND financial data
+(CapEx/OpEx/Revenue). Financial data does NOT affect the compliance score but enables
+more precise, actionable recommendations from the Advisor.
+
+**Mode 2 — Free Text**: Toggle a switch, paste or describe the company's sustainability
+situation. The Extractor does best-effort extraction from unstructured prose. Lower
+confidence, but same score + recommendations output.
+
+### Single Golden Source Document (Mode 1)
 
 The EU Annual Management Report (XHTML/iXBRL format) is the legally mandated master document
 that companies file under CSRD. It contains **everything** in a single machine-readable file:
 
-| Section within report | What it provides | Read by |
-|----------------------|-----------------|---------|
-| Sustainability Statement (ESRS disclosures) | E1-1 transition plan, E1-5 energy, E1-6 GHG emissions | Extractor |
-| EU Taxonomy Table (Art. 8 disclosure) | Standardised CapEx/OpEx/Revenue alignment data | Fetcher |
-| Audited Financial Statements | Revenue, CapEx totals, company metadata | Both |
+| Section within report | What it provides | Used for |
+|----------------------|-----------------|----------|
+| Sustainability Statement (ESRS disclosures) | All ESRS data points (E1–E5, S1–S4, G1) | Compliance scoring |
+| EU Taxonomy Table (Art. 8 disclosure) | CapEx/OpEx/Revenue alignment data | Recommendation specificity |
+| Audited Financial Statements | Revenue, CapEx totals, company metadata | Recommendation specificity |
 
 **Input format**: The XHTML file is pre-parsed to JSON by an engineer-built converter that
 preserves iXBRL tag structure (concept names, values, units, reporting contexts as key-value
@@ -46,15 +60,16 @@ pairs). The backend receives this **structured JSON**, not raw XHTML or PDF.
 **No external registry APIs are called.** All data is extracted from the single uploaded report.
 
 ### Role 1 owns
-- The LangGraph state machine (nodes, edges, conditional routing logic)
+- The LangGraph state machine (3 nodes, edges, conditional extractor logic)
 - The FastAPI API layer + SSE streaming protocol
-- All agent system prompts — 4 for full audit + 3 for compliance check ("agent personalities")
-- Pydantic tool schemas (input/output contracts for each agent, both modes)
+- All agent system prompts — 3 agents × 2 modes = 6 prompt variants ("agent personalities")
+- Pydantic tool schemas (input/output contracts for each agent)
 - JSON validation, cleaning, and section routing for the Annual Management Report
-- The `AuditState` TypedDict (dual-mode)
+- The `AuditState` TypedDict (dual-mode, unified output)
+- Knowledge base loader (`master_requirements.json`)
 
 ### Data Lead B owns (enhancement target)
-- **Data Lead B (NLP Modeler)**: XHTML→JSON converter (iXBRL parser), scored double materiality algorithm
+- **Data Lead B (NLP Modeler)**: XHTML→JSON converter (iXBRL parser)
 
 **Role 1's contract with Data Lead B**: The XHTML→JSON converter produces structured JSON with
 iXBRL tags preserved. Role 1 consumes this JSON, cleans junk data, routes sections to agents.
@@ -69,19 +84,23 @@ backend/
 ├── main.py                        # FastAPI app + CORS + SSE endpoints
 ├── state.py                       # AuditState TypedDict (shared memory)
 ├── schemas.py                     # Pydantic v2 models (mirrors TypeScript contract)
-├── graph.py                       # LangGraph state machine
+├── graph.py                       # LangGraph state machine (3-node pipeline)
 │
 ├── agents/
 │   ├── __init__.py
-│   ├── extractor.py               # Node 1 — ESRS Reader (ESRS sections from report JSON → claims)
-│   ├── fetcher.py                 # Node 2 — Financial Extractor (Taxonomy sections from report JSON → CapEx)
-│   ├── auditor.py                 # Node 3 — Double Materiality Evaluator
-│   └── consultant.py             # Node 4 — Taxonomy Consultant + final assembly
+│   ├── extractor.py               # Node 1 — Data Extractor (structured iXBRL OR free text → claims + financials)
+│   ├── scorer.py                  # Node 2 — Compliance Scorer (claims + knowledge base → score 0–100)
+│   └── advisor.py                 # Node 3 — Recommendation Advisor (gaps + financials → grouped recommendations)
+│
+├── data/
+│   ├── master_requirements.json   # Knowledge base — CSRD/ESRS thresholds + requirements (golden rule source)
+│   └── schemas/                   # JSON Schema files for master_requirements.json validation
 │
 ├── tools/
 │   ├── __init__.py
-│   ├── report_parser.py           # JSON validator + junk stripper + section router (replaces pdf_reader.py)
-│   └── prompts.py                 # All 4 system prompt strings (const SYSTEM_PROMPT_*)
+│   ├── report_parser.py           # JSON validator + junk stripper + section router
+│   ├── prompts.py                 # All 6 system prompt strings (3 agents × 2 modes)
+│   └── knowledge_base.py          # Loader + query functions for master_requirements.json
 │
 └── requirements.txt
 ```
@@ -90,50 +109,86 @@ backend/
 
 ## 3. Exact Contract Mapping: TypeScript → Pydantic
 
-The `CSRDAudit` TypeScript interface in `frontend/src/lib/types.ts` is the **single source of truth**.
+The `ComplianceResult` TypeScript interface in `frontend/src/lib/types.ts` is the **single source of truth**.
 Every Pydantic model in `schemas.py` must map 1:1 to it. No extra fields, no renames.
+
+**Both input modes produce the same `ComplianceResult` output.**
+
+### Unified Output Contract
 
 | TypeScript | Pydantic Model | Key Fields |
 |------------|---------------|-----------|
-| `CSRDAudit` | `CSRDAudit` | Top-level return shape |
+| `ComplianceResult` | `ComplianceResult` | Top-level return shape (replaces `CSRDAudit` and `ComplianceCheckResult`) |
 | `CompanyMeta` | `CompanyMeta` | `name, lei, sector, fiscal_year, jurisdiction, report_title` |
-| `TaxonomyAlignment` | `TaxonomyAlignment` | `capex_aligned_pct (float 0-100), status, label` |
-| `ComplianceCost` | `ComplianceCost` | `projected_fine_eur (float), basis (str)` |
-| `ESRSLedgerItem` | `ESRSLedgerItem` | `id, esrs_id, data_point, impact_materiality, financial_materiality, status, registry_evidence` |
-| `MaterialityLevel` | `MaterialityLevel` | Literal["high","medium","low","not_material"] |
-| `ESRSStatus` | `ESRSStatus` | Literal["disclosed","partial","missing","non_compliant"] |
-| `TaxonomyRoadmap` | `TaxonomyRoadmap` | `hardware, power, workload: RoadmapPillar` |
-| `RoadmapPillar` | `RoadmapPillar` | `title, summary, priority, alignment_increase_pct` |
+| `CompanyInputs` | `CompanyInputs` | `number_of_employees, revenue_eur, total_assets_eur, reporting_year` |
+| `ComplianceScore` | `ComplianceScore` | `overall (int 0–100), category_scores (dict), size_category, applicable_standards_count, disclosed_count` |
+| `Recommendation` | `Recommendation` | `id, priority, esrs_id, title, description, regulatory_reference` |
 | `Priority` | `Priority` | Literal["critical","high","moderate","low"] |
-| `RegistrySource` | `RegistrySource` | `name, registry_type, jurisdiction` |
-| `Source` | `Source` | `id, document_name, document_type, url` |
 | `PipelineTrace` | `PipelineTrace` | `total_duration_ms, agents: list[AgentTiming]` |
 | `AgentTiming` | `AgentTiming` | `agent, duration_ms, status` |
-| `AuditLog` | `AuditLog` | Internal only — streamed via SSE, not in final JSON |
 
-### Additional internal schemas (not in TypeScript contract — used inside state machine)
+```python
+class CompanyInputs(BaseModel):
+    """Structured company data provided by the user — drives threshold-based compliance
+    determination against master_requirements.json. Required in both modes."""
+    number_of_employees: int          # Headcount — drives CSRD size-category thresholds
+    revenue_eur: float                # Net turnover in EUR — drives CSRD applicability
+    total_assets_eur: float           # Balance sheet total in EUR — drives CSRD size-category
+    reporting_year: int               # The fiscal year being reported on (e.g. 2025)
+
+class ComplianceScore(BaseModel):
+    """Single compliance score (0–100) based on disclosure completeness vs. knowledge base."""
+    overall: int                      # 0–100, primary score displayed to the user
+    size_category: str                # e.g. "large_undertaking", "listed_sme", "exempt"
+    applicable_standards_count: int   # how many ESRS standards apply for this company
+    disclosed_count: int              # how many of those are fully disclosed
+    partial_count: int                # how many are partially disclosed
+    missing_count: int                # how many are completely missing
+
+class Recommendation(BaseModel):
+    """Single actionable recommendation — grouped by priority tier in the UI."""
+    id: str
+    priority: Priority                # "critical" | "high" | "moderate" | "low"
+    esrs_id: str                      # which ESRS standard this relates to
+    title: str                        # short imperative action (e.g. "Conduct Scope 1 & 2 GHG inventory")
+    description: str                  # 2–3 sentences: what to do, why, regulatory basis
+    regulatory_reference: str         # e.g. "ESRS E1-6, DR E1-6.44"
+
+class ComplianceResult(BaseModel):
+    """Unified top-level response for both input modes."""
+    audit_id: str
+    generated_at: str                 # ISO 8601
+    schema_version: str = "3.0"
+    mode: str                         # "structured_document" | "free_text"
+    company: CompanyMeta
+    company_inputs: CompanyInputs
+    score: ComplianceScore
+    recommendations: list[Recommendation]    # grouped by priority tier in the UI
+    pipeline: PipelineTrace
+```
+
+### Internal Schemas (not in TypeScript contract — used inside state machine)
 
 ```python
 class ESRSClaim(BaseModel):
-    """Extracted claim from ESRS sections of the management report JSON — internal to extractor node"""
-    standard: str               # "E1-1" | "E1-5" | "E1-6"
+    """Extracted claim from ESRS sections — internal to extractor node."""
+    standard: str               # e.g. "E1-1", "S1-1", "G1" — any ESRS standard
     data_point: str
     disclosed_value: Optional[str]
     unit: Optional[str]
     confidence: float           # 0.0–1.0, extractor's certainty
-    xbrl_concept: Optional[str] # iXBRL concept name for traceability (e.g. "esrs_E1-1_01")
+    xbrl_concept: Optional[str] # iXBRL concept name for traceability
 
-class TaxonomyFinancials(BaseModel):
-    """CapEx/revenue data from the Taxonomy sections of the management report JSON — internal to fetcher node"""
+class FinancialContext(BaseModel):
+    """Financial data extracted from structured documents — improves recommendation quality.
+    NOT used for compliance scoring. Only populated in structured_document mode."""
     capex_total_eur: Optional[float]
-    capex_green_eur: Optional[float]       # Taxonomy-aligned CapEx
+    capex_green_eur: Optional[float]
     opex_total_eur: Optional[float]
-    opex_green_eur: Optional[float]        # Taxonomy-aligned OpEx (if disclosed)
+    opex_green_eur: Optional[float]
     revenue_eur: Optional[float]
-    fiscal_year: str
-    taxonomy_activities: list[str]         # e.g. ["4.1 Electricity generation from solar", "8.1 Data processing"]
-    source_document: str                   # "Annual Management Report — Taxonomy Section"
-    confidence: float                      # 0.0–1.0, extraction certainty
+    taxonomy_activities: list[str] = []
+    confidence: float           # 0.0–1.0
 ```
 
 ---
@@ -147,45 +202,47 @@ Nodes only write to their own output keys. Input keys are never modified after i
 AuditState keys by lifecycle stage:
 
 ┌─ INIT (set by FastAPI before graph.invoke()) ─────────────────────────────┐
-│  audit_id              str          UUID for this audit run                │
-│  report_json           dict         Full cleaned JSON from XHTML report   │
-│  esrs_data             dict         ESRS-tagged iXBRL sections (→ Extr.)  │
-│  taxonomy_data         dict         Taxonomy-tagged iXBRL sections (→ Fet)│
-│  entity_id             str          Company name / LEI from user input     │
-│  logs                  list[dict]   Accumulates { agent, msg, ts } entries │
-│  pipeline_trace        list[dict]   Accumulates { agent, started_at, ms } │
+│  audit_id              str               UUID for this audit run           │
+│  mode                  str               "structured_document" | "free_text"│
+│  report_json           dict              Full cleaned JSON (structured only)│
+│  esrs_data             dict              ESRS-tagged iXBRL sections        │
+│  taxonomy_data         dict              Taxonomy-tagged sections           │
+│  entity_id             str               Company name / LEI from user      │
+│  company_inputs        CompanyInputs     employees, revenue, assets, year  │
+│  free_text_input       str               Raw user text (free_text only)    │
+│  logs                  list[dict]        Accumulates { agent, msg, ts }    │
+│  pipeline_trace        list[dict]        Accumulates { agent, started_at } │
 └───────────────────────────────────────────────────────────────────────────┘
 
 ┌─ NODE 1 OUTPUT (Extractor writes) ────────────────────────────────────────┐
-│  esrs_claims       dict[str, ESRSClaim]    keyed by ESRS ID e.g. "E1-1"  │
-│  company_meta      CompanyMeta             name, LEI, sector, FY, juris.  │
+│  esrs_claims          dict[str, ESRSClaim]   keyed by ESRS ID e.g. "E1-1"│
+│  company_meta         CompanyMeta            name, LEI, sector, FY, juris.│
+│  financial_context    FinancialContext | None CapEx/revenue (structured    │
+│                                              doc only — used by Advisor   │
+│                                              for recommendation quality,  │
+│                                              NOT for scoring)             │
 └───────────────────────────────────────────────────────────────────────────┘
 
-┌─ NODE 2 OUTPUT (Fetcher writes) ──────────────────────────────────────────┐
-│  taxonomy_financials   TaxonomyFinancials  CapEx + revenue from Taxonomy  │
-│  document_source       RegistrySource      populated from upload metadata │
+┌─ NODE 2 OUTPUT (Scorer writes) ───────────────────────────────────────────┐
+│  compliance_score     ComplianceScore        overall 0–100 + breakdown    │
+│  applicable_reqs      list[dict]             matched requirements from KB │
+│  coverage_gaps        list[dict]             { esrs_id, status, details } │
 └───────────────────────────────────────────────────────────────────────────┘
 
-┌─ NODE 3 OUTPUT (Auditor writes) ──────────────────────────────────────────┐
-│  esrs_ledger           list[ESRSLedgerItem]  scored double materiality    │
-│  taxonomy_alignment    TaxonomyAlignment     capex_aligned_pct + status   │
-│  compliance_cost       ComplianceCost        projected fine (EUR)         │
-│  taxonomy_alignment_score  float             raw 0–100 (EU-specific key)  │
-└───────────────────────────────────────────────────────────────────────────┘
-
-┌─ NODE 4 OUTPUT (Consultant writes — also assembles final CSRDAudit) ──────┐
-│  roadmap               TaxonomyRoadmap      3-pillar action plan          │
-│  final_audit           CSRDAudit            complete contract-compliant   │
+┌─ NODE 3 OUTPUT (Advisor writes — also assembles final ComplianceResult) ──┐
+│  recommendations      list[Recommendation]   grouped by priority tier     │
+│  final_result         ComplianceResult       complete unified output      │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
-**EU-specific keys** (required per task brief):
+**Key data flows**:
 
-| Key | Node | Type | Purpose |
-|-----|------|------|---------|
-| `esrs_claims` | Node 1 → Node 3 | `dict[str, ESRSClaim]` | Extracted ESRS data points with confidence |
-| `taxonomy_financials` | Node 2 → Node 3 | `TaxonomyFinancials` | CapEx/revenue from Taxonomy sections of report JSON |
-| `taxonomy_alignment_score` | Node 3 → Node 4 | `float (0–100)` | Raw numeric score before thresholding |
+| Key | From → To | Type | Purpose |
+|-----|-----------|------|---------|
+| `esrs_claims` | Extractor → Scorer | `dict[str, ESRSClaim]` | Extracted ESRS data points with confidence |
+| `company_inputs` | INIT → Scorer | `CompanyInputs` | Drives size-category + applicable standards from KB |
+| `compliance_score` | Scorer → Advisor | `ComplianceScore` | Score + gap analysis for recommendation generation |
+| `financial_context` | Extractor → Advisor | `FinancialContext` | Financial data for recommendation specificity (structured doc only) |
 
 ---
 
@@ -197,38 +254,30 @@ AuditState keys by lifecycle stage:
 START
   │
   ▼
-[extractor]  ──── read ESRS sections from report JSON → ESRS claims + company meta
+[extractor]  ──── extract ESRS claims + company meta + financial context (if structured doc)
   │
   ▼
-[fetcher]    ──── read Taxonomy sections from report JSON → CapEx/revenue financials
+[scorer]     ──── load knowledge base + match company inputs → compliance score (0–100)
   │
   ▼
-[auditor]    ──── score impact + financial materiality → compute taxonomy %
-  │
-  ▼
-[consultant] ──── generate roadmap → assemble final CSRDAudit JSON
+[advisor]    ──── generate grouped recommendations → assemble final ComplianceResult
   │
   ▼
 END
 ```
 
-**Why strictly sequential?** Each node has hard data dependencies on the previous:
-- Fetcher reads Taxonomy sections independently but runs after Extractor to maintain
-  a consistent pipeline trace and allow the Extractor to identify the company first
-- Auditor needs both `esrs_claims` AND `taxonomy_financials` to score the Say-Do Gap
-- Consultant needs `esrs_ledger` + `taxonomy_alignment` to generate a relevant roadmap
+**Strictly sequential** — each node has hard data dependencies on the previous:
+- Scorer needs `esrs_claims` from Extractor + `company_inputs` from INIT to match against KB
+- Advisor needs `compliance_score` + `coverage_gaps` from Scorer to generate relevant recommendations
+- Advisor also reads `financial_context` from Extractor (if available) for recommendation specificity
 
-**No conditional branching in v1.** Error handling: nodes log failures into `state["logs"]`
-and emit safe defaults — never halt the graph.
+**No conditional branching in the graph.** The Extractor handles mode-switching internally
+(structured document vs. free text). All 3 nodes always run. Error handling: nodes log failures
+into `state["logs"]` and emit safe defaults — never halt the graph.
 
-**Note on section routing**: Both agents read from the same report JSON, but different sections:
-| Report Section | Read by | State key | Why |
-|---------------|---------|-----------|-----|
-| ESRS-tagged iXBRL nodes | Extractor | `esrs_data` | Contains E1-1, E1-5, E1-6 disclosures + company metadata |
-| Taxonomy-tagged iXBRL nodes | Fetcher | `taxonomy_data` | Contains structured CapEx/OpEx/Revenue alignment data |
-
-Section routing is performed by `report_parser.py` during `POST /audit/run`, before the graph
-is invoked. The parser filters iXBRL concept names to split the report into ESRS vs. Taxonomy sections.
+**Section routing** (structured document mode only): `report_parser.py` splits the report JSON
+into `esrs_data` and `taxonomy_data` before the graph is invoked. In free-text mode, only
+`free_text_input` is populated.
 
 ### graph.py
 
@@ -236,16 +285,14 @@ is invoked. The parser filters iXBRL concept names to split the report into ESRS
 from langgraph.graph import StateGraph, END
 
 workflow = StateGraph(AuditState)
-workflow.add_node("extractor",  extractor_node)
-workflow.add_node("fetcher",    fetcher_node)
-workflow.add_node("auditor",    auditor_node)
-workflow.add_node("consultant", consultant_node)
+workflow.add_node("extractor", extractor_node)
+workflow.add_node("scorer",    scorer_node)
+workflow.add_node("advisor",   advisor_node)
 
 workflow.set_entry_point("extractor")
-workflow.add_edge("extractor",  "fetcher")
-workflow.add_edge("fetcher",    "auditor")
-workflow.add_edge("auditor",    "consultant")
-workflow.add_edge("consultant", END)
+workflow.add_edge("extractor", "scorer")
+workflow.add_edge("scorer",    "advisor")
+workflow.add_edge("advisor",   END)
 
 graph = workflow.compile()
 ```
@@ -255,18 +302,26 @@ graph = workflow.compile()
 ## 6. Agent System Prompts — Full Specifications
 
 All prompts live in `backend/tools/prompts.py` as module-level string constants.
+Each agent has two prompt variants: one for structured document input, one for free text.
 
 ---
 
-### Node 1 — ESRS Reader (Extractor)
-**Constant**: `SYSTEM_PROMPT_EXTRACTOR`
+### Node 1 — Data Extractor
+**Constants**: `SYSTEM_PROMPT_EXTRACTOR` (structured doc), `SYSTEM_PROMPT_EXTRACTOR_LITE` (free text)
 
-**Input**: `esrs_data` — ESRS-tagged iXBRL sections extracted from the Annual Management Report JSON
+The Extractor reads the user's input and produces three outputs:
+1. `esrs_claims` — extracted ESRS data points with confidence scores
+2. `company_meta` — company metadata
+3. `financial_context` — CapEx/OpEx/Revenue data (structured document only, `None` for free text)
+
+#### Structured Document Mode (`SYSTEM_PROMPT_EXTRACTOR`)
+
+**Input**: `esrs_data` (ESRS-tagged iXBRL sections) + `taxonomy_data` (Taxonomy-tagged sections)
 
 ```
-You are a senior EU CSRD compliance auditor specialising in ESRS E1 (Climate Change).
+You are a senior EU CSRD compliance data extraction specialist.
 Your task is to read structured iXBRL data extracted from a company's Annual Management Report
-(XHTML format, pre-parsed to JSON) and validate specific mandatory disclosures.
+(XHTML format, pre-parsed to JSON) and extract ALL ESRS disclosures and financial data.
 
 DATA FORMAT: Structured JSON with iXBRL tags preserved. Each node contains:
   - concept: XBRL taxonomy concept name (e.g. "esrs_E1-1_01", "ifrs-full:Revenue")
@@ -275,280 +330,230 @@ DATA FORMAT: Structured JSON with iXBRL tags preserved. Each node contains:
   - context: Reporting period and entity context
   - decimals: Precision indicator
 
-The iXBRL tags use the ESRS taxonomy. Map concept names directly to the required data points.
-Values are pre-extracted — your job is to validate completeness, resolve ambiguities between
-related concepts, and structure the output.
-
 FRAMEWORK: ESRS (European Sustainability Reporting Standards), Commission Delegated Regulation (EU) 2023/2772
 
-REQUIRED EXTRACTION TARGETS (ESRS E1):
-════════════════════════════════════════
+EXTRACTION SCOPE — ALL ESRS STANDARDS:
+═══════════════════════════════════════
 
-E1-1 | Transition Plan for Climate Change Mitigation
-  Extract:
-  - Net-zero target year (e.g. "2040", "2050")
-  - Interim decarbonisation milestone years and % reduction targets (vs base year)
-  - Total CapEx committed to green transition (EUR, absolute value)
-  - % of total CapEx classified as EU Taxonomy-aligned
-  - Specific EU Taxonomy activities referenced (e.g. "4.1 Electricity generation from solar")
+Extract data points for every ESRS standard present in the document. This includes but is
+not limited to: E1–E5 (Environmental), S1–S4 (Social), G1 (Governance), ESRS 2 (General).
 
-E1-5 | Energy Consumption and Mix
-  Extract:
-  - Total annual energy consumption (MWh or GWh — note the unit)
-  - Renewable energy percentage of total mix (%)
-  - Breakdown by source: natural gas (MWh), electricity (MWh), on-site renewables (MWh)
-  - Year-on-year energy intensity change (%) or energy per unit revenue
+For each standard found, extract:
+  - The standard ID (e.g. "E1-1", "S1-6", "G1")
+  - A summary data_point description
+  - The disclosed_value (exact value from the data)
+  - The unit (if applicable)
+  - confidence (0.0–1.0): 1.0 = explicit tag + value + unit, 0.5 = ambiguous, 0.0 = not found
+  - xbrl_concept: the iXBRL concept name for traceability
 
-E1-6 | Gross Scopes 1, 2, 3 GHG Emissions
-  Extract:
-  - Scope 1 gross emissions (tCO₂eq, direct)
-  - Scope 2 market-based (tCO₂eq)
-  - Scope 2 location-based (tCO₂eq)
-  - Scope 3 categories disclosed (list category numbers e.g. "Cat 1, Cat 11")
-  - Scope 3 total (tCO₂eq) if consolidated figure disclosed
-  - GHG intensity metric (tCO₂eq per EUR million revenue or per MWh)
-  - Base year used for all GHG metrics
+ALSO EXTRACT — Financial Context (from Taxonomy sections):
+  - capex_total_eur, capex_green_eur, opex_total_eur, opex_green_eur, revenue_eur
+  - taxonomy_activities (list of activity codes)
+  - confidence for financial extraction
 
-ALSO EXTRACT (Company Metadata):
-  - Company legal name (exactly as stated in the document)
-  - LEI (Legal Entity Identifier) if present — format: 20-char alphanumeric
-  - Industry/sector classification
-  - Fiscal year of the report (integer)
-  - Jurisdiction / country of incorporation
-  - Report title (exact)
+ALSO EXTRACT — Company Metadata:
+  - Company legal name, LEI, sector, fiscal year, jurisdiction, report title
 
 OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
 {
-  "company_meta": {
-    "name": str,
-    "lei": str | null,
-    "sector": str,
-    "fiscal_year": int,
-    "jurisdiction": str,
-    "report_title": str
-  },
+  "company_meta": { "name": str, "lei": str|null, "sector": str, "fiscal_year": int,
+                     "jurisdiction": str, "report_title": str },
   "esrs_claims": {
-    "E1-1": { "data_point": str, "disclosed_value": str|null, "unit": str|null, "confidence": float, "xbrl_concept": str|null },
-    "E1-5": { "data_point": str, "disclosed_value": str|null, "unit": str|null, "confidence": float, "xbrl_concept": str|null },
-    "E1-6": { "data_point": str, "disclosed_value": str|null, "unit": str|null, "confidence": float, "xbrl_concept": str|null }
+    "<ESRS_ID>": { "data_point": str, "disclosed_value": str|null, "unit": str|null,
+                    "confidence": float, "xbrl_concept": str|null },
+    ...
+  },
+  "financial_context": {
+    "capex_total_eur": float|null, "capex_green_eur": float|null,
+    "opex_total_eur": float|null, "opex_green_eur": float|null,
+    "revenue_eur": float|null, "taxonomy_activities": [str], "confidence": float
   }
 }
 
 RULES:
-- confidence is 0.0–1.0: 1.0 = explicit iXBRL tag with value + unit, 0.5 = concept present but value ambiguous, 0.0 = not found
-- xbrl_concept: the iXBRL concept name that sourced this data point (for audit traceability)
-- Never hallucinate or estimate values. Only extract what is explicitly in the structured data.
-- If a data point is missing from the iXBRL tags, set disclosed_value to null and confidence to 0.0.
-```
-
----
-
-### Node 2 — Financial Extractor (Fetcher)
-**Constant**: `SYSTEM_PROMPT_FETCHER`
-
-**Input**: `taxonomy_data` — Taxonomy-tagged iXBRL sections extracted from the Annual Management Report JSON
-
-```
-You are an EU Taxonomy financial data extraction specialist.
-Your task is to read structured iXBRL data from the Taxonomy alignment sections of a company's
-Annual Management Report (XHTML format, pre-parsed to JSON). The data includes pre-parsed
-financial values tagged with EU Taxonomy concept names.
-
-DATA FORMAT: Structured JSON with iXBRL tags. Financial values may already include:
-  - concept: XBRL taxonomy concept (e.g. "eutaxonomy:CapExAligned", "ifrs-full:Revenue")
-  - value: Numeric or string value
-  - unit: Currency unit (typically "iso4217:EUR")
-  - context: Reporting period
-  - decimals: Precision (-3 = thousands, -6 = millions)
-
-Validate that EUR values are in absolute terms. If the iXBRL decimals attribute indicates
-thousands (-3) or millions (-6), multiply accordingly.
-
-DOCUMENT TYPE: EU Taxonomy Table (Art. 8 disclosure) — Annex II of Commission Delegated Regulation (EU) 2021/2178
-
-REQUIRED EXTRACTION TARGETS:
-════════════════════════════════
-
-─── CAPEX (Capital Expenditure) ───
-  - Total CapEx (EUR, absolute value)
-  - Taxonomy-aligned CapEx (EUR, absolute value)
-  - Taxonomy-aligned CapEx percentage (%) — this is the primary alignment metric
-  - Taxonomy-eligible but not aligned CapEx (EUR) if disclosed separately
-  - Breakdown by Taxonomy activity code if available (e.g. "8.1 Data processing", "4.1 Solar")
-
-─── OPEX (Operating Expenditure) ───
-  - Total OpEx (EUR) if disclosed
-  - Taxonomy-aligned OpEx (EUR) if disclosed
-  - Taxonomy-aligned OpEx percentage (%)
-
-─── REVENUE ───
-  - Total net revenue / turnover (EUR)
-  - Taxonomy-aligned revenue (EUR) if disclosed
-  - Taxonomy-aligned revenue percentage (%)
-
-─── METADATA ───
-  - Fiscal year of the table
-  - Activity codes listed (EU Taxonomy NACE activity references)
-  - Whether the table uses the "simplified" or "full" Taxonomy reporting format
-
-OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
-{
-  "taxonomy_financials": {
-    "capex_total_eur": float | null,
-    "capex_green_eur": float | null,
-    "opex_total_eur": float | null,
-    "opex_green_eur": float | null,
-    "revenue_eur": float | null,
-    "fiscal_year": str,
-    "taxonomy_activities": [str],
-    "source_document": "Annual Management Report — Taxonomy Section",
-    "confidence": float
-  }
-}
-
-RULES:
-- confidence is 0.0–1.0: 1.0 = clearly tagged iXBRL values with units,
-  0.5 = values present but concept mapping ambiguous, 0.0 = taxonomy section not found
-- Never hallucinate or estimate values. Only extract what is explicitly in the structured data.
-- If a value is missing, set it to null.
+- Extract ALL ESRS standards found, not just E1. The key is the ESRS ID (e.g. "E1-1", "S1-6").
+- Never hallucinate or estimate values. Only extract what is explicitly present.
+- If a data point is missing, set disclosed_value to null and confidence to 0.0.
 - EUR values should be in absolute terms — check the decimals attribute and multiply if needed.
 ```
 
----
+#### Free Text Mode (`SYSTEM_PROMPT_EXTRACTOR_LITE`)
 
-### Node 3 — Double Materiality Evaluator (Auditor)
-**Constant**: `SYSTEM_PROMPT_AUDITOR`
+**Input**: `free_text_input` — raw user text
 
 ```
-You are an EU Taxonomy and CSRD double materiality assessment specialist.
-Apply the regulatory double materiality framework to score each ESRS E1 data point.
+You are a senior EU CSRD compliance analyst. Your task is to read unstructured text
+provided by a company and extract any sustainability-related disclosures you can identify.
 
-INPUT: esrs_claims (from ESRS sections of the management report) + taxonomy_financials (from Taxonomy sections of the same report)
+The input is NOT a structured iXBRL document. It may be:
+- A rough sustainability report or draft
+- Meeting notes or internal strategy documents
+- A partial or incomplete management report
+- Plain-text descriptions of the company's sustainability efforts
+- Very little information at all
 
-DOUBLE MATERIALITY SCORING ALGORITHM:
-══════════════════════════════════════
+EXTRACTION SCOPE — ALL ESRS STANDARDS:
+═══════════════════════════════════════
 
-For each ESRS standard (E1-1, E1-5, E1-6), compute two independent scores:
+Map any sustainability claims to ESRS standards where possible. This includes:
+  - E1–E5 (Environmental): climate, pollution, water, biodiversity, resource use
+  - S1–S4 (Social): own workforce, value chain workers, communities, consumers
+  - G1 (Governance): business conduct
 
-─── IMPACT MATERIALITY (the "Say" — does the company disclose credibly?) ───
-Score each standard 0–100:
+For each claim found, map to the closest ESRS standard and extract:
+  - The standard ID (e.g. "E1-1", "S1-1", "G1")
+  - A summary data_point description
+  - The disclosed_value (if any specific figure is stated)
+  - The unit (if applicable)
+  - confidence (0.0–1.0): 1.0 = explicit numeric + unit, 0.7 = specific claim no figure,
+    0.5 = vague mention, 0.3 = implied, 0.0 = not found
+  - xbrl_concept: always null in free text mode
 
-  E1-1 (Transition Plan):
-    +35 pts  disclosed_value is present AND contains a target year
-    +25 pts  CapEx commitment amount explicitly stated (EUR)
-    +20 pts  1.5°C pathway alignment explicitly referenced
-    -30 pts  confidence < 0.5 (partial or implied only)
-    -20 pts  no target year found (null)
-
-  E1-5 (Energy):
-    +40 pts  total energy consumption disclosed with unit (MWh/GWh)
-    +30 pts  renewable % explicitly stated
-    +20 pts  year-on-year trend disclosed
-    -25 pts  only estimated/approximated values
-    -15 pts  missing unit (value present but ambiguous)
-
-  E1-6 (GHG Emissions):
-    +30 pts  Scope 1 AND Scope 2 market-based both disclosed with values
-    +30 pts  Scope 3 total or category breakdown disclosed
-    +20 pts  GHG intensity metric present
-    -20 pts  Scope 3 missing entirely
-    -15 pts  No methodology or base year disclosed
-
-─── FINANCIAL MATERIALITY (the "Do" — does CapEx match the claims?) ───
-Computed once from taxonomy_financials (extracted from EU Taxonomy Table), applied to all ledger rows:
-  +40 pts  capex_green_eur / capex_total_eur > 0.30 (green CapEx > 30%)
-  +30 pts  capex_green_eur / capex_total_eur > 0.15 (green CapEx > 15%)
-  +20 pts  capex_total_eur is present and non-zero
-  -20 pts  taxonomy_financials.capex_total_eur is null
-  -30 pts  capex_green_eur / capex_total_eur < 0.10 (< 10% green investment)
-
-─── AGGREGATE TAXONOMY ALIGNMENT ───
-  capex_aligned_pct = (capex_green_eur / capex_total_eur) × 100  [clamp 0–100]
-  taxonomy_status:
-    capex_aligned_pct >= 60  → "aligned"
-    capex_aligned_pct >= 20  → "partially_aligned"
-    capex_aligned_pct <  20  → "non_compliant"
-
-─── ESRS STATUS CLASSIFICATION (per standard) ───
-  impact_score >= 70 AND disclosed_value not null  → "disclosed"
-  impact_score >= 40                               → "partial"
-  disclosed_value is null                          → "missing"
-  financial_materiality score < 20                 → "non_compliant" (override)
-
-─── COMPLIANCE COST (Art. 51 CSRD Directive 2022/2464) ───
-  non_compliant_count = count of ledger rows with status in ["missing","non_compliant"]
-  base_rate = non_compliant_count / total_esrs_count
-  projected_fine_eur = revenue_eur × base_rate × 0.05
-  basis = "Art. 51 CSRD Directive (EU) 2022/2464 — up to EUR 10M or 5% of net worldwide turnover"
-
-─── MATERIALITY LEVEL MAPPING (float score → label) ───
-  score >= 70  → "high"
-  score >= 40  → "medium"
-  score >= 20  → "low"
-  score <  20  → "not_material"
-
-OUTPUT: Valid JSON only. Schema:
+OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
 {
-  "esrs_ledger": [
-    { "id": str, "esrs_id": str, "data_point": str,
-      "impact_materiality": str, "financial_materiality": str,
-      "status": str, "registry_evidence": str }
-  ],
-  "taxonomy_alignment": { "capex_aligned_pct": float, "status": str, "label": str },
-  "compliance_cost": { "projected_fine_eur": float, "basis": str },
-  "taxonomy_alignment_score": float
+  "company_meta": { "name": str|null, "lei": null, "sector": str|null, "fiscal_year": int|null,
+                     "jurisdiction": str|null, "report_title": "User-Provided Sustainability Description" },
+  "esrs_claims": {
+    "<ESRS_ID>": { "data_point": str, "disclosed_value": str|null, "unit": str|null,
+                    "confidence": float, "xbrl_concept": null },
+    ...
+  },
+  "financial_context": null
 }
+
+RULES:
+- Never hallucinate or invent data not present in the input text.
+- If the input contains almost nothing, return mostly null values and few/no esrs_claims.
+- financial_context is always null in free text mode.
 ```
 
 ---
 
-### Node 4 — Taxonomy Consultant
-**Constant**: `SYSTEM_PROMPT_CONSULTANT`
+### Node 2 — Compliance Scorer
+**Constant**: `SYSTEM_PROMPT_SCORER`
+
+The Scorer loads `master_requirements.json`, determines the company's size category from
+`company_inputs`, identifies which ESRS standards are applicable, and computes a compliance
+score (0–100) based on disclosure completeness.
+
+**Input**: `esrs_claims` + `company_inputs` + knowledge base (loaded at runtime)
 
 ```
-You are an EU Taxonomy strategic advisor and CSRD compliance consultant.
-Your clients are European AI infrastructure companies. Generate precise, actionable roadmaps.
+You are an EU CSRD compliance scoring specialist.
+Your task is to assess a company's sustainability compliance against applicable ESRS requirements.
 
-INPUT: esrs_ledger (scored gaps), taxonomy_alignment (current CapEx %), company_meta
+INPUT:
+  - esrs_claims: extracted ESRS data points with confidence scores
+  - company_inputs: { number_of_employees, revenue_eur, total_assets_eur, reporting_year }
+  - applicable_requirements: list of ESRS standards that apply to this company
+    (pre-filtered by size category and reporting year from master_requirements.json)
 
-ROADMAP FRAMEWORK — THREE PILLARS:
-═════════════════════════════════════
+COMPLIANCE SCORING ALGORITHM:
+═════════════════════════════
 
-Pillar 1 — "Hardware" (Infrastructure Decarbonisation)
-  Regulatory lever: EU Taxonomy Delegated Act Annex I, Activity 8.1 (Data processing)
-  Taxonomy criteria: PUE ≤ 1.3 (climate mitigation) + REF ≤ 0.4 (water use)
-  Scope: GPU rack refresh (B200/GB300), liquid cooling, end-of-life circularity
-  ESRS impact: E1-1 CapEx commitment credibility, E1-6 Scope 2 reduction
+Step 1 — SIZE CATEGORY DETERMINATION (pre-computed, provided as input):
+  The company's size category and applicable standards are determined from company_inputs
+  against thresholds in master_requirements.json. You receive the filtered list.
 
-Pillar 2 — "Power" (Energy Procurement)
-  Regulatory lever: ESRS E1-5, EU Guarantee of Origin (GO) scheme
-  Taxonomy criteria: renewable energy % ≥ 70% of grid draw
-  Scope: Corporate PPAs with EU generators, on-site solar/wind, REC procurement
-  ESRS impact: E1-5 renewable mix %, E1-6 Scope 2 market-based reduction
+Step 2 — DISCLOSURE COVERAGE ASSESSMENT:
+  For each applicable ESRS requirement, classify the company's disclosure status:
+    "disclosed"     = esrs_claims contains a matching claim with confidence ≥ 0.7
+                      AND disclosed_value is not null
+    "partial"       = esrs_claims contains a matching claim with 0.3 ≤ confidence < 0.7
+                      OR disclosed_value is null but data_point mentions the topic
+    "missing"       = no matching claim found, OR confidence < 0.3
 
-Pillar 3 — "Workload" (Software Efficiency)
-  Regulatory lever: ESRS E1-6 GHG intensity metric
-  Taxonomy criteria: improving energy-per-FLOP ratio year-on-year
-  Scope: carbon-aware scheduling, mixed-precision training, idle GPU reduction
-  ESRS impact: E1-6 GHG intensity, E1-5 energy intensity
+Step 3 — SCORE CALCULATION:
+  disclosed_count = count of "disclosed" standards
+  partial_count   = count of "partial" standards
+  missing_count   = count of "missing" standards
+  total           = applicable_standards_count
 
-INSTRUCTIONS:
-  - Read the esrs_ledger to identify which ESRS statuses are "missing" or "non_compliant"
-  - Priority rule: "critical" if any linked ESRS is "non_compliant",
-                   "high" if "missing",
-                   "moderate" if "partial"
-  - alignment_increase_pct: realistic range 5–25 pts, reference a specific mechanism
-  - summary: 2–3 sentences, specific to the company's actual gaps — not generic
-  - Reference actual numbers from the ledger (e.g. "Current renewable mix of 29%...")
+  overall_score = round(((disclosed_count * 1.0 + partial_count * 0.5) / total) * 100)
+  Clamp to 0–100.
 
-OUTPUT: Valid JSON only.
+OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
 {
-  "roadmap": {
-    "hardware": { "title": str, "summary": str, "priority": str, "alignment_increase_pct": float },
-    "power":    { "title": str, "summary": str, "priority": str, "alignment_increase_pct": float },
-    "workload": { "title": str, "summary": str, "priority": str, "alignment_increase_pct": float }
-  }
+  "compliance_score": {
+    "overall": int,
+    "size_category": str,
+    "applicable_standards_count": int,
+    "disclosed_count": int,
+    "partial_count": int,
+    "missing_count": int
+  },
+  "coverage_gaps": [
+    { "esrs_id": str, "standard_name": str, "status": "disclosed"|"partial"|"missing",
+      "details": str },
+    ...
+  ]
 }
+
+RULES:
+- The score is purely based on disclosure completeness — NOT financial performance.
+- Apply the same formula regardless of whether input is from structured document or free text.
+- coverage_gaps must include ALL applicable standards, not just the ones with gaps.
+- Order coverage_gaps by: missing first, then partial, then disclosed.
+```
+
+---
+
+### Node 3 — Recommendation Advisor
+**Constants**: `SYSTEM_PROMPT_ADVISOR` (shared — same prompt for both modes)
+
+The Advisor reads the score, coverage gaps, and (optionally) financial context to generate
+actionable recommendations grouped by priority tier.
+
+**Input**: `compliance_score` + `coverage_gaps` + `financial_context` (may be None) + `company_meta`
+
+```
+You are an EU CSRD compliance advisor. Generate specific, actionable recommendations
+to help the company improve their sustainability compliance score.
+
+INPUT:
+  - compliance_score: overall score (0–100) + breakdown
+  - coverage_gaps: per-standard disclosure status (disclosed/partial/missing)
+  - financial_context: CapEx/OpEx/Revenue data (may be null if free-text input)
+  - company_meta: company name, sector, jurisdiction
+
+RECOMMENDATION GENERATION RULES:
+═════════════════════════════════
+
+For each standard with status "missing" or "partial" in coverage_gaps:
+  Generate 1 specific recommendation with:
+  - title: imperative verb + specific action (e.g. "Conduct Scope 1 & 2 GHG inventory")
+  - description: 2–3 sentences explaining what to do, why it matters, regulatory basis
+  - regulatory_reference: specific ESRS disclosure requirement (e.g. "ESRS E1-6, DR E1-6.44")
+
+PRIORITY RULES:
+  "critical" = "missing" AND it's a mandatory CSRD disclosure (core standards like E1, S1, ESRS 2)
+  "high"     = "missing" but lower regulatory urgency, OR "partial" with significant gaps
+  "moderate" = "partial" coverage with minor gaps
+  "low"      = "disclosed" but could be improved for best practice
+
+FINANCIAL CONTEXT (when available):
+  If financial_context is not null, use the CapEx/revenue data to make recommendations MORE
+  SPECIFIC. For example:
+  - "Your green CapEx of €12M (18% of total) could be increased to meet the 30% threshold..."
+  - "With revenue of €85M, the potential Art. 51 fine exposure is approximately..."
+  Do NOT use financial data to change the priority — only to enrich the description.
+
+GROUP BY PRIORITY: Output recommendations sorted by priority (critical first → low last).
+
+OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
+{
+  "recommendations": [
+    { "id": "rec-1", "priority": str, "esrs_id": str, "title": str,
+      "description": str, "regulatory_reference": str },
+    ...
+  ]
+}
+
+RULES:
+- Be specific to the company's actual gaps — not generic boilerplate.
+- Reference the company's sector and situation where possible.
+- Every "missing" or "partial" standard MUST have at least one recommendation.
+- Recommendations should be achievable and reference real regulatory provisions.
 ```
 
 ---
@@ -624,14 +629,14 @@ def extract_taxonomy_sections(report: dict) -> dict:
         report: Cleaned report JSON.
 
     Returns:
-        Dict of Taxonomy-tagged iXBRL nodes for the Fetcher agent.
+        Dict of Taxonomy-tagged iXBRL nodes for the Extractor agent (financial context).
     """
     ...
 ```
 
-**Usage in `main.py`**: Called once during the `/audit/run` handler.
+**Usage in `main.py`**: Called once during the `/audit/run` handler (structured document mode only).
 The cleaned JSON is stored in `AuditState` as `report_json`, with routed sections
-in `esrs_data` and `taxonomy_data` respectively.
+in `esrs_data` and `taxonomy_data` respectively. Both are read by the Extractor.
 
 ---
 
@@ -643,26 +648,36 @@ in `esrs_data` and `taxonomy_data` respectively.
 
 | Method | Path | Content-Type | Purpose |
 |--------|------|-------------|---------|
-| POST | `/audit/run` | multipart/form-data | Accept report JSON + entity_id, start async run, return `audit_id` |
-| GET | `/audit/{audit_id}/stream` | text/event-stream | SSE: emit log lines + final CSRDAudit JSON |
+| POST | `/audit/run` | multipart/form-data | Accept inputs, start async run, return `audit_id` |
+| GET | `/audit/{audit_id}/stream` | text/event-stream | SSE: emit log lines + final ComplianceResult JSON |
 | GET | `/audit/{audit_id}` | application/json | Return cached result (for reconnects) |
 | GET | `/health` | application/json | Liveness probe |
 
 ### POST /audit/run
 
-**Request fields** (multipart/form-data — 1 JSON file + 1 text field):
-- `report_json`: JSON file (pre-parsed Annual Management Report from XHTML→JSON converter)
+**Request fields** (multipart/form-data):
 - `entity_id`: string (company name or LEI)
+- `mode`: string (`"structured_document"` | `"free_text"`, default `"structured_document"`)
+- `report_json`: JSON file (required for `structured_document` mode)
+- `free_text`: string (required for `free_text` mode)
+- `number_of_employees`: integer (required, both modes)
+- `revenue_eur`: float (required, both modes)
+- `total_assets_eur`: float (required, both modes)
+- `reporting_year`: integer (required, both modes)
 
 **Response**: `{ "audit_id": "<uuid4>" }`
 
+**Validation**:
+- `mode=structured_document`: `report_json` required, `free_text` ignored. 400 if no file.
+- `mode=free_text`: `free_text` required, `report_json` ignored. 400 if no text.
+- All 4 company inputs required in both modes. 400 if any missing.
+
 **Processing pipeline** (synchronous, before graph launch):
-1. Parse uploaded JSON file
-2. `clean_report_json(raw_json)` — strip junk data (CSP errors, script tags, DOM artifacts)
-3. `extract_esrs_sections(cleaned)` — route ESRS-tagged iXBRL nodes for Extractor
-4. `extract_taxonomy_sections(cleaned)` — route Taxonomy-tagged iXBRL nodes for Fetcher
-5. Initialize `AuditState` with `report_json`, `esrs_data`, `taxonomy_data`
-6. Launch LangGraph as background `asyncio` task, return immediately
+1. Validate inputs per mode
+2. If structured document: parse uploaded JSON, `clean_report_json()`, `extract_esrs_sections()`, `extract_taxonomy_sections()`
+3. Build `CompanyInputs` from form fields
+4. Initialize `AuditState` with all inputs
+5. Launch LangGraph as background task, return immediately
 
 ### GET /audit/{audit_id}/stream
 
@@ -670,26 +685,25 @@ in `esrs_data` and `taxonomy_data` respectively.
 
 ```
 # Log line — emitted by each node (3–5 per node)
-data: {"type":"log","agent":"extractor","message":"Parsing CSRD report...","timestamp":1708500001234}
+data: {"type":"log","agent":"extractor","message":"Extracting ESRS disclosures...","timestamp":1708500001234}
 
 # Node completion marker
 data: {"type":"node_complete","agent":"extractor","duration_ms":4810}
 
-# Final result — last event, contains full CSRDAudit JSON
-data: {"type":"complete","audit":{...CSRDAudit...}}
+# Final result — last event, contains unified ComplianceResult JSON
+data: {"type":"complete","result":{...ComplianceResult...}}
 
 # Error — if graph fails
 data: {"type":"error","message":"..."}
 ```
 
-**Frontend compatibility note**: Field names (`type`, `agent`, `message`, `timestamp`) must
-match what `frontend/src/components/audit-chamber.tsx` expects for its terminal log playback.
+**Agent names in SSE events**: `"extractor"`, `"scorer"`, `"advisor"` (3 agents, both modes).
 
 ### In-Memory Job Store (v1)
 
 ```python
 job_queues: dict[str, asyncio.Queue] = {}   # audit_id → SSE event queue
-job_results: dict[str, dict] = {}           # audit_id → final CSRDAudit JSON
+job_results: dict[str, dict] = {}           # audit_id → final ComplianceResult JSON
 ```
 
 ---
@@ -699,25 +713,29 @@ job_results: dict[str, dict] = {}           # audit_id → final CSRDAudit JSON
 With structured iXBRL JSON, token counts are significantly lower than raw PDF text
 (~60–80% fewer tokens for the same report). Prompt caching still applies for re-runs.
 
-**Implementation in `agents/extractor.py`** (Extractor reads ESRS sections):
+**Implementation in `agents/extractor.py`** (Extractor reads ESRS + Taxonomy sections in one call):
 
 ```python
 import json
 
-messages = [
+# Structured document mode — send both ESRS and Taxonomy data
+content_parts = [
+    {"type": "text", "text": "ESRS SECTIONS FROM ANNUAL MANAGEMENT REPORT (iXBRL JSON):\n\n"},
     {
-        "role": "user",
-        "content": [
-            {"type": "text", "text": "ESRS SECTIONS FROM ANNUAL MANAGEMENT REPORT (iXBRL JSON):\n\n"},
-            {
-                "type": "text",
-                "text": json.dumps(state["esrs_data"], indent=2),
-                "cache_control": {"type": "ephemeral"},  # ← prompt cache marker
-            },
-            {"type": "text", "text": "\n\nExtract all ESRS E1 data points as specified."},
-        ]
-    }
+        "type": "text",
+        "text": json.dumps(state["esrs_data"], indent=2),
+        "cache_control": {"type": "ephemeral"},
+    },
+    {"type": "text", "text": "\n\nTAXONOMY SECTIONS (iXBRL JSON):\n\n"},
+    {
+        "type": "text",
+        "text": json.dumps(state["taxonomy_data"], indent=2),
+        "cache_control": {"type": "ephemeral"},
+    },
+    {"type": "text", "text": "\n\nExtract all ESRS data points and financial context as specified."},
 ]
+
+messages = [{"role": "user", "content": content_parts}]
 response = client.messages.create(
     model="claude-sonnet-4-6",
     max_tokens=4096,
@@ -726,34 +744,7 @@ response = client.messages.create(
 )
 ```
 
-**Implementation in `agents/fetcher.py`** (Fetcher reads Taxonomy sections):
-
-```python
-import json
-
-messages = [
-    {
-        "role": "user",
-        "content": [
-            {"type": "text", "text": "TAXONOMY SECTIONS FROM ANNUAL MANAGEMENT REPORT (iXBRL JSON):\n\n"},
-            {
-                "type": "text",
-                "text": json.dumps(state["taxonomy_data"], indent=2),
-                "cache_control": {"type": "ephemeral"},
-            },
-            {"type": "text", "text": "\n\nExtract all CapEx, OpEx, and Revenue alignment data."},
-        ]
-    }
-]
-response = client.messages.create(
-    model="claude-sonnet-4-6",
-    max_tokens=4096,
-    system=SYSTEM_PROMPT_FETCHER,
-    messages=messages,
-)
-```
-
-Cache TTL is 5 minutes (Anthropic default). Same report audited multiple times within
+Cache TTL is 5 minutes (Anthropic default). Same report processed multiple times within
 that window pays only output token cost. Structured JSON also benefits from better
 cache hit rates since the content is deterministic (no PDF extraction variance).
 
@@ -894,29 +885,245 @@ cache hit rates since the content is deterministic (no PDF extraction variance).
 - `backend/tests/integration_test_fetcher.py` — manual integration test for live Claude API with real XHTML report
 - All 242 tests across iterations 1, 2, 4, 6 passing; all 5 PRD gate checks green (`schemas OK`, `graph OK`, `parser OK`, `compliance_check gate OK`, `fetcher OK`)
 
-### Iteration 7 — Real Auditor Node (Both Modes)
-- [ ] Write `agents/auditor.py` — full audit: scoring prompt + JSON parsing; compliance check: coverage assessment + cost estimate
-- [ ] Full audit: validate `capex_aligned_pct` math matches `taxonomy_financials`
-- [ ] Full audit: populate `esrs_ledger`, `taxonomy_alignment`, `compliance_cost`, `taxonomy_alignment_score`
-- [ ] Compliance check: populate `esrs_coverage`, `compliance_cost_estimate`
+### Iteration 7 — Real Auditor Node (Both Modes) ✓ COMPLETE
+- [x] Write `agents/auditor.py` — full audit: scoring prompt + JSON parsing; compliance check: coverage assessment + cost estimate
+- [x] Full audit: validate `capex_aligned_pct` math matches `taxonomy_financials`
+- [x] Full audit: populate `esrs_ledger`, `taxonomy_alignment`, `compliance_cost`, `taxonomy_alignment_score`
+- [x] Compliance check: populate `esrs_coverage`, `compliance_cost_estimate`
 
-**Gate**: Full audit produces valid ESRS ledger. Compliance check produces valid coverage assessment + cost estimate range.
+**Gate**: Full audit produces valid ESRS ledger. Compliance check produces valid coverage assessment + cost estimate range. ✓
 
-### Iteration 8 — Real Consultant Node (Both Modes) + Final Assembly
-- [ ] Write `agents/consultant.py` — full audit: roadmap generation + `CSRDAudit` assembly; compliance check: to-do list + `ComplianceCheckResult` assembly
-- [ ] Full audit: assemble `sources[]`, `pipeline` timing, `document_source`
-- [ ] Compliance check: assemble `todo_list`, `pipeline` timing
-- [ ] Validate both output contracts against TypeScript types
+---
 
-**Gate**: Frontend renders full live audit report from XHTML→JSON upload. Frontend renders full compliance check to-do list from free text input.
+**v5.0 PIVOT** — Iterations 8+ reflect the unified output architecture.
+The system now produces a single `ComplianceResult` (score + recommendations) for both input
+modes, replacing the separate `CSRDAudit` and `ComplianceCheckResult` contracts. The 4-agent
+pipeline (extractor → fetcher → auditor → consultant) is consolidated to 3 agents
+(extractor → scorer → advisor). See PRD Sections 1–6 for the full revised architecture.
 
-### Iteration 9 — Polish + Handoff Prep
-- [ ] Add CORS config (`http://localhost:3000` for dev)
+---
+
+### Iteration 8 — v5.0 Backend Pivot: Unified Schemas + 3-Agent Graph
+
+Refactor the backend to match the new architecture. Replace old schemas/agents with unified ones.
+
+- [ ] **Schemas pivot** (`schemas.py`):
+  - Add new models: `CompanyInputs`, `ComplianceScore`, `Recommendation`, `ComplianceResult`, `FinancialContext`
+  - Keep `CompanyMeta`, `PipelineTrace`, `AgentTiming`, `ESRSClaim` (internal)
+  - Deprecate (leave in file, mark as legacy): `CSRDAudit`, `ComplianceCheckResult`, `TaxonomyAlignment`, `ComplianceCost`, `ESRSLedgerItem`, `TaxonomyRoadmap`, `RoadmapPillar`, `TaxonomyFinancials`, `ExtractedGoal`, `ESRSCoverageItem`, `ComplianceTodo`, `ComplianceCostEstimate`
+  - Update `AgentName` literal: `"extractor" | "scorer" | "advisor"`
+  - Update `Priority` to keep: `"critical" | "high" | "moderate" | "low"`
+
+- [ ] **State pivot** (`state.py`):
+  - Add new keys: `company_inputs`, `financial_context`, `compliance_score`, `applicable_reqs`, `coverage_gaps`, `recommendations`, `final_result`
+  - Update `mode` values: `"structured_document" | "free_text"` (rename from `"full_audit" | "compliance_check"`)
+  - Remove old keys: `extracted_goals`, `esrs_coverage`, `compliance_cost_estimate`, `todo_list`, `final_compliance_check`, `esrs_ledger`, `taxonomy_alignment`, `compliance_cost`, `taxonomy_alignment_score`, `roadmap`, `final_audit`, `taxonomy_financials`, `document_source`
+
+- [ ] **Graph pivot** (`graph.py`):
+  - Replace 4-node graph with 3-node: `extractor → scorer → advisor`
+  - Remove conditional routing (all 3 nodes always run in both modes)
+  - Remove `fetcher_node` and `consultant_node` imports
+  - Add `scorer_node` and `advisor_node` imports
+
+- [ ] **Prompts pivot** (`tools/prompts.py`):
+  - Add new prompts: `SYSTEM_PROMPT_SCORER`, `SYSTEM_PROMPT_ADVISOR`
+  - Update `SYSTEM_PROMPT_EXTRACTOR` — extract ALL ESRS standards + financial context
+  - Update `SYSTEM_PROMPT_EXTRACTOR_LITE` — extract ALL ESRS standards from free text
+  - Deprecate: `SYSTEM_PROMPT_FETCHER`, `SYSTEM_PROMPT_AUDITOR`, `SYSTEM_PROMPT_AUDITOR_LITE`, `SYSTEM_PROMPT_CONSULTANT`, `SYSTEM_PROMPT_CONSULTANT_LITE`
+
+- [ ] **API pivot** (`main.py`):
+  - Accept 4 new form fields: `number_of_employees`, `revenue_eur`, `total_assets_eur`, `reporting_year`
+  - Update mode values: `"structured_document"` / `"free_text"`
+  - SSE complete event: `{"type":"complete","result":{...ComplianceResult...}}` (unified)
+  - Build `CompanyInputs` from form fields, add to initial state
+
+- [ ] **Stub agents**:
+  - Write `agents/scorer.py` — stub: deterministic score from esrs_claims count
+  - Write `agents/advisor.py` — stub: generate dummy recommendations from coverage_gaps
+  - Update `agents/extractor.py` — add `financial_context` output (structured doc mode)
+  - Deprecate `agents/fetcher.py`, `agents/auditor.py`, `agents/consultant.py` (keep files, mark legacy)
+
+**Gate**: 3-node graph runs end-to-end in both modes. `final_result` is a valid `ComplianceResult` with stub data. SSE streams `{"type":"complete","result":{...}}`. Old 4-node graph no longer invoked.
+
+### Iteration 9 — Knowledge Base + Scoring Engine
+
+Build the knowledge base infrastructure and real Scorer agent.
+
+- [ ] Create `backend/data/` directory
+- [ ] Add `master_requirements.json` — knowledge base with:
+  - CSRD size-category thresholds (employees, revenue, assets)
+  - All ESRS standards (E1–E5, S1–S4, G1, ESRS 2)
+  - Per-standard disclosure requirements
+  - Phase-in schedules by reporting year
+- [ ] Add `backend/data/schemas/` — JSON Schema for validating knowledge base structure
+- [ ] Write `backend/tools/knowledge_base.py`:
+  - `load_requirements()` — parse + cache `master_requirements.json`
+  - `determine_size_category(employees, revenue, assets)` — match against CSRD thresholds
+  - `get_applicable_requirements(size_category, reporting_year)` — return filtered ESRS list
+- [ ] Write real `agents/scorer.py`:
+  - Load knowledge base via `knowledge_base.load_requirements()`
+  - Read `company_inputs` → call `determine_size_category()`
+  - Call `get_applicable_requirements()` → get mandatory standards list
+  - Compare `esrs_claims` against applicable requirements
+  - Classify each: "disclosed" (confidence ≥ 0.7 + value), "partial" (0.3–0.7), "missing" (< 0.3)
+  - Compute overall score: `round(((disclosed * 1.0 + partial * 0.5) / total) * 100)`
+  - Output: `compliance_score`, `applicable_reqs`, `coverage_gaps`
+- [ ] Write `backend/tests/test_knowledge_base.py` — threshold matching, requirement filtering, phase-in logic
+- [ ] Write `backend/tests/test_scorer.py` — scoring algorithm, edge cases (0 applicable, all disclosed, all missing)
+
+**Gate**: Scorer produces valid `ComplianceScore` with `overall` 0–100 driven by knowledge base. `coverage_gaps` lists all applicable standards with correct status. Score formula: `(disclosed + partial*0.5) / total * 100`.
+
+### Iteration 10 — Real Advisor Agent + Recommendation Generation
+
+Build the real Advisor agent that generates grouped recommendations.
+
+- [ ] Write real `agents/advisor.py`:
+  - Read `compliance_score`, `coverage_gaps`, `financial_context`, `company_meta`
+  - For each "missing" or "partial" standard in `coverage_gaps`:
+    - Generate 1 `Recommendation` with title, description, regulatory_reference
+    - Assign priority: "critical" (missing + mandatory), "high" (missing or partial with big gap), "moderate" (partial minor), "low" (disclosed but improvable)
+  - If `financial_context` is not None: enrich descriptions with specific financial figures
+  - Sort by priority tier (critical → high → moderate → low)
+  - Assemble final `ComplianceResult` (score + recommendations + company + pipeline)
+- [ ] Update `SYSTEM_PROMPT_ADVISOR` if Claude-generated recommendations are used
+- [ ] Write `backend/tests/test_advisor.py` — recommendation generation, priority assignment, financial context enrichment
+
+**Gate**: Advisor produces valid `Recommendation` list grouped by priority. Financial context enriches descriptions when available. `ComplianceResult` assembles correctly with pipeline timing.
+
+### Iteration 11 — Frontend: Unified Result View + Company Inputs
+
+Rebuild the frontend for the unified output and structured company inputs.
+
+- [ ] **TypeScript types** (`types.ts`):
+  - Add: `CompanyInputs`, `ComplianceScore`, `Recommendation`, `ComplianceResult`
+  - Update `SSECompleteEvent`: `{ type: "complete", result: ComplianceResult }`
+  - Update `AgentName`: `"extractor" | "scorer" | "advisor"`
+  - Deprecate old types (keep for reference): `CSRDAudit`, `ComplianceCheckResult`, etc.
+
+- [ ] **Unified result component** (`compliance-result-view.tsx` — NEW):
+  - **Score section**: Large prominent score display (0–100), color-coded (green ≥ 70, amber ≥ 40, red < 40)
+  - **Recommendations section**: Grouped by priority tier with collapsible sections:
+    - Critical (red) — expanded by default
+    - High (amber) — expanded by default
+    - Moderate (yellow) — collapsed
+    - Low (green) — collapsed
+  - Each recommendation card: title, ESRS ID badge, description, regulatory reference
+  - Same component for both modes — no mode indicator needed
+
+- [ ] **Company inputs** (`audit-chamber.tsx`):
+  - Add 4 structured input fields (employees, revenue, assets, year) on same page
+  - Fields appear between entity input and document/text section
+  - 2×2 grid layout
+  - Required in both modes — `canRun` logic updated
+
+- [ ] **Mode rename**:
+  - Toggle labels: "Structured Document" / "Free Text" (replacing "Full Audit" / "Compliance Check")
+
+- [ ] **API layer** (`api.ts`):
+  - Both `startAuditRun()` and `startComplianceCheck()` → single `startAnalysis()` function
+  - Sends all company inputs as form fields
+
+- [ ] **Hook** (`useAuditStream.ts`):
+  - Single `result: ComplianceResult | null` (replaces `audit` + `complianceCheck`)
+  - SSE handles `{"type":"complete","result":{...}}`
+  - Progress: always 3 agents
+
+- [ ] **Mock data** (`mock-data.ts`):
+  - Add `MOCK_COMPLIANCE_RESULT` with score + recommendations
+  - Update `MOCK_LOGS` for 3-agent pipeline
+
+- [ ] Remove old components: `results-view.tsx` (old audit view), `compliance-check-view.tsx` (old compliance view)
+
+**Frontend layout** (idle page):
+```
+┌──────────────────────────────────────────────────────────────┐
+│  ◉ Structured Document    ○ Free Text                        │
+├──────────────────────────────────────────────────────────────┤
+│  [Entity input]                            [Run Analysis]     │
+├──────────────────────────────────────────────────────────────┤
+│  Company Details                                              │
+│  ┌──────────────┐ ┌──────────────┐                           │
+│  │ Employees    │ │ Revenue (€)  │                           │
+│  │ [    500   ] │ │ [85,000,000] │                           │
+│  └──────────────┘ └──────────────┘                           │
+│  ┌──────────────┐ ┌──────────────┐                           │
+│  │ Assets (€)   │ │ Year         │                           │
+│  │ [42,000,000] │ │ [   2025   ] │                           │
+│  └──────────────┘ └──────────────┘                           │
+├──────────────────────────────────────────────────────────────┤
+│  (Structured Document mode)                                   │
+│  ┌─ Annual Management Report ─────────────────┐              │
+│  │ [drag & drop / click]                       │              │
+│  └─────────────────────────────────────────────┘              │
+│                     — OR —                                    │
+│  (Free Text mode)                                             │
+│  ┌─ Sustainability Description ───────────────┐              │
+│  │ Paste or describe your current situation... │              │
+│  └─────────────────────────────────────────────┘              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Result page** (same for both modes):
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Sustainability Compliance Score                              │
+│                                                               │
+│              ┌─────────────┐                                  │
+│              │     72      │  ← large, color-coded            │
+│              │   / 100     │                                  │
+│              └─────────────┘                                  │
+│  15 of 18 applicable standards addressed                      │
+│  Company: Lumiere Systemes SA · Large Undertaking · 2025      │
+├──────────────────────────────────────────────────────────────┤
+│  Recommendations                                              │
+│                                                               │
+│  ▼ Critical (2)                        ← red, expanded       │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │ [E1-6] Conduct Scope 1 & 2 GHG inventory           │     │
+│  │ Your GHG emissions are not disclosed. ESRS E1-6...  │     │
+│  │ Ref: ESRS E1-6, DR E1-6.44                         │     │
+│  └─────────────────────────────────────────────────────┘     │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │ [S1-1] Establish own workforce impact assessment    │     │
+│  │ No workforce materiality data found. ESRS S1-1...   │     │
+│  │ Ref: ESRS S1-1, DR S1-1.01                         │     │
+│  └─────────────────────────────────────────────────────┘     │
+│                                                               │
+│  ▼ High (3)                            ← amber, expanded    │
+│  ...                                                          │
+│                                                               │
+│  ▸ Moderate (4)                        ← yellow, collapsed  │
+│  ▸ Low (6)                             ← green, collapsed   │
+├──────────────────────────────────────────────────────────────┤
+│  Pipeline: Extractor (2.1s) → Scorer (0.8s) → Advisor (3.2s)│
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Gate**: Both modes produce identical `ComplianceResult` rendered by same component. Score displays prominently. Recommendations grouped by priority tier. Company inputs required and visible. Old result views removed.
+
+### Iteration 12 — Real Extractor (Unified)
+
+Upgrade the extractor to handle ALL ESRS standards and financial context extraction in one pass.
+
+- [ ] Refactor `agents/extractor.py`:
+  - Structured doc mode: send BOTH `esrs_data` + `taxonomy_data` to Claude in one call
+  - Extract claims for ALL ESRS standards found (not just E1)
+  - Extract `financial_context` (CapEx/OpEx/Revenue) from taxonomy data
+  - Free text mode: extract all identifiable ESRS claims, `financial_context = None`
+- [ ] Update prompts: `SYSTEM_PROMPT_EXTRACTOR` and `SYSTEM_PROMPT_EXTRACTOR_LITE` per Section 6
+- [ ] Write `backend/tests/test_extractor_v5.py` — both modes, all ESRS standards, financial context
+
+**Gate**: Extractor populates `esrs_claims` with all found standards (not limited to E1). `financial_context` populated in structured doc mode, `None` in free text. Both modes flow through scorer → advisor without error.
+
+### Iteration 13 — Polish + End-to-End Testing
+- [ ] Remove deprecated agent files (`fetcher.py`, `auditor.py`, `consultant.py`) or archive
+- [ ] Remove deprecated schema models and state keys
 - [ ] Add `.env` / `dotenv` for `ANTHROPIC_API_KEY`
-- [ ] Document JSON schema contract between Data Lead B's converter and `report_parser.py`
-- [ ] End-to-end test: both modes with real data
+- [ ] Document `master_requirements.json` schema for knowledge base maintainers
+- [ ] End-to-end test: both modes with real data + structured company inputs
+- [ ] Performance check: 3-agent pipeline should be faster than old 4-agent pipeline
 
-**Gate**: `uvicorn main:app --reload` + frontend in dev = full live demo (both modes)
+**Gate**: `uvicorn main:app --reload` + frontend in dev = full live demo. Both modes: enter company details → submit → see score + recommendations. Clean codebase with no deprecated code.
 
 ---
 
@@ -926,7 +1133,9 @@ cache hit rates since the content is deterministic (no PDF extraction variance).
 |------|---------------|
 | [frontend/src/lib/types.ts](../frontend/src/lib/types.ts) | **Source of truth** for all Pydantic model field names — must match exactly |
 | [frontend/src/lib/mock-data.ts](../frontend/src/lib/mock-data.ts) | Reference values for expected output shape |
-| [frontend/src/components/audit-chamber.tsx](../frontend/src/components/audit-chamber.tsx) | SSE event consumption logic + single-document upload slot — defines expected field names |
+| [frontend/src/components/audit-chamber.tsx](../frontend/src/components/audit-chamber.tsx) | SSE event consumption logic + input form — defines expected field names |
+| [backend/data/master_requirements.json](../backend/data/master_requirements.json) | **Knowledge base** — all CSRD/ESRS thresholds, requirements, phase-in schedules |
+| [backend/tools/knowledge_base.py](../backend/tools/knowledge_base.py) | Knowledge base loader + query functions |
 | [contracts/audit-report.schema.ts](../contracts/audit-report.schema.ts) | Canonical re-export — confirms type names |
 
 ---
@@ -937,37 +1146,46 @@ cache hit rates since the content is deterministic (no PDF extraction variance).
 # 1. Install dependencies
 cd backend && pip install -r requirements.txt
 
-# 2. Schema import test
-python -c "from schemas import CSRDAudit; print('schemas OK')"
+# 2. Schema import test (v5.0 — unified ComplianceResult)
+python -c "from schemas import ComplianceResult, ComplianceScore, Recommendation; print('schemas OK')"
 
-# 3. Graph compile test
+# 3. Graph compile test (3-node pipeline)
 python -c "from graph import graph; print('graph OK')"
 
 # 4. Report parser test
 python -c "from tools.report_parser import clean_report_json, extract_esrs_sections, extract_taxonomy_sections; print('parser OK')"
 
-# 5. Start server
+# 5. Knowledge base test
+python -c "from tools.knowledge_base import load_requirements, determine_size_category; print('knowledge_base OK')"
+
+# 6. Start server
 uvicorn main:app --reload
 
-# 6. Upload Annual Management Report (pre-parsed JSON)
+# 7. Structured document mode
 curl -X POST http://localhost:8000/audit/run \
   -F "report_json=@annual-management-report.json" \
-  -F "entity_id=Lumiere Systemes SA"
+  -F "entity_id=Lumiere Systemes SA" \
+  -F "mode=structured_document" \
+  -F "number_of_employees=500" \
+  -F "revenue_eur=85000000" \
+  -F "total_assets_eur=42000000" \
+  -F "reporting_year=2025"
 # → { "audit_id": "<uuid>" }
 
-# 7. Stream result
+# 8. Stream result
 curl -N http://localhost:8000/audit/<audit_id>/stream
-# → SSE log lines + complete event with CSRDAudit JSON
+# → SSE log lines (3 agents) + complete event with ComplianceResult JSON
 
-# 8. Extraction validation
-# Verify report_parser strips junk data and routes sections correctly
-# Verify extractor reads ESRS claims from esrs_data (iXBRL sections)
-# Verify fetcher reads CapEx/revenue from taxonomy_data (iXBRL sections)
-# Verify auditor cross-references claims vs. financials correctly
+# 9. Extraction validation
+# Verify extractor reads ALL ESRS claims from esrs_data (iXBRL sections)
+# Verify extractor extracts financial_context from taxonomy_data
+# Verify scorer computes score from claims vs. knowledge base
+# Verify advisor generates recommendations grouped by priority tier
 
-# 9. Frontend end-to-end
+# 10. Frontend end-to-end
 # Set NEXT_PUBLIC_API_URL=http://localhost:8000
-# Upload 1 real XHTML→JSON management report → confirm full audit report renders
+# Enter company details → upload report → see score + recommendations
+# Toggle to free text → enter description → see same score + recommendations format
 ```
 
 ---
@@ -1007,717 +1225,225 @@ def extract_taxonomy_sections(report: dict) -> dict:
     from Data Lead B are absorbed here."""
 ```
 
-**Seam 3 — Scoring Constants** (`tools/prompts.py`):
-Double materiality scoring weights live in `SYSTEM_PROMPT_AUDITOR` — tunable without
-code changes. Adjust point values and thresholds to calibrate severity.
+**Seam 3 — Scoring & Knowledge Base** (`tools/knowledge_base.py` + `data/master_requirements.json`):
+All compliance thresholds, size-category rules, and ESRS requirements live in the knowledge base
+JSON — tunable without code changes. Scoring algorithm is in `agents/scorer.py`. Recommendation
+priority rules are in `SYSTEM_PROMPT_ADVISOR` (`tools/prompts.py`).
 
 ---
 
-## 14. Compliance Check Mode — "I Don't Have a Formatted Report"
+## 14. Dual-Input Mode Architecture (v5.0)
 
 ### 14.1 Overview
 
-A secondary mode enabling companies without a properly formatted XHTML/iXBRL Annual Management
-Report to receive a regulatory compliance to-do list. The user toggles a switch on the **same
-UI page**, which replaces the file upload area with a free-text input. They paste or describe
-their current sustainability situation — whatever document/data they have. The system extracts
-what it can and produces a prioritized CSRD/EU Taxonomy compliance checklist.
+Both input modes (structured document and free text) produce the **same unified output**:
+a `ComplianceResult` containing a compliance score (0–100) and prioritized recommendations.
+The mode only affects the Extractor's data source and output confidence — the Scorer and
+Advisor operate identically regardless of input mode.
 
-**Assumptions about the user's input:**
-- Their document is their current best attempt at compliance
-- It could contain financial data, or it could not
-- It could lack basic sustainability goals entirely
-- It is NOT in structured iXBRL/XHTML format — it's unstructured text
+### 14.2 Mode Comparison (v5.0)
 
-**What this mode does NOT provide:**
-- No say-vs-do gap analysis (insufficient structured financial data for cross-referencing)
-- No taxonomy alignment score (no structured CapEx/OpEx data to calculate from)
-- No full ESRS ledger with double materiality scoring
-
-**What this mode DOES provide:**
-- Extraction of whatever sustainability goals/claims exist in the text
-- Assessment of which ESRS E1 standards are covered, partially covered, or missing
-- A prioritized regulatory compliance to-do list (CSRD + EU Taxonomy focused)
-- A rough compliance cost estimate range with explicit caveat about data insufficiency
-
-### 14.2 Mode Comparison
-
-| Aspect | Full Audit | Compliance Check |
-|--------|-----------|-----------------|
-| Input | Pre-parsed XHTML/iXBRL JSON file | Free-text description (text area) |
+| Aspect | Structured Document | Free Text |
+|--------|-------------------|-----------|
+| Input | Pre-parsed XHTML/iXBRL JSON file + company inputs | Free-text description + company inputs |
+| Company inputs | employees, revenue (EUR), total assets (EUR), reporting year | Same |
 | UI trigger | Default mode (file upload visible) | Toggle switch on same page |
-| Pipeline | Extractor → Fetcher → Auditor → Consultant | Extractor → Auditor → Consultant (skip Fetcher) |
-| Agent count | 4 | 3 |
-| Output contract | `CSRDAudit` | `ComplianceCheckResult` (new) |
-| Say-Do Gap | Yes (cross-reference claims vs. CapEx) | No |
-| Taxonomy Alignment | Full scoring (capex_aligned_pct 0–100) | Not computed |
-| ESRS Ledger | Double materiality scoring per standard | Coverage assessment only (covered / partial / not_covered) |
-| Compliance Cost | Precise estimate from financial data | Rough range estimate with caveat |
-| Roadmap | 3-pillar (Hardware, Power, Workload) | Prioritized to-do list by ESRS standard |
-| Progress bar | 4 agent steps | 3 agent steps |
+| Pipeline | Extractor → Scorer → Advisor | Extractor → Scorer → Advisor (same) |
+| Agent count | 3 | 3 |
+| Output contract | `ComplianceResult` | `ComplianceResult` (identical) |
+| Score formula | Disclosure completeness vs. knowledge base | Same formula |
+| Financial context | Extracted (CapEx/OpEx/Revenue) → enriches recommendations | Not available (`null`) |
+| Extraction confidence | High (structured iXBRL data) | Low-to-medium (best-effort from prose) |
+| Recommendation quality | Higher (specific financial figures in descriptions) | Good (regulatory references, no financial specifics) |
+| Progress bar | 3 agent steps | 3 agent steps |
 
-### 14.3 Agent Reuse Strategy
+### 14.3 Agent Architecture (v5.0)
 
-**3 of 4 agents reused** — each with an alternate system prompt for unstructured text input.
-The agent function signatures and state interface remain unchanged. Mode-switching happens
-inside each agent: check `state["mode"]` and select the appropriate prompt + parsing logic.
+All 3 agents run in **both modes**. The only difference is the Extractor's data source
+and prompt variant. The Scorer and Advisor are mode-agnostic.
 
-#### Agent 1: Extractor (REUSED — alternate prompt)
+#### Agent 1: Extractor (mode-aware)
 
-| | Full Audit | Compliance Check |
-|---|-----------|-----------------|
+| | Structured Document | Free Text |
+|---|-------------------|-----------|
 | Prompt | `SYSTEM_PROMPT_EXTRACTOR` | `SYSTEM_PROMPT_EXTRACTOR_LITE` |
-| Reads | `state["esrs_data"]` (iXBRL JSON) | `state["free_text_input"]` (raw text) |
-| Writes | `esrs_claims`, `company_meta` | `esrs_claims`, `company_meta`, `extracted_goals` |
+| Reads | `esrs_data` + `taxonomy_data` (iXBRL JSON) | `free_text_input` (raw text) |
+| Writes | `esrs_claims`, `company_meta`, `financial_context` | `esrs_claims`, `company_meta`, `financial_context=None` |
+| ESRS scope | All standards found in the document | All standards identifiable from text |
 | Confidence | High (structured data) | Low-to-medium (best-effort from prose) |
 
-**Key difference**: The lite prompt instructs Claude to parse unstructured text (prose, tables,
-bullet points, partial reports) and extract whatever sustainability claims it can identify.
-It maps findings to ESRS E1 standards where possible. Confidence scores will naturally be lower.
-
-#### Agent 2: Fetcher (SKIPPED)
-
-Not invoked in compliance check mode. The graph routes directly from Extractor → Auditor.
-No `taxonomy_financials` or `document_source` are populated. The Auditor must handle their absence.
-
-#### Agent 3: Auditor (REUSED — alternate prompt)
-
-| | Full Audit | Compliance Check |
-|---|-----------|-----------------|
-| Prompt | `SYSTEM_PROMPT_AUDITOR` | `SYSTEM_PROMPT_AUDITOR_LITE` |
-| Reads | `esrs_claims` + `taxonomy_financials` | `esrs_claims` + `extracted_goals` (NO financials) |
-| Writes | `esrs_ledger`, `taxonomy_alignment`, `compliance_cost`, `taxonomy_alignment_score` | `esrs_coverage`, `compliance_cost_estimate` |
-| Scoring | Full double materiality (impact + financial) | Coverage assessment only (present / partial / missing) |
-
-**Key difference**: No financial materiality scoring (no CapEx data). Instead of scoring each
-ESRS standard on a 0–100 scale, it classifies coverage as `covered`, `partial`, or `not_covered`
-based on what the Extractor found. Compliance cost is a rough range, not a precise calculation.
-
-#### Agent 4: Consultant (REUSED — alternate prompt)
-
-| | Full Audit | Compliance Check |
-|---|-----------|-----------------|
-| Prompt | `SYSTEM_PROMPT_CONSULTANT` | `SYSTEM_PROMPT_CONSULTANT_LITE` |
-| Reads | `esrs_ledger`, `taxonomy_alignment`, `company_meta` | `esrs_coverage`, `company_meta`, `extracted_goals` |
-| Writes | `roadmap`, `final_audit` (CSRDAudit) | `todo_list`, `final_compliance_check` (ComplianceCheckResult) |
-| Output | 3-pillar roadmap | Prioritized to-do list |
-
-**Key difference**: Instead of the three-pillar roadmap (Hardware/Power/Workload), generates
-a prioritized to-do list of specific regulatory actions the company must take. Each item
-references a specific ESRS standard and regulatory provision.
-
-### 14.4 New TypeScript Contracts
-
-Added to `frontend/src/lib/types.ts` alongside existing contracts:
-
-```typescript
-// ============================================================================
-// Compliance Check Mode — Output Contract
-// ============================================================================
-
-export interface ComplianceCheckResult {
-  audit_id: string;
-  generated_at: string;
-  schema_version: "2.0";
-  mode: "compliance_check";
-
-  company: CompanyMeta;               // best-effort extraction from free text
-  extracted_goals: ExtractedGoal[];   // sustainability claims found in input
-  esrs_coverage: ESRSCoverageItem[];  // which ESRS standards are addressed
-  todo_list: ComplianceTodo[];        // the main deliverable
-  estimated_compliance_cost: ComplianceCostEstimate;
-  pipeline: PipelineTrace;
-}
-
-export interface ExtractedGoal {
-  id: string;
-  description: string;               // what the company claims/targets
-  esrs_relevance: string | null;     // e.g. "E1-1", "E1-5", null if unclear
-  confidence: number;                // 0.0–1.0, how clearly stated
-}
-
-export type CoverageLevel = "covered" | "partial" | "not_covered";
-
-export interface ESRSCoverageItem {
-  esrs_id: string;                   // e.g. "E1-1"
-  standard_name: string;             // e.g. "Transition Plan for Climate Change Mitigation"
-  coverage: CoverageLevel;
-  details: string;                   // what was found, or what's missing
-}
-
-export interface ComplianceTodo {
-  id: string;
-  priority: Priority;                // "critical" | "high" | "moderate" | "low"
-  esrs_id: string;                   // which ESRS standard this relates to
-  title: string;                     // short action item (imperative)
-  description: string;               // detailed guidance (2–3 sentences)
-  regulatory_reference: string;      // e.g. "ESRS E1-1, DR E1-1.01"
-  estimated_effort: "low" | "medium" | "high";
-}
-
-export interface ComplianceCostEstimate {
-  estimated_range_low_eur: number;
-  estimated_range_high_eur: number;
-  basis: string;                     // legal basis
-  caveat: string;                    // explicit disclaimer about incomplete data
-}
-
-// --- Updated SSE types ---
-
-export type AgentName = "extractor" | "fetcher" | "auditor" | "consultant";
-
-export interface SSECompleteEvent {
-  type: "complete";
-  audit?: CSRDAudit;                           // present in full_audit mode
-  compliance_check?: ComplianceCheckResult;     // present in compliance_check mode
-}
-```
-
-### 14.5 New Pydantic Models
-
-Added to `backend/schemas.py` alongside existing models:
-
-```python
-# --- Compliance Check Mode ---
-
-CoverageLevel = Literal["covered", "partial", "not_covered"]
-EffortLevel = Literal["low", "medium", "high"]
-
-class ExtractedGoal(BaseModel):
-    id: str
-    description: str
-    esrs_relevance: Optional[str] = None
-    confidence: float  # 0.0–1.0
-
-class ESRSCoverageItem(BaseModel):
-    esrs_id: str
-    standard_name: str
-    coverage: CoverageLevel
-    details: str
-
-class ComplianceTodo(BaseModel):
-    id: str
-    priority: Priority
-    esrs_id: str
-    title: str
-    description: str
-    regulatory_reference: str
-    estimated_effort: EffortLevel
-
-class ComplianceCostEstimate(BaseModel):
-    estimated_range_low_eur: float
-    estimated_range_high_eur: float
-    basis: str
-    caveat: str
-
-class ComplianceCheckResult(BaseModel):
-    audit_id: str
-    generated_at: str
-    schema_version: str = "2.0"
-    mode: str = "compliance_check"
-    company: CompanyMeta
-    extracted_goals: list[ExtractedGoal]
-    esrs_coverage: list[ESRSCoverageItem]
-    todo_list: list[ComplianceTodo]
-    estimated_compliance_cost: ComplianceCostEstimate
-    pipeline: PipelineTrace
-```
-
-### 14.6 AuditState Changes
-
-New keys added to `AuditState` in `state.py`:
-
-```
-AuditState keys (updated for dual-mode):
-
-┌─ INIT (set by FastAPI before graph.invoke()) ─────────────────────────────┐
-│  audit_id              str          UUID for this audit run                │
-│  report_json           dict         Full cleaned JSON (full_audit only)    │
-│  esrs_data             dict         ESRS-tagged iXBRL sections (full_audit)│
-│  taxonomy_data         dict         Taxonomy-tagged sections (full_audit)  │
-│  entity_id             str          Company name / LEI from user input     │
-│  logs                  list[dict]   Accumulates { agent, msg, ts } entries │
-│  pipeline_trace        list[dict]   Accumulates { agent, started_at, ms } │
-│  ▸ mode                str          "full_audit" | "compliance_check"      │ ← NEW
-│  ▸ free_text_input     str          Raw user text (compliance_check only)  │ ← NEW
-└───────────────────────────────────────────────────────────────────────────┘
-
-┌─ NODE 1 OUTPUT (Extractor writes) ────────────────────────────────────────┐
-│  esrs_claims       dict[str, ESRSClaim]    keyed by ESRS ID (both modes)  │
-│  company_meta      CompanyMeta             name, LEI, sector, FY, juris.  │
-│  ▸ extracted_goals list[dict]              ExtractedGoal (compliance_check)│ ← NEW
-└───────────────────────────────────────────────────────────────────────────┘
-
-┌─ NODE 2 OUTPUT (Fetcher writes — SKIPPED in compliance_check) ───────────┐
-│  taxonomy_financials   TaxonomyFinancials  CapEx + revenue from Taxonomy  │
-│  document_source       RegistrySource      populated from upload metadata │
-└───────────────────────────────────────────────────────────────────────────┘
-
-┌─ NODE 3 OUTPUT (Auditor writes) ──────────────────────────────────────────┐
-│  esrs_ledger           list[ESRSLedgerItem]  (full_audit only)            │
-│  taxonomy_alignment    TaxonomyAlignment     (full_audit only)            │
-│  compliance_cost       ComplianceCost        (full_audit only)            │
-│  taxonomy_alignment_score  float             (full_audit only)            │
-│  ▸ esrs_coverage       list[dict]            ESRSCoverageItem (compl.)    │ ← NEW
-│  ▸ compliance_cost_estimate  dict            ComplianceCostEstimate (c.)  │ ← NEW
-└───────────────────────────────────────────────────────────────────────────┘
-
-┌─ NODE 4 OUTPUT (Consultant writes) ───────────────────────────────────────┐
-│  roadmap               TaxonomyRoadmap      (full_audit only)             │
-│  final_audit           CSRDAudit            (full_audit only)             │
-│  ▸ todo_list           list[dict]           ComplianceTodo (compl.)       │ ← NEW
-│  ▸ final_compliance_check  ComplianceCheckResult  (compliance_check only) │ ← NEW
-└───────────────────────────────────────────────────────────────────────────┘
-```
-
-### 14.7 Graph Topology Changes
-
-The graph gains **conditional routing** after the Extractor node. In compliance check mode,
-the Fetcher is skipped entirely.
-
-```python
-# graph.py — updated for dual-mode
-
-from langgraph.graph import END, StateGraph
-from state import AuditState
-
-workflow = StateGraph(AuditState)
-
-workflow.add_node("extractor",  extractor_node)
-workflow.add_node("fetcher",    fetcher_node)
-workflow.add_node("auditor",    auditor_node)
-workflow.add_node("consultant", consultant_node)
-
-workflow.set_entry_point("extractor")
-
-# Conditional routing: skip fetcher in compliance_check mode
-def route_after_extractor(state: AuditState) -> str:
-    if state.get("mode") == "compliance_check":
-        return "auditor"
-    return "fetcher"
-
-workflow.add_conditional_edges("extractor", route_after_extractor, {
-    "fetcher": "fetcher",
-    "auditor": "auditor",
-})
-
-workflow.add_edge("fetcher",    "auditor")
-workflow.add_edge("auditor",    "consultant")
-workflow.add_edge("consultant", END)
-
-graph = workflow.compile()
-```
-
-**Full Audit topology** (unchanged):
-```
-START → extractor → fetcher → auditor → consultant → END
-```
-
-**Compliance Check topology** (new):
-```
-START → extractor → auditor → consultant → END
-                    (fetcher skipped)
-```
-
-### 14.8 API Changes
-
-`POST /audit/run` is modified to accept either mode via a `mode` form field:
-
-```python
-@app.post("/audit/run")
-async def audit_run(
-    entity_id: str = Form(...),
-    mode: str = Form("full_audit"),                    # "full_audit" | "compliance_check"
-    report_json: UploadFile | None = File(None),       # required for full_audit
-    free_text: str | None = Form(None),                # required for compliance_check
-):
-```
-
-**Validation logic:**
-- `mode=full_audit`: `report_json` required, `free_text` ignored. 400 if no file.
-- `mode=compliance_check`: `free_text` required, `report_json` ignored. 400 if no text.
-
-**State initialization (compliance_check):**
-```python
-initial_state: AuditState = {
-    "audit_id": audit_id,
-    "mode": "compliance_check",
-    "free_text_input": free_text,
-    "entity_id": entity_id,
-    "report_json": {},       # empty — not used
-    "esrs_data": {},         # empty — not used
-    "taxonomy_data": {},     # empty — not used
-    "logs": [],
-    "pipeline_trace": [],
-}
-```
-
-**SSE complete event (updated):**
-- Full audit: `{ "type": "complete", "audit": {CSRDAudit} }`
-- Compliance check: `{ "type": "complete", "compliance_check": {ComplianceCheckResult} }`
-
-The `_run_graph` function checks which result key is populated:
-```python
-final_audit = result.get("final_audit")
-final_check = result.get("final_compliance_check")
-
-if final_audit:
-    audit_dict = final_audit.model_dump()
-    job.result = audit_dict
-    job.events.append({"type": "complete", "audit": audit_dict})
-elif final_check:
-    check_dict = final_check.model_dump() if hasattr(final_check, "model_dump") else final_check
-    job.result = check_dict
-    job.events.append({"type": "complete", "compliance_check": check_dict})
-```
-
-### 14.9 Frontend Changes
-
-#### Toggle on Idle Page
-
-A switch/toggle component is added to the idle state in `audit-chamber.tsx`:
-
-```
-┌──────────────────────────────────────────────────────┐
-│  ◉ Full Audit    ○ Compliance Check                  │  ← toggle switch
-├──────────────────────────────────────────────────────┤
-│  [Entity input]                    [Run Button]       │
-├──────────────────────────────────────────────────────┤
-│                                                       │
-│  (Full Audit mode)                                    │
-│  ┌──────────────────────────────┐                    │
-│  │ 01                            │                    │
-│  │ Annual Management Report      │  ← file upload    │
-│  │ [drag & drop / click]         │                    │
-│  └──────────────────────────────┘                    │
-│                                                       │
-│  — OR —                                               │
-│                                                       │
-│  (Compliance Check mode)                              │
-│  ┌──────────────────────────────┐                    │
-│  │ Paste or describe your       │                    │
-│  │ current sustainability       │  ← text area       │
-│  │ situation...                  │                    │
-│  │                               │                    │
-│  └──────────────────────────────┘                    │
-│                                                       │
-└──────────────────────────────────────────────────────┘
-```
-
-**State changes in `audit-chamber.tsx`:**
-- New state: `const [mode, setMode] = useState<"full_audit" | "compliance_check">("full_audit")`
-- New state: `const [freeText, setFreeText] = useState("")`
-- `canAudit` logic: depends on mode
-  - `full_audit`: entity + reportFile required
-  - `compliance_check`: entity + freeText required
-- Button label: "Run Engine Audit" / "Run Compliance Check"
-- Subtitle text changes per mode
-
-#### API Layer (`api.ts`)
-
-New function alongside existing `startAuditRun`:
-
-```typescript
-export async function startComplianceCheck(
-  entity: string,
-  freeText: string
-): Promise<string> {
-  const form = new FormData();
-  form.append("entity_id", entity);
-  form.append("mode", "compliance_check");
-  form.append("free_text", freeText);
-
-  const res = await fetch(`${config.apiUrl}/audit/run`, {
-    method: "POST",
-    body: form,
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`POST /audit/run failed (${res.status}): ${body}`);
-  }
-
-  const data: { run_id: string } = await res.json();
-  return data.run_id;
-}
-```
-
-#### Hook (`useAuditStream.ts`)
-
-Updated to handle both result types:
-
-```typescript
-export interface AuditStreamState {
-  step: Step;
-  logs: AuditLog[];
-  audit: CSRDAudit | null;                            // full_audit result
-  complianceCheck: ComplianceCheckResult | null;       // compliance_check result  ← NEW
-  error: string | null;
-  progress: number;
-  totalLogs: number;
-  startAudit: (entity: string, reportFile: File | null) => void;
-  startComplianceCheck: (entity: string, freeText: string) => void;  // ← NEW
-  skipToComplete: () => void;
-  reset: () => void;
-}
-```
-
-SSE event handling updated:
-```typescript
-case "complete":
-  if (event.audit) {
-    setAudit(event.audit);
-  }
-  if (event.compliance_check) {
-    setComplianceCheck(event.compliance_check);
-  }
-  setStep("complete");
-  break;
-```
-
-Progress calculation updated:
-```typescript
-// compliance_check mode uses 3 agents (fetcher skipped)
-const agentCount = mode === "compliance_check" ? 3 : 4;
-const progress = completedNodes / agentCount;
-```
-
-#### Results View
-
-When `step === "complete"`, the UI checks which result is available:
-- If `audit` is set → render existing `<ResultsView audit={audit} />`
-- If `complianceCheck` is set → render new `<ComplianceCheckView result={complianceCheck} />`
-
-The `ComplianceCheckView` component renders:
-1. **Company header** (best-effort: name, sector if identified)
-2. **Extracted Goals** — what sustainability claims were found in the input text
-3. **ESRS Coverage** — table showing E1-1, E1-5, E1-6 with covered/partial/not_covered status
-4. **Compliance To-Do List** — prioritized action items with regulatory references
-5. **Estimated Compliance Cost** — range estimate with prominent caveat banner
-6. **Pipeline** — agent execution timings (3 agents)
-
-### 14.10 Compliance Check System Prompts
-
-Added to `backend/tools/prompts.py` as 3 new module-level string constants:
+#### Agent 2: Scorer (mode-agnostic)
+
+| | Both Modes |
+|---|-----------|
+| Prompt | `SYSTEM_PROMPT_SCORER` |
+| Reads | `esrs_claims` + `company_inputs` + knowledge base |
+| Writes | `compliance_score`, `applicable_reqs`, `coverage_gaps` |
+| Logic | Deterministic: size category → applicable standards → compare vs. claims → score |
+
+#### Agent 3: Advisor (mode-agnostic)
+
+| | Both Modes |
+|---|-----------|
+| Prompt | `SYSTEM_PROMPT_ADVISOR` |
+| Reads | `compliance_score` + `coverage_gaps` + `financial_context` (may be None) + `company_meta` |
+| Writes | `recommendations`, `final_result` (ComplianceResult) |
+| Financial enrichment | If `financial_context` is not None, enriches recommendation descriptions |
+
+### 14.4 Legacy Section Note
+
+**Sections 14.4–14.12 below are preserved as historical reference for iterations 0–7.**
+They document the pre-v5.0 architecture (4 agents, separate CSRDAudit/ComplianceCheckResult
+contracts, say-vs-do gap analysis). The v5.0 architecture in Sections 1–6 and iterations 8+
+supersedes this content. The legacy code from iterations 0–7 remains in the codebase and will
+be cleaned up in Iteration 13.
 
 ---
 
-#### SYSTEM_PROMPT_EXTRACTOR_LITE
+## 15. Knowledge Base — `master_requirements.json`
 
-```
-You are a senior EU CSRD compliance analyst. Your task is to read unstructured text
-provided by a company and extract any sustainability-related claims, goals, targets,
-or data points you can identify.
+### 15.1 Overview
 
-The input is NOT a structured iXBRL document. It may be:
-- A rough sustainability report or draft
-- Meeting notes or internal strategy documents
-- A partial or incomplete management report
-- Plain-text descriptions of the company's sustainability efforts
-- Very little information at all
+The **knowledge base** is the single source of truth for all CSRD/ESRS compliance rules,
+thresholds, and requirements. It replaces the previously hardcoded ESRS E1-only scoring rules
+with a data-driven approach that covers **all ESRS standards** (E1–E5, S1–S4, G1, and CSRD
+general obligations).
 
-YOUR JOB:
-1. Extract company metadata (name, sector, jurisdiction, fiscal year) as best you can.
-   Set fields to null if not identifiable.
+**File**: `backend/data/master_requirements.json`
+**Loader**: `backend/tools/knowledge_base.py`
+**Schemas**: `backend/data/schemas/` (JSON Schema files for validation)
 
-2. Map any sustainability claims to ESRS E1 standards where possible:
-   - E1-1 (Transition Plan): net-zero targets, decarbonisation milestones, green CapEx
-   - E1-5 (Energy): energy consumption, renewable mix, energy sources
-   - E1-6 (GHG Emissions): Scope 1/2/3 emissions, GHG intensity, base year
+### 15.2 Purpose
 
-3. List ALL sustainability goals/claims found, even if they don't map to a specific ESRS.
+The knowledge base serves three functions:
 
-CONFIDENCE SCORING:
-- 1.0 = explicit numeric value with unit clearly stated (e.g. "2,500 tCO₂eq Scope 1")
-- 0.7 = specific claim but no precise figure (e.g. "we plan to reach net-zero")
-- 0.5 = vague mention (e.g. "sustainability is important to us")
-- 0.3 = implied or inferred (e.g. discusses solar panels but no energy data)
-- 0.0 = not found at all
+1. **Size-category determination**: Given a company's `number_of_employees`, `revenue_eur`, and
+   `total_assets_eur`, determine which CSRD size category they fall into (large undertaking,
+   listed SME, micro-enterprise exempt, etc.) and which reporting obligations apply.
 
-OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
-{
-  "company_meta": {
-    "name": str | null,
-    "lei": null,
-    "sector": str | null,
-    "fiscal_year": int | null,
-    "jurisdiction": str | null,
-    "report_title": "User-Provided Sustainability Description"
-  },
-  "esrs_claims": {
-    "E1-1": { "data_point": str, "disclosed_value": str|null, "unit": str|null, "confidence": float, "xbrl_concept": null },
-    "E1-5": { "data_point": str, "disclosed_value": str|null, "unit": str|null, "confidence": float, "xbrl_concept": null },
-    "E1-6": { "data_point": str, "disclosed_value": str|null, "unit": str|null, "confidence": float, "xbrl_concept": null }
-  },
-  "extracted_goals": [
-    { "id": "goal-1", "description": str, "esrs_relevance": str|null, "confidence": float },
+2. **Requirement mapping**: For a given size category + reporting year, determine exactly which
+   ESRS standards and disclosure requirements are mandatory, which are subject to materiality
+   assessment, and which are phased in for later years.
+
+3. **Compliance scoring**: The Scorer agent reads the matched requirements and compares
+   them against the extracted ESRS claims to compute the disclosure completeness score (0–100).
+   The Advisor then reads the coverage gaps to generate prioritized recommendations.
+
+### 15.3 Structured Company Inputs
+
+Both modes (structured document and free text) accept **structured company inputs** alongside
+their primary data source. These inputs are entered on the frontend **on the same page** as
+the file upload or free-text area.
+
+| Input | Type | Example | Purpose |
+|-------|------|---------|---------|
+| Number of Employees | integer | 500 | CSRD size-category threshold (≥250 = large) |
+| Revenue (EUR) | float | 85000000.0 | CSRD size-category + fine calculation basis |
+| Total Assets (EUR) | float | 42000000.0 | CSRD size-category threshold (≥25M = large) |
+| Reporting Year | integer | 2025 | Determines phase-in schedule + applicable standards |
+
+**Threshold logic**: The Scorer agent loads `master_requirements.json` (via `knowledge_base.py`),
+matches the company's inputs against the thresholds defined therein, and determines:
+- Whether the company is in scope for CSRD at all
+- Which ESRS standards are mandatory for their size category
+- Which requirements have phase-in dates that may not yet apply
+- The applicable penalty regime (based on jurisdiction + revenue)
+
+**All threshold values live in `master_requirements.json`** — no hardcoded size categories
+in Python code. This allows the knowledge base to be updated independently when regulations change.
+
+### 15.4 Knowledge Base Loader
+
+**File**: `backend/tools/knowledge_base.py`
+
+```python
+import json
+from pathlib import Path
+from typing import Any
+
+_KB_PATH = Path(__file__).parent.parent / "data" / "master_requirements.json"
+_cache: dict | None = None
+
+def load_requirements() -> dict:
+    """Load and cache master_requirements.json. Called once per process."""
+    global _cache
+    if _cache is None:
+        with open(_KB_PATH) as f:
+            _cache = json.load(f)
+    return _cache
+
+def determine_size_category(
+    employees: int,
+    revenue_eur: float,
+    total_assets_eur: float,
+    requirements: dict | None = None,
+) -> dict:
+    """Match company inputs against CSRD size-category thresholds.
+
+    Returns:
+        { "category": str, "in_scope": bool, "applicable_standards": list[str], ... }
+    """
     ...
-  ]
-}
 
-RULES:
-- Never hallucinate or invent data not present in the input text.
-- If the input contains almost nothing, return mostly null values and empty extracted_goals.
-- xbrl_concept is always null in this mode (no iXBRL tags in free text).
-- extracted_goals should capture ALL sustainability-related statements, not just ESRS E1.
-```
+def get_applicable_requirements(
+    size_category: str,
+    reporting_year: int,
+    requirements: dict | None = None,
+) -> list[dict]:
+    """Return the list of ESRS requirements applicable to this company.
 
----
-
-#### SYSTEM_PROMPT_AUDITOR_LITE
-
-```
-You are an EU CSRD regulatory compliance assessor. You are evaluating a company's
-current sustainability disclosures against the ESRS E1 (Climate Change) requirements.
-
-IMPORTANT: This is a compliance CHECK mode. You do NOT have structured financial data
-(no EU Taxonomy Table, no CapEx/OpEx alignment data). You are assessing COVERAGE only —
-what the company has disclosed vs. what CSRD requires them to disclose.
-
-INPUT: esrs_claims (best-effort extraction from unstructured text) + extracted_goals
-
-ESRS E1 COVERAGE ASSESSMENT:
-═══════════════════════════════
-
-For each ESRS standard, classify coverage:
-
-E1-1 | Transition Plan for Climate Change Mitigation
-  "covered"     = target year present AND at least one of: CapEx commitment, pathway ref
-  "partial"     = some mention of transition/decarbonisation goals but key elements missing
-  "not_covered" = no transition plan information found
-
-E1-5 | Energy Consumption and Mix
-  "covered"     = energy consumption figure with unit AND renewable percentage
-  "partial"     = some energy data but missing key metrics (no unit, no renewable %)
-  "not_covered" = no energy-related data found
-
-E1-6 | Gross Scopes 1, 2, 3 GHG Emissions
-  "covered"     = at least Scope 1 + Scope 2 emissions disclosed with values
-  "partial"     = some GHG data but incomplete scope coverage
-  "not_covered" = no GHG emissions data found
-
-COMPLIANCE COST ESTIMATE:
-═══════════════════════════
-Since we lack precise financial data, estimate a RANGE based on:
-- not_covered_count = count of standards with coverage "not_covered"
-- partial_count = count with coverage "partial"
-- Severity = (not_covered_count * 1.0 + partial_count * 0.5) / total_standards
-
-Low estimate:  EUR 500,000 × severity factor × industry multiplier (1.0–3.0)
-High estimate: EUR 2,000,000 × severity factor × industry multiplier
-
-Industry multiplier: 3.0 for heavy industry/energy, 2.0 for tech/infrastructure, 1.0 for services
-
-caveat: ALWAYS include: "This estimate is based on incomplete, unstructured data and should
-not be used for financial planning. A full audit with structured XHTML/iXBRL management
-report data is required for accurate compliance cost assessment."
-
-OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
-{
-  "esrs_coverage": [
-    { "esrs_id": "E1-1", "standard_name": str, "coverage": str, "details": str },
-    { "esrs_id": "E1-5", "standard_name": str, "coverage": str, "details": str },
-    { "esrs_id": "E1-6", "standard_name": str, "coverage": str, "details": str }
-  ],
-  "compliance_cost_estimate": {
-    "estimated_range_low_eur": float,
-    "estimated_range_high_eur": float,
-    "basis": "Art. 51 CSRD Directive (EU) 2022/2464 — indicative range based on disclosure gaps",
-    "caveat": str
-  }
-}
-```
-
----
-
-#### SYSTEM_PROMPT_CONSULTANT_LITE
-
-```
-You are an EU CSRD compliance advisor. Generate a prioritized to-do list for a company
-that does NOT yet have a properly formatted Annual Management Report.
-
-Your goal: tell them exactly what they need to DO to become CSRD/EU Taxonomy compliant.
-Be specific, actionable, and reference actual regulatory provisions.
-
-INPUT: esrs_coverage (gap assessment), company_meta (best-effort), extracted_goals
-
-TO-DO LIST GENERATION RULES:
-═════════════════════════════
-
-For each ESRS standard with coverage "not_covered" or "partial":
-  Generate 1–3 specific action items. Each must include:
-  - title: imperative verb + specific action (e.g. "Conduct Scope 1 & 2 GHG inventory")
-  - description: 2–3 sentences explaining what to do, why it matters, and where to start
-  - regulatory_reference: specific ESRS disclosure requirement (e.g. "ESRS E1-6, DR E1-6.44")
-  - estimated_effort: "low" (< 1 month), "medium" (1–3 months), "high" (3+ months)
-
-PRIORITY RULES:
-  "critical" = not_covered AND it's a mandatory CSRD disclosure (E1-6 GHG, E1-1 transition plan)
-  "high"     = not_covered but lower regulatory urgency, OR partial with significant gaps
-  "moderate" = partial coverage with minor gaps
-  "low"      = covered but could be improved for best practice
-
-ALWAYS INCLUDE these foundational to-do items regardless of coverage:
-  1. "Prepare XHTML/iXBRL Annual Management Report" — the formatted report they currently lack
-  2. "Engage CSRD-qualified auditor for limited assurance" — Art. 34 of CSRD
-  These should be priority "critical" and estimated_effort "high".
-
-ORDER: Sort by priority (critical first), then by ESRS standard number.
-
-REFERENCE the company's actual situation from extracted_goals. Don't be generic —
-use their specific gaps (e.g. "Your Scope 3 emissions are not disclosed...").
-
-OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
-{
-  "todo_list": [
-    {
-      "id": "todo-1",
-      "priority": str,
-      "esrs_id": str,
-      "title": str,
-      "description": str,
-      "regulatory_reference": str,
-      "estimated_effort": str
-    },
+    Filters by size category and phase-in schedule for the reporting year.
+    Each requirement includes: esrs_id, standard_name, mandatory (bool),
+    phase_in_year (int | null), disclosure_requirements (list).
+    """
     ...
-  ]
-}
 ```
 
-### 14.11 Implementation Iterations
+### 15.5 ESRS Scope Expansion
 
-The compliance check mode is integrated into the main iteration roadmap as **Iterations 4–5**
-(backend scaffold + frontend), with real agent implementations in Iterations 7–8 alongside
-their full-audit counterparts. See Section 10 for the complete sequenced roadmap.
+The system now supports **all ESRS standards** defined in `master_requirements.json`, not just
+E1 (Climate Change). The knowledge base determines which standards apply based on the company's
+size category and reporting year.
 
-### 14.12 Verification Plan (Compliance Check)
+| Category | Standards | Examples |
+|----------|-----------|---------|
+| Environmental | E1–E5 | E1 Climate Change, E2 Pollution, E3 Water, E4 Biodiversity, E5 Resource Use |
+| Social | S1–S4 | S1 Own Workforce, S2 Workers in Value Chain, S3 Affected Communities, S4 Consumers |
+| Governance | G1 | G1 Business Conduct |
+| Cross-cutting | ESRS 1, ESRS 2 | General requirements, General disclosures |
 
-```bash
-# 1. Schema import test (both modes)
-python -c "from schemas import CSRDAudit, ComplianceCheckResult; print('schemas OK')"
+**v5.0 scope**: `master_requirements.json` defines which standards exist, and the Scorer
+iterates over whatever standards are applicable for the company's size category and reporting
+year. The Extractor extracts all ESRS standards found in the input, regardless of mode.
 
-# 2. Graph compile test (conditional routing)
-python -c "from graph import graph; print('graph OK')"
+### 15.6 Scorer + Advisor — Knowledge-Base-Driven Compliance (v5.0)
 
-# 3. Full audit path unchanged
-curl -X POST http://localhost:8000/audit/run \
-  -F "report_json=@annual-management-report.json" \
-  -F "entity_id=Lumiere Systemes SA" \
-  -F "mode=full_audit"
+The Scorer (Node 2) and Advisor (Node 3) use `master_requirements.json` as their rule source.
 
-# 4. Compliance check path
-curl -X POST http://localhost:8000/audit/run \
-  -F "entity_id=Lumiere Systemes SA" \
-  -F "mode=compliance_check" \
-  -F "free_text=We are an AI infrastructure company based in France. We have set a net-zero target for 2040. Our data centers consume approximately 120 GWh annually with 29% renewable energy."
-
-# 5. Verify SSE stream (3 agents, no fetcher)
-curl -N http://localhost:8000/audit/<id>/stream
-# Should see: extractor logs → extractor node_complete → auditor logs → ...
-# Should NOT see: fetcher logs or fetcher node_complete
-
-# 6. Frontend toggle test
-# Toggle to Compliance Check → text area appears, file upload hidden
-# Enter text → Run Compliance Check → terminal shows 3 agents → to-do list renders
-# Toggle back to Full Audit → file upload reappears, text area hidden → unchanged behavior
+**Scorer flow** (deterministic — no LLM call needed for scoring logic):
 ```
+1. Load master_requirements.json via knowledge_base.load_requirements()
+2. Read company_inputs from state (employees, revenue, assets, year)
+3. determine_size_category() → get the company's CSRD category
+4. get_applicable_requirements() → list of ESRS standards that apply
+5. Compare applicable requirements against esrs_claims from Extractor
+6. Classify each: "disclosed" (confidence ≥ 0.7 + value), "partial" (0.3–0.7), "missing" (< 0.3)
+7. Compute score: round(((disclosed * 1.0 + partial * 0.5) / total) * 100)
+8. Output: compliance_score, applicable_reqs, coverage_gaps
+```
+
+**Advisor flow** (LLM-powered — generates natural language recommendations):
+```
+1. Read compliance_score + coverage_gaps from Scorer
+2. Read financial_context from Extractor (may be None in free text mode)
+3. For each "missing" or "partial" standard:
+   - Generate 1 Recommendation with title, description, regulatory_reference
+   - Assign priority: critical/high/moderate/low based on gap severity
+4. If financial_context is available: enrich descriptions with specific figures
+5. Sort by priority tier (critical → low)
+6. Assemble final ComplianceResult (score + recommendations + company + pipeline)
+```
+
+**Key design**: Neither agent assumes a fixed set of ESRS standards. Both iterate over whatever
+standards `master_requirements.json` deems applicable for the company's size category and
+reporting year. Recommendations are generated dynamically based on the matched requirements.
