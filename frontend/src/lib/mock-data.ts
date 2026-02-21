@@ -35,6 +35,7 @@ export const MOCK_AUDIT: CSRDAudit = {
       impact_materiality: "high",
       financial_materiality: "high",
       status: "partial",
+      evidence_source: "transition_plan",
       registry_evidence: "Infogreffe — Rapport de gestion 2025, Section 4.1",
     },
     {
@@ -45,6 +46,7 @@ export const MOCK_AUDIT: CSRDAudit = {
       impact_materiality: "high",
       financial_materiality: "medium",
       status: "disclosed",
+      evidence_source: "taxonomy_table",
       registry_evidence: "Infogreffe — Bilan energetique 2025, Annexe III",
     },
     {
@@ -55,6 +57,7 @@ export const MOCK_AUDIT: CSRDAudit = {
       impact_materiality: "high",
       financial_materiality: "high",
       status: "missing",
+      evidence_source: "management_report",
       registry_evidence:
         "BRIS cross-reference — no Scope 3 filing found in EU registry",
     },
@@ -66,6 +69,7 @@ export const MOCK_AUDIT: CSRDAudit = {
       impact_materiality: "medium",
       financial_materiality: "low",
       status: "non_compliant",
+      evidence_source: "management_report",
       registry_evidence:
         "Infogreffe — Declaration de performance extra-financiere 2025, absent",
     },
@@ -77,6 +81,7 @@ export const MOCK_AUDIT: CSRDAudit = {
       impact_materiality: "medium",
       financial_materiality: "medium",
       status: "disclosed",
+      evidence_source: "management_report",
       registry_evidence:
         "Infogreffe — Index egalite professionnelle 2025, p.2",
     },
@@ -88,6 +93,7 @@ export const MOCK_AUDIT: CSRDAudit = {
       impact_materiality: "low",
       financial_materiality: "high",
       status: "partial",
+      evidence_source: "management_report",
       registry_evidence:
         "Infogreffe — Rapport du conseil d'administration 2025, Section 7",
     },
@@ -169,111 +175,134 @@ export const MOCK_AUDIT: CSRDAudit = {
 };
 
 // ---------------------------------------------------------------------------
-// Audit Logs — EU CSRD focused
+// Audit Logs — references the three Golden Source uploads explicitly
 // ---------------------------------------------------------------------------
 
 export const AUDIT_LOGS: AuditLog[] = [
   {
     timestamp: 200,
     agent: "extractor",
-    message: "Initializing CSRD document parser (ESRS framework)...",
+    message:
+      "Initializing CSRD document parser — 3 Golden Sources detected.",
   },
   {
-    timestamp: 900,
+    timestamp: 800,
     agent: "extractor",
     message:
-      "Parsing Rapport de Durabilite CSRD — Exercice 2025...",
+      "Parsing ESRS E1 interim targets from Climate Transition Plan...",
   },
   {
-    timestamp: 2200,
+    timestamp: 1600,
+    agent: "extractor",
+    message:
+      "Parsing sustainability statement from Integrated Management Report...",
+  },
+  {
+    timestamp: 2400,
     agent: "extractor",
     message:
       "Identified 6 ESRS data points: E1-1, E1-5, E1-6, E2-4, S1-6, G1-1.",
   },
   {
-    timestamp: 2800,
+    timestamp: 3000,
     agent: "extractor",
-    message: "Double materiality matrix extracted. Handing off to Fetcher.",
+    message:
+      "Double materiality matrix extracted. Handing off to Fetcher.",
   },
   {
-    timestamp: 3400,
-    agent: "fetcher",
-    message: "Querying Infogreffe (RCS) for Lumiere Systemes SA filings...",
-  },
-  {
-    timestamp: 4600,
+    timestamp: 3600,
     agent: "fetcher",
     message:
-      "Retrieved Rapport de gestion, DPEF, and Bilan energetique from registry.",
+      "Extracting iXBRL CapEx tags from EU Taxonomy Table...",
   },
   {
-    timestamp: 5800,
+    timestamp: 4400,
     agent: "fetcher",
     message:
-      "Cross-referencing via BRIS for EU-level consolidated filings...",
+      "Taxonomy-eligible CapEx: 31% of total. Parsing activity codes...",
+  },
+  {
+    timestamp: 5200,
+    agent: "fetcher",
+    message:
+      "Querying Infogreffe (RCS) for Lumiere Systemes SA registry filings...",
+  },
+  {
+    timestamp: 6200,
+    agent: "fetcher",
+    message:
+      "Retrieved Rapport de gestion, DPEF, and Bilan energetique.",
   },
   {
     timestamp: 7000,
     agent: "fetcher",
     message:
-      "Registry evidence matched for 5/6 data points. Scope 3 filing absent.",
+      "Cross-referencing via BRIS. Registry evidence matched 5/6 data points.",
   },
   {
-    timestamp: 7500,
+    timestamp: 7600,
     agent: "auditor",
     message:
-      "Applying EU Taxonomy Delegated Regulation 2021/2139 criteria...",
+      "Cross-referencing Management Report financials against ESRS disclosures...",
   },
   {
-    timestamp: 8100,
+    timestamp: 8200,
     agent: "auditor",
-    message: "E1-1 Transition plan: PARTIAL — no 1.5C pathway alignment found.",
+    message:
+      "E1-1 Transition plan: PARTIAL — no 1.5C pathway alignment found.",
   },
   {
-    timestamp: 8600,
+    timestamp: 8700,
     agent: "auditor",
-    message: "E1-6 GHG emissions: MISSING — Scope 3 not disclosed.",
+    message:
+      "E1-6 GHG emissions: MISSING — Scope 3 not disclosed in Management Report.",
   },
   {
-    timestamp: 9000,
+    timestamp: 9200,
     agent: "auditor",
-    message: "E2-4 Pollution reporting: NON-COMPLIANT — DPEF section absent.",
+    message:
+      "E2-4 Pollution reporting: NON-COMPLIANT — DPEF section absent.",
   },
   {
-    timestamp: 9400,
+    timestamp: 9700,
     agent: "auditor",
     message:
       "CapEx Taxonomy alignment computed: 31%. Status: Partially Aligned.",
   },
   {
-    timestamp: 10000,
+    timestamp: 10200,
     agent: "auditor",
     message:
       "Projected Art. 51 CSRD fine: EUR 4.2M based on reported net turnover.",
   },
   {
-    timestamp: 10500,
+    timestamp: 10800,
     agent: "consultant",
-    message: "Generating Taxonomy alignment roadmap (three-pillar)...",
+    message:
+      "Generating Taxonomy alignment roadmap (three-pillar)...",
   },
   {
-    timestamp: 11200,
+    timestamp: 11400,
     agent: "consultant",
-    message: "Infrastructure pillar: +18% alignment — CRITICAL priority.",
+    message:
+      "Infrastructure pillar: +18% alignment — CRITICAL priority.",
   },
   {
-    timestamp: 11800,
+    timestamp: 12000,
     agent: "consultant",
-    message: "Power pillar: +12% alignment — PPA gap under GO scheme.",
+    message:
+      "Power pillar: +12% alignment — PPA gap under GO scheme.",
   },
   {
-    timestamp: 12300,
+    timestamp: 12500,
     agent: "consultant",
-    message: "Workload pillar: +7% alignment — utilization lever.",
+    message:
+      "Workload pillar: +7% alignment — utilization lever.",
   },
   {
-    timestamp: 12800,
+    timestamp: 13000,
     agent: "consultant",
-    message: "CSRD audit complete. Compliance report ready.",
+    message:
+      "CSRD audit complete. Compliance report ready.",
   },
 ];

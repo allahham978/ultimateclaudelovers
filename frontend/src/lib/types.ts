@@ -69,8 +69,14 @@ export interface ESRSLedgerItem {
   impact_materiality: MaterialityLevel;
   financial_materiality: MaterialityLevel;
   status: ESRSStatus;
+  evidence_source: EvidenceSource; // which golden-source document provided evidence
   registry_evidence: string; // e.g. "Infogreffe — Rapport de gestion 2025"
 }
+
+export type EvidenceSource =
+  | "management_report"
+  | "taxonomy_table"
+  | "transition_plan";
 
 export type MaterialityLevel = "high" | "medium" | "low" | "not_material";
 export type ESRSStatus = "disclosed" | "partial" | "missing" | "non_compliant";

@@ -1,6 +1,7 @@
 import type {
   CSRDAudit,
   ESRSLedgerItem,
+  EvidenceSource,
   RoadmapPillar,
   Source,
 } from "@/lib/types";
@@ -124,19 +125,22 @@ export default function ResultsView({ audit }: { audit: CSRDAudit }) {
             <span className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
               ESRS
             </span>
-            <span className="col-span-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <span className="col-span-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
               Data Point
             </span>
-            <span className="col-span-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <span className="col-span-1 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
               Impact
             </span>
-            <span className="col-span-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <span className="col-span-1 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
               Financial
             </span>
             <span className="col-span-1 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
               Status
             </span>
             <span className="col-span-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Evidence
+            </span>
+            <span className="col-span-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
               Registry
             </span>
           </div>
@@ -375,6 +379,12 @@ function TaxonomyVerdict({
 /* ESRS Ledger Row                                                    */
 /* ================================================================= */
 
+const EVIDENCE_LABELS: Record<EvidenceSource, string> = {
+  management_report: "Mgmt Report",
+  taxonomy_table: "Taxonomy Table",
+  transition_plan: "Transition Plan",
+};
+
 function ESRSRow({ item }: { item: ESRSLedgerItem }) {
   const status = esrsStatusStyle(item.status);
   const impact = materialityStyle(item.impact_materiality);
@@ -390,14 +400,14 @@ function ESRSRow({ item }: { item: ESRSLedgerItem }) {
       </div>
 
       {/* Data Point */}
-      <div className="sm:col-span-4">
+      <div className="sm:col-span-3">
         <p className="text-sm leading-snug text-slate-700">
           {item.data_point}
         </p>
       </div>
 
       {/* Impact Materiality */}
-      <div className="sm:col-span-2 sm:text-center">
+      <div className="sm:col-span-1 sm:text-center">
         <span
           className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${impact.bg} ${impact.text}`}
         >
@@ -408,7 +418,7 @@ function ESRSRow({ item }: { item: ESRSLedgerItem }) {
       </div>
 
       {/* Financial Materiality */}
-      <div className="sm:col-span-2 sm:text-center">
+      <div className="sm:col-span-1 sm:text-center">
         <span
           className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${financial.bg} ${financial.text}`}
         >
@@ -427,8 +437,15 @@ function ESRSRow({ item }: { item: ESRSLedgerItem }) {
         </span>
       </div>
 
-      {/* Registry Evidence */}
+      {/* Evidence Source */}
       <div className="sm:col-span-2">
+        <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-600">
+          {EVIDENCE_LABELS[item.evidence_source]}
+        </span>
+      </div>
+
+      {/* Registry Evidence */}
+      <div className="sm:col-span-3">
         <p className="text-[11px] leading-snug text-muted">
           {item.registry_evidence}
         </p>
