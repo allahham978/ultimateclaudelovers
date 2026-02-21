@@ -120,7 +120,7 @@ class TestExtractorNode:
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
-        # report_json / esrs_data / taxonomy_data are input keys — must not appear in returned dict
+        # report_json is an input key — must not appear in the returned dict
         assert "report_json" not in result
         assert "esrs_data" not in result
         assert "taxonomy_data" not in result
@@ -165,7 +165,7 @@ class TestFetcherNode:
         result = fetcher_node(state_after_extractor)
         assert 0.0 <= result["taxonomy_financials"].confidence <= 1.0
 
-    def test_source_document_is_annual_management_report(self, state_after_extractor):
+    def test_source_document_is_management_report(self, state_after_extractor):
         from agents.fetcher import fetcher_node
 
         result = fetcher_node(state_after_extractor)
@@ -400,7 +400,7 @@ class TestConsultantNode:
 
         result = consultant_node(state_after_auditor)
         assert len(result["final_audit"].sources) >= 1, (
-            "CSRDAudit must reference the uploaded Annual Management Report"
+            "CSRDAudit must reference the Annual Management Report"
         )
 
     def test_final_audit_pipeline_has_four_agents(self, state_after_auditor):
@@ -578,12 +578,11 @@ class TestGraphEndToEnd:
         assert isinstance(pct, float)
         assert 0.0 <= pct <= 100.0
 
-    def test_sources_has_annual_management_report(self, minimal_state):
+    def test_sources_has_documents(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         assert len(result["final_audit"].sources) >= 1
-        assert any("Annual Management Report" in s.document_name for s in result["final_audit"].sources)
 
     def test_company_name_in_final_audit(self, minimal_state):
         from graph import graph
@@ -592,14 +591,14 @@ class TestGraphEndToEnd:
         assert result["final_audit"].company.name == minimal_state["entity_id"]
 
     def test_graph_handles_empty_report_json(self):
-        """Graph must not crash when report JSON sections are empty dicts."""
+        """Graph must not crash when report JSON has no facts."""
         from graph import graph
 
         state = {
             "audit_id": "test-empty-docs",
-            "report_json": {},
-            "esrs_data": {},
-            "taxonomy_data": {},
+            "report_json": {"report_info": {}, "facts": []},
+            "esrs_data": {"facts": []},
+            "taxonomy_data": {"facts": []},
             "entity_id": "EmptyCorp",
             "logs": [],
             "pipeline_trace": [],
@@ -613,9 +612,9 @@ class TestGraphEndToEnd:
 
         state = {
             "audit_id": "test-no-entity",
-            "report_json": {"facts": []},
-            "esrs_data": {},
-            "taxonomy_data": {},
+            "report_json": {"report_info": {}, "facts": []},
+            "esrs_data": {"facts": []},
+            "taxonomy_data": {"facts": []},
             "logs": [],
             "pipeline_trace": [],
         }

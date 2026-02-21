@@ -1,5 +1,5 @@
 """
-Shared test fixtures for Iteration 1 unit tests.
+Shared test fixtures for unit tests.
 """
 
 import sys
@@ -15,21 +15,38 @@ import pytest
 from state import AuditState
 
 
+# Sample iXBRL facts for testing — mimics the engineer's XHTML→JSON output
+_SAMPLE_ESRS_FACTS = {
+    "facts": [
+        {"ix_type": "ix:nonNumeric", "concept": "esrs_E1-1_01_TransitionPlan", "context_ref": "FY2024", "value": "Net-zero by 2040"},
+        {"ix_type": "ix:nonFraction", "concept": "esrs_E1-5_04_TotalEnergyConsumption", "context_ref": "FY2024", "value": "45000", "unit_ref": "utr:MWh", "decimals": "0", "scale": None},
+        {"ix_type": "ix:nonFraction", "concept": "esrs_E1-6_01_GrossScope1GHGEmissions", "context_ref": "FY2024", "value": "1200", "unit_ref": "utr:tCO2eq", "decimals": "0", "scale": None},
+        {"ix_type": "ix:nonNumeric", "concept": "ifrs-full:NameOfReportingEntity", "context_ref": "FY2024", "value": "TestCorp SA"},
+    ]
+}
+
+_SAMPLE_TAXONOMY_FACTS = {
+    "facts": [
+        {"ix_type": "ix:nonFraction", "concept": "eutaxonomy:CapExTotal", "context_ref": "FY2024", "value": "50000000", "unit_ref": "iso4217:EUR", "decimals": "0", "scale": None},
+        {"ix_type": "ix:nonFraction", "concept": "eutaxonomy:CapExAligned", "context_ref": "FY2024", "value": "17500000", "unit_ref": "iso4217:EUR", "decimals": "0", "scale": None},
+        {"ix_type": "ix:nonFraction", "concept": "ifrs-full:Revenue", "context_ref": "FY2024", "value": "250000000", "unit_ref": "iso4217:EUR", "decimals": "0", "scale": None},
+    ]
+}
+
+_SAMPLE_REPORT_JSON = {
+    "report_info": {"source": "test-report.xhtml"},
+    "facts": _SAMPLE_ESRS_FACTS["facts"] + _SAMPLE_TAXONOMY_FACTS["facts"],
+}
+
+
 @pytest.fixture
 def minimal_state() -> AuditState:
     """Minimal valid AuditState for testing — only INIT keys set."""
     return {
         "audit_id": "test-audit-001",
-        "report_json": {"facts": []},
-        "esrs_data": {
-            "esrs_e1-1_01": {"concept": "esrs_e1-1_01", "value": "Net-zero by 2050", "unit": None, "context": "2024"},
-            "esrs_e1-5_01": {"concept": "esrs_e1-5_01", "value": "45000", "unit": "MWh", "context": "2024"},
-            "esrs_e1-6_01": {"concept": "esrs_e1-6_01", "value": "1200", "unit": "tCO2eq", "context": "2024"},
-        },
-        "taxonomy_data": {
-            "eutaxonomy:CapExTotal": {"concept": "eutaxonomy:CapExTotal", "value": "50000000", "unit": "iso4217:EUR", "context": "2024"},
-            "eutaxonomy:CapExAligned": {"concept": "eutaxonomy:CapExAligned", "value": "17500000", "unit": "iso4217:EUR", "context": "2024"},
-        },
+        "report_json": _SAMPLE_REPORT_JSON,
+        "esrs_data": _SAMPLE_ESRS_FACTS,
+        "taxonomy_data": _SAMPLE_TAXONOMY_FACTS,
         "entity_id": "TestCorp SA",
         "logs": [],
         "pipeline_trace": [],

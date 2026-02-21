@@ -161,11 +161,11 @@ class ESRSClaim(BaseModel):
     disclosed_value: Optional[str] = None
     unit: Optional[str] = None
     confidence: float           # 0.0–1.0
-    xbrl_concept: Optional[str] = None  # iXBRL concept name for audit traceability
+    xbrl_concept: Optional[str] = None  # iXBRL concept name for traceability
 
 
 class TaxonomyFinancials(BaseModel):
-    """CapEx/revenue data from the Taxonomy sections of the management report JSON — internal to fetcher node."""
+    """CapEx/revenue data from Taxonomy sections of the management report JSON — internal to fetcher node."""
     capex_total_eur: Optional[float] = None
     capex_green_eur: Optional[float] = None
     opex_total_eur: Optional[float] = None

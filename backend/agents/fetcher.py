@@ -1,11 +1,11 @@
 """
-Node 2 — Financial Extractor (Fetcher) — Iteration 1 stub.
+Node 2 — Financial Extractor (Fetcher) — Iteration 0.5 stub.
 
-Reads: state["taxonomy_data"] — Taxonomy-tagged iXBRL sections from the Annual Management Report JSON
+Reads: state["taxonomy_data"] (Taxonomy-tagged iXBRL sections from report JSON)
 Writes: state["taxonomy_financials"], state["document_source"]
 
 Iteration 4 will replace the dummy values with a real Claude API call using
-SYSTEM_PROMPT_FETCHER and prompt caching on the taxonomy_data sections.
+SYSTEM_PROMPT_FETCHER and prompt caching on the taxonomy data.
 """
 
 import time
@@ -23,8 +23,8 @@ def fetcher_node(state: AuditState) -> dict[str, Any]:
     pipeline_trace: list[dict] = list(state.get("pipeline_trace") or [])
 
     ts = lambda: int(time.time() * 1000)  # noqa: E731
-    logs.append({"agent": "fetcher", "msg": "Parsing Annual Management Report JSON (Taxonomy sections)...", "ts": ts()})
-    logs.append({"agent": "fetcher", "msg": "Extracting EU Taxonomy CapEx and OpEx alignment data...", "ts": ts()})
+    logs.append({"agent": "fetcher", "msg": "Reading Taxonomy sections from management report JSON...", "ts": ts()})
+    logs.append({"agent": "fetcher", "msg": "Extracting CapEx and OpEx alignment from iXBRL tags...", "ts": ts()})
     logs.append({"agent": "fetcher", "msg": "Calculating taxonomy-aligned CapEx percentage...", "ts": ts()})
 
     taxonomy_financials = TaxonomyFinancials(

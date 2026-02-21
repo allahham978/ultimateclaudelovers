@@ -1,11 +1,11 @@
 """
-Node 1 — ESRS Reader (Extractor) — Iteration 1 stub.
+Node 1 — ESRS Reader (Extractor) — Iteration 0.5 stub.
 
-Reads: state["esrs_data"] — ESRS-tagged iXBRL sections from the Annual Management Report JSON
+Reads: state["esrs_data"] (ESRS-tagged iXBRL sections from report JSON)
 Writes: state["esrs_claims"], state["company_meta"]
 
 Iteration 3 will replace the dummy values with a real Claude API call using
-SYSTEM_PROMPT_EXTRACTOR and prompt caching on the esrs_data sections.
+SYSTEM_PROMPT_EXTRACTOR and prompt caching on the ESRS data.
 """
 
 import time
@@ -23,9 +23,9 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
     pipeline_trace: list[dict] = list(state.get("pipeline_trace") or [])
 
     ts = lambda: int(time.time() * 1000)  # noqa: E731
-    logs.append({"agent": "extractor", "msg": "Parsing CSRD report JSON (ESRS sections)...", "ts": ts()})
-    logs.append({"agent": "extractor", "msg": "Scanning iXBRL concepts for E1-1 transition plan targets...", "ts": ts()})
-    logs.append({"agent": "extractor", "msg": "Extracting ESRS E1-1, E1-5, E1-6 data points...", "ts": ts()})
+    logs.append({"agent": "extractor", "msg": "Reading ESRS sections from management report JSON...", "ts": ts()})
+    logs.append({"agent": "extractor", "msg": "Scanning iXBRL tags for E1-1, E1-5, E1-6 data points...", "ts": ts()})
+    logs.append({"agent": "extractor", "msg": "Extracting company metadata from entity concepts...", "ts": ts()})
 
     company_meta = CompanyMeta(
         name=state.get("entity_id") or "Unknown Entity",
@@ -43,7 +43,7 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
             disclosed_value="Net-zero by 2040; 50% reduction by 2030 vs 2019 baseline",
             unit=None,
             confidence=0.85,
-            xbrl_concept="esrs_e1-1_01",
+            xbrl_concept="esrs_E1-1_01_TransitionPlan",
         ),
         "E1-5": ESRSClaim(
             standard="E1-5",
@@ -51,7 +51,7 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
             disclosed_value="Total energy: 45,000 MWh; Renewable mix: 38%",
             unit="MWh",
             confidence=0.90,
-            xbrl_concept="esrs_e1-5_01",
+            xbrl_concept="esrs_E1-5_04_TotalEnergyConsumption",
         ),
         "E1-6": ESRSClaim(
             standard="E1-6",
@@ -59,7 +59,7 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
             disclosed_value="Scope 1: 1,200 tCO2eq; Scope 2 (market-based): 8,500 tCO2eq",
             unit="tCO2eq",
             confidence=0.80,
-            xbrl_concept="esrs_e1-6_01",
+            xbrl_concept="esrs_E1-6_01_GrossScope1GHGEmissions",
         ),
     }
 

@@ -1,5 +1,6 @@
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
+lxml>=5.0.0
 langgraph>=0.1.0
 anthropic>=0.28.0
 pydantic>=2.7.0

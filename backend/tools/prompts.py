@@ -7,19 +7,20 @@ without touching Python code — the weights live entirely in this string.
 
 # ---------------------------------------------------------------------------
 # Node 1 — ESRS Reader (Extractor)
-# Input: esrs_data — ESRS-tagged iXBRL sections from the Annual Management Report JSON
+# Input: esrs_data (ESRS-tagged iXBRL sections from management report JSON)
 # ---------------------------------------------------------------------------
 
 SYSTEM_PROMPT_EXTRACTOR = """You are a senior EU CSRD compliance auditor specialising in ESRS E1 (Climate Change).
 Your task is to read structured iXBRL data extracted from a company's Annual Management Report
 (XHTML format, pre-parsed to JSON) and validate specific mandatory disclosures.
 
-DATA FORMAT: Structured JSON with iXBRL tags preserved. Each node contains:
+DATA FORMAT: Structured JSON with iXBRL tags preserved. Each fact contains:
   - concept: XBRL taxonomy concept name (e.g. "esrs_E1-1_01", "ifrs-full:Revenue")
   - value: The disclosed value (string or numeric)
-  - unit: Unit of measurement if applicable (e.g. "EUR", "MWh", "tCO2eq")
-  - context: Reporting period and entity context
+  - unit_ref: Unit of measurement if applicable (e.g. "iso4217:EUR", "utr:MWh", "utr:tCO2eq")
+  - context_ref: Reporting period and entity context
   - decimals: Precision indicator
+  - scale: Scale factor (e.g. "6" for millions)
 
 The iXBRL tags use the ESRS taxonomy. Map concept names directly to the required data points.
 Values are pre-extracted — your job is to validate completeness, resolve ambiguities between
@@ -89,7 +90,7 @@ RULES:
 
 # ---------------------------------------------------------------------------
 # Node 2 — Financial Extractor (Fetcher)
-# Input: taxonomy_data — Taxonomy-tagged iXBRL sections from the Annual Management Report JSON
+# Input: taxonomy_data (Taxonomy-tagged iXBRL sections from management report JSON)
 # ---------------------------------------------------------------------------
 
 SYSTEM_PROMPT_FETCHER = """You are an EU Taxonomy financial data extraction specialist.
@@ -97,15 +98,16 @@ Your task is to read structured iXBRL data from the Taxonomy alignment sections 
 Annual Management Report (XHTML format, pre-parsed to JSON). The data includes pre-parsed
 financial values tagged with EU Taxonomy concept names.
 
-DATA FORMAT: Structured JSON with iXBRL tags. Financial values may already include:
+DATA FORMAT: Structured JSON with iXBRL tags. Financial values include:
   - concept: XBRL taxonomy concept (e.g. "eutaxonomy:CapExAligned", "ifrs-full:Revenue")
   - value: Numeric or string value
-  - unit: Currency unit (typically "iso4217:EUR")
-  - context: Reporting period
+  - unit_ref: Currency unit (typically "iso4217:EUR")
+  - context_ref: Reporting period
   - decimals: Precision (-3 = thousands, -6 = millions)
+  - scale: Scale factor (e.g. "6" for millions)
 
-Validate that EUR values are in absolute terms. If the iXBRL decimals attribute indicates
-thousands (-3) or millions (-6), multiply accordingly.
+Validate that EUR values are in absolute terms. If the iXBRL decimals or scale attributes
+indicate thousands or millions, multiply accordingly.
 
 DOCUMENT TYPE: EU Taxonomy Table (Art. 8 disclosure) — Annex II of Commission Delegated Regulation (EU) 2021/2178
 
@@ -154,7 +156,7 @@ RULES:
   0.5 = values present but concept mapping ambiguous, 0.0 = taxonomy section not found
 - Never hallucinate or estimate values. Only extract what is explicitly in the structured data.
 - If a value is missing, set it to null.
-- EUR values should be in absolute terms — check the decimals attribute and multiply if needed."""
+- EUR values should be in absolute terms — check the scale/decimals attributes and multiply if needed."""
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +167,7 @@ RULES:
 SYSTEM_PROMPT_AUDITOR = """You are an EU Taxonomy and CSRD double materiality assessment specialist.
 Apply the regulatory double materiality framework to score each ESRS E1 data point.
 
-INPUT: esrs_claims (extracted ESRS disclosures) + taxonomy_financials (CapEx/revenue from Taxonomy Table)
+INPUT: esrs_claims (from ESRS sections of the management report) + taxonomy_financials (from Taxonomy sections of the same report)
 
 DOUBLE MATERIALITY SCORING ALGORITHM:
 ══════════════════════════════════════
@@ -197,7 +199,7 @@ Score each standard 0–100:
     -15 pts  No methodology or base year disclosed
 
 ─── FINANCIAL MATERIALITY (the "Do" — does CapEx match the claims?) ───
-Computed once from taxonomy_financials (extracted from EU Taxonomy Table), applied to all ledger rows:
+Computed once from taxonomy_financials (extracted from Taxonomy sections), applied to all ledger rows:
   +40 pts  capex_green_eur / capex_total_eur > 0.30 (green CapEx > 30%)
   +30 pts  capex_green_eur / capex_total_eur > 0.15 (green CapEx > 15%)
   +20 pts  capex_total_eur is present and non-zero

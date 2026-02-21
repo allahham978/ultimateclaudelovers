@@ -2,8 +2,8 @@
 AuditState TypedDict — shared memory for all LangGraph nodes.
 
 Each node reads from this dict and writes only to its own output keys.
-Input keys (audit_id, report_json, esrs_data, taxonomy_data, entity_id) are set
-once by FastAPI (via report_parser.py) and never modified by nodes.
+Input keys (audit_id, report_json, esrs_data, taxonomy_data, entity_id)
+are set once by FastAPI and never modified.
 """
 
 from __future__ import annotations
@@ -26,9 +26,9 @@ from schemas import (
 class AuditState(TypedDict, total=False):
     # ── INIT — set by FastAPI before graph.invoke() ──────────────────────────
     audit_id: str               # UUID for this audit run
-    report_json: dict           # Full cleaned JSON from the XHTML→JSON converter
-    esrs_data: dict             # ESRS-tagged iXBRL sections routed to Extractor
-    taxonomy_data: dict         # Taxonomy-tagged iXBRL sections routed to Fetcher
+    report_json: dict           # Full cleaned JSON from XHTML management report
+    esrs_data: dict             # ESRS-tagged iXBRL sections (for Extractor)
+    taxonomy_data: dict         # Taxonomy-tagged iXBRL sections (for Fetcher)
     entity_id: str              # Company name / LEI from user input
     logs: list[dict]            # Accumulates { agent, msg, ts } entries
     pipeline_trace: list[dict]  # Accumulates { agent, started_at, ms }

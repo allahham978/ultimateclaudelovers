@@ -1,233 +1,213 @@
 """
-Report Parser — JSON cleaning + section routing.
+Report Parser — JSON cleaning + section routing for the Annual Management Report.
 
-Replaces pdf_reader.py. Receives the pre-parsed JSON from the XHTML→JSON converter
-(built by Data Lead B), cleans junk data, and routes sections to the appropriate agents.
-
-Called once during POST /audit/run before the graph is invoked.
-The router splits iXBRL concept names to separate ESRS vs. Taxonomy sections.
+Replaces pdf_reader.py. Pipeline:
+  1. extract_xhtml_to_json()  — parse XHTML/iXBRL to structured JSON (engineer's converter)
+  2. clean_report_json()      — strip junk data (CSP errors, scripts, empty nodes)
+  3. extract_esrs_sections()  — filter ESRS-tagged iXBRL facts for Extractor agent
+  4. extract_taxonomy_sections() — filter Taxonomy-tagged iXBRL facts for Fetcher agent
 """
 
+import json
+import re
 from typing import Any
 
-# ---------------------------------------------------------------------------
-# Junk patterns — artifacts of XHTML→JSON conversion that are not iXBRL content
-# ---------------------------------------------------------------------------
+from lxml import etree
 
-JUNK_PATTERNS = [
-    "Content-Security-Policy",
-    "script-src",
-    "unsafe-eval",
-    "text/javascript",
-    "text/css",
-    "<style",
-    "<script",
-    "noscript",
-]
 
-# ---------------------------------------------------------------------------
-# iXBRL concept name prefixes used to identify ESRS E1 sections
-# ---------------------------------------------------------------------------
+# ── Stage 1: XHTML → JSON extraction (engineer's iXBRL parser) ──────────────
 
-ESRS_E1_PREFIXES = (
-    "esrs_e1-1",
-    "esrs_e1-5",
-    "esrs_e1-6",
-    "esrs:e1-1",
-    "esrs:e1-5",
-    "esrs:e1-6",
-    # Entity identification concepts present in the sustainability statement
-    "esrs_generalinformation",
-    "esrs:generalinformation",
-    "lei",
-    "ifrs-full:nameofreportingentity",
-    "ifrs-full:addressofregisteredoffice",
-    "ifrs-full:descriptionofnatureofentitysmainactivities",
-    "ifrs-full:jurisdictionofincorporation",
+def extract_xhtml_to_json(file_path: str) -> dict:
+    """Parse an XHTML/iXBRL file and extract all tagged facts to structured JSON.
+
+    Preserves: concept name, value, unit, context, decimals, scale per fact.
+    Uses streaming iterparse to handle large files without excessive memory.
+
+    Args:
+        file_path: Path to the XHTML file on disk.
+
+    Returns:
+        Dict with "report_info" metadata and "facts" list of iXBRL-tagged values.
+    """
+    extracted_data: dict[str, Any] = {
+        "report_info": {"source": file_path},
+        "facts": [],
+    }
+
+    context = etree.iterparse(
+        file_path,
+        events=("end",),
+        tag=["{*}nonFraction", "{*}nonNumeric"],
+    )
+
+    for _event, elem in context:
+        is_numeric = "nonFraction" in elem.tag
+
+        fact: dict[str, Any] = {
+            "ix_type": "ix:nonFraction" if is_numeric else "ix:nonNumeric",
+            "concept": elem.get("name"),
+            "context_ref": elem.get("contextRef"),
+            "value": elem.text.strip() if elem.text else "",
+        }
+
+        if is_numeric:
+            fact.update({
+                "unit_ref": elem.get("unitRef"),
+                "decimals": elem.get("decimals"),
+                "scale": elem.get("scale"),
+            })
+        elif len(elem) > 0:
+            fact["html_inner"] = etree.tostring(elem, encoding="unicode", method="html")
+
+        extracted_data["facts"].append(fact)
+
+        # Clear element from memory for streaming performance
+        elem.clear()
+        while elem.getprevious() is not None:
+            del elem.getparent()[0]
+
+    return extracted_data
+
+
+# ── Stage 2: JSON cleaning ──────────────────────────────────────────────────
+
+# Patterns that indicate browser/rendering junk, not report content
+_JUNK_PATTERNS = re.compile(
+    r"Content.Security.Policy|script-src|unsafe-eval|text/javascript|"
+    r"text/css|<script|<style|noscript|\.js$|\.css$",
+    re.IGNORECASE,
 )
-
-# ---------------------------------------------------------------------------
-# iXBRL concept name prefixes used to identify EU Taxonomy (Art. 8) sections
-# ---------------------------------------------------------------------------
-
-TAXONOMY_PREFIXES = (
-    "eutaxonomy",
-    "eu-taxonomy",
-    "taxonomyeligibility",
-    "taxonomyalignment",
-    # Standard financial tags that appear in the Taxonomy Table
-    "ifrs-full:capitalexpenditures",
-    "ifrs-full:revenue",
-    "ifrs-full:operatingexpense",
-)
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 
 def clean_report_json(raw_json: dict) -> dict:
     """Strip non-content junk from XHTML→JSON output.
 
     Removes:
-    - Script/style elements and CSP metadata
-    - Empty text nodes and whitespace-only entries
-    - Browser rendering artifacts (DOM inspector output, console errors)
-    - Navigation/header chrome elements
+    - Facts with no concept name (untagged content)
+    - Facts whose value is only whitespace or empty
+    - Facts whose value matches browser artifact patterns (CSP errors, script refs)
 
     Args:
-        raw_json: Raw JSON from the XHTML→JSON converter.
+        raw_json: Raw JSON from extract_xhtml_to_json or the engineer's converter.
 
     Returns:
-        Cleaned JSON with only iXBRL content nodes preserved.
+        Cleaned JSON with only meaningful iXBRL facts preserved.
     """
-    if not isinstance(raw_json, dict):
-        return {}
+    raw_facts = raw_json.get("facts", [])
 
-    cleaned: dict = {}
-
-    for key, value in raw_json.items():
-        # Skip keys whose names contain junk patterns
-        if _contains_junk(str(key)):
+    clean_facts = []
+    for fact in raw_facts:
+        concept = fact.get("concept")
+        if not concept:
             continue
 
-        if isinstance(value, dict):
-            # Recurse into nested dicts
-            cleaned_child = clean_report_json(value)
-            if cleaned_child:  # drop empty dicts produced by full junk subtrees
-                cleaned[key] = cleaned_child
-        elif isinstance(value, list):
-            cleaned_list = _clean_list(value)
-            if cleaned_list is not None:
-                cleaned[key] = cleaned_list
-        elif isinstance(value, str):
-            # Drop whitespace-only strings and junk string values
-            stripped = value.strip()
-            if stripped and not _contains_junk(stripped):
-                cleaned[key] = stripped
-        else:
-            # int, float, bool, None — keep as-is
-            cleaned[key] = value
+        value = fact.get("value", "")
+        if not value or not value.strip():
+            # Keep numeric facts with scale/unit even if value looks empty
+            if fact.get("ix_type") != "ix:nonFraction":
+                continue
 
-    return cleaned
+        if _JUNK_PATTERNS.search(value):
+            continue
+
+        clean_facts.append(fact)
+
+    return {
+        "report_info": raw_json.get("report_info", {}),
+        "facts": clean_facts,
+    }
+
+
+# ── Stage 3: Section routing ────────────────────────────────────────────────
+
+# ESRS concept patterns — matches ESRS taxonomy concept names
+_ESRS_PATTERNS = re.compile(
+    r"esrs[_:]|"                     # ESRS namespace prefix
+    r"E1[-_]|E2[-_]|S1[-_]|G1[-_]|"  # ESRS standard IDs
+    r"GrossScope|Scope[123]|"         # GHG emissions concepts
+    r"GHG|ghg|"                       # GHG references
+    r"EnergyConsumption|RenewableEnergy|"  # Energy concepts
+    r"TransitionPlan|NetZero|"        # Transition plan concepts
+    r"Decarboni[sz]ation",            # Decarbonisation variants
+    re.IGNORECASE,
+)
+
+# Taxonomy financial concept patterns — matches EU Taxonomy Regulation concepts
+_TAXONOMY_PATTERNS = re.compile(
+    r"taxonomy[_:]|eutaxonomy|"       # Taxonomy namespace
+    r"CapEx|Capex|CAPEX|"             # Capital expenditure
+    r"OpEx|Opex|OPEX|"               # Operating expenditure
+    r"[Rr]evenue|[Tt]urnover|"       # Revenue/turnover
+    r"[Aa]ligned|[Ee]ligible|"       # Alignment status
+    r"Activity[_\s]?[0-9]|"          # Taxonomy activity codes
+    r"NACE|nace",                     # NACE activity references
+    re.IGNORECASE,
+)
+
+# Company metadata concept patterns
+_ENTITY_PATTERNS = re.compile(
+    r"EntityName|LegalName|LEI|"
+    r"NameOfReportingEntity|"
+    r"CountryOfIncorporation|Jurisdiction|"
+    r"ReportingPeriod|FiscalYear|"
+    r"ifrs-full:NameOf|"
+    r"NameOfUltimateParent",
+    re.IGNORECASE,
+)
 
 
 def extract_esrs_sections(report: dict) -> dict:
-    """Extract iXBRL nodes tagged with ESRS taxonomy concepts.
-
-    Filters for concept names matching ESRS E1 patterns:
-    - esrs_e1-1_* (Transition Plan)
-    - esrs_e1-5_* (Energy)
-    - esrs_e1-6_* (GHG Emissions)
-    Plus entity identification concepts (LEI, company name, jurisdiction).
+    """Extract iXBRL facts tagged with ESRS or entity metadata concepts.
 
     Args:
-        report: Cleaned report JSON.
+        report: Cleaned report JSON from clean_report_json().
 
     Returns:
-        Dict of ESRS-tagged iXBRL nodes for the Extractor agent.
+        Dict with "facts" list filtered to ESRS-relevant and entity metadata facts.
     """
-    return _filter_by_concept(report, ESRS_E1_PREFIXES)
+    facts = report.get("facts", [])
+
+    esrs_facts = []
+    for fact in facts:
+        concept = fact.get("concept", "")
+        if _ESRS_PATTERNS.search(concept) or _ENTITY_PATTERNS.search(concept):
+            esrs_facts.append(fact)
+
+    return {"facts": esrs_facts}
 
 
 def extract_taxonomy_sections(report: dict) -> dict:
-    """Extract iXBRL nodes tagged with EU Taxonomy concepts.
-
-    Filters for Taxonomy Regulation financial data:
-    - CapEx alignment tags (total, aligned, eligible)
-    - OpEx alignment tags
-    - Revenue/turnover tags
-    - Activity code classification tags (NACE references)
+    """Extract iXBRL facts tagged with EU Taxonomy financial concepts.
 
     Args:
-        report: Cleaned report JSON.
+        report: Cleaned report JSON from clean_report_json().
 
     Returns:
-        Dict of Taxonomy-tagged iXBRL nodes for the Fetcher agent.
+        Dict with "facts" list filtered to Taxonomy-relevant financial facts.
     """
-    return _filter_by_concept(report, TAXONOMY_PREFIXES)
+    facts = report.get("facts", [])
+
+    taxonomy_facts = []
+    for fact in facts:
+        concept = fact.get("concept", "")
+        if _TAXONOMY_PATTERNS.search(concept):
+            taxonomy_facts.append(fact)
+
+    return {"facts": taxonomy_facts}
 
 
-# ---------------------------------------------------------------------------
-# Private helpers
-# ---------------------------------------------------------------------------
+# ── Convenience: full pipeline ──────────────────────────────────────────────
 
+def parse_report(raw_json: dict) -> tuple[dict, dict, dict]:
+    """Run the full cleaning + routing pipeline.
 
-def _contains_junk(text: str) -> bool:
-    """Return True if *text* matches any known junk pattern."""
-    lower = text.lower()
-    return any(pattern.lower() in lower for pattern in JUNK_PATTERNS)
+    Args:
+        raw_json: Raw JSON from extract_xhtml_to_json or uploaded JSON file.
 
-
-def _clean_list(items: list) -> list | None:
-    """Recursively clean a list value. Returns None if all items were junk."""
-    result = []
-    for item in items:
-        if isinstance(item, dict):
-            cleaned = clean_report_json(item)
-            if cleaned:
-                result.append(cleaned)
-        elif isinstance(item, list):
-            cleaned_sub = _clean_list(item)
-            if cleaned_sub is not None:
-                result.append(cleaned_sub)
-        elif isinstance(item, str):
-            stripped = item.strip()
-            if stripped and not _contains_junk(stripped):
-                result.append(stripped)
-        else:
-            result.append(item)
-    return result if result else None
-
-
-def _filter_by_concept(report: dict, prefixes: tuple[str, ...]) -> dict:
-    """Walk the report JSON and collect nodes whose 'concept' key matches any prefix.
-
-    Handles two common shapes produced by the XHTML→JSON converter:
-
-    Shape A — flat dict of concept-keyed records:
-        { "esrs_e1-1_01": { "value": "...", "unit": "...", ... }, ... }
-
-    Shape B — list of tagged nodes under a top-level key:
-        { "facts": [ { "concept": "esrs_e1-1_01", "value": "...", ... }, ... ] }
-
-    Returns a flat dict keyed by concept name for easy consumption by agents.
+    Returns:
+        Tuple of (cleaned_report, esrs_data, taxonomy_data).
     """
-    result: dict[str, Any] = {}
-
-    _collect_matching_nodes(report, prefixes, result)
-
-    return result
-
-
-def _collect_matching_nodes(
-    node: Any,
-    prefixes: tuple[str, ...],
-    accumulator: dict[str, Any],
-) -> None:
-    """Recursively traverse *node* and collect matching iXBRL entries into *accumulator*."""
-    if isinstance(node, dict):
-        # Shape A: the dict key IS the concept name
-        concept = str(node.get("concept", "")).lower()
-        if concept and _matches_prefix(concept, prefixes):
-            # Store under the concept key, merging if duplicate concepts appear
-            accumulator[node["concept"]] = node
-            return  # don't recurse deeper into a matched node
-
-        for key, value in node.items():
-            key_lower = key.lower()
-            # Shape A (flat): the dict key itself is the concept
-            if _matches_prefix(key_lower, prefixes) and isinstance(value, dict):
-                accumulator[key] = value
-            else:
-                _collect_matching_nodes(value, prefixes, accumulator)
-
-    elif isinstance(node, list):
-        for item in node:
-            _collect_matching_nodes(item, prefixes, accumulator)
-
-
-def _matches_prefix(concept: str, prefixes: tuple[str, ...]) -> bool:
-    """Return True if *concept* starts with any of the given prefixes (case-insensitive)."""
-    return any(concept.startswith(prefix.lower()) for prefix in prefixes)
+    cleaned = clean_report_json(raw_json)
+    esrs_data = extract_esrs_sections(cleaned)
+    taxonomy_data = extract_taxonomy_sections(cleaned)
+    return cleaned, esrs_data, taxonomy_data
