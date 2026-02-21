@@ -1,0 +1,17 @@
+# Core extraction and AI
+docling>=1.0.0
+google-generativeai>=0.8.0
+pydantic>=2.0.0
+
+# Scientific & ML Backend (Windows-stable versions)
+# We specify the CPU version of torch to avoid massive CUDA downloads 
+# and common DLL linking errors on Windows.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio
+
+# Essential for Jupyter Notebooks in VS Code
+
+# Data handling
+numpy>=1.24.0
