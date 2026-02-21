@@ -147,3 +147,36 @@ export interface AuditLog {
   agent: AgentName;
   message: string;
 }
+
+// ---------------------------------------------------------------------------
+// 10. SSE Event Types (real-time streaming from backend)
+// ---------------------------------------------------------------------------
+
+export interface SSELogEvent {
+  type: "log";
+  agent: AgentName;
+  message: string;
+  timestamp: string;
+}
+
+export interface SSENodeCompleteEvent {
+  type: "node_complete";
+  agent: AgentName;
+  duration_ms: number;
+}
+
+export interface SSECompleteEvent {
+  type: "complete";
+  audit: CSRDAudit;
+}
+
+export interface SSEErrorEvent {
+  type: "error";
+  message: string;
+}
+
+export type SSEEvent =
+  | SSELogEvent
+  | SSENodeCompleteEvent
+  | SSECompleteEvent
+  | SSEErrorEvent;

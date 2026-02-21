@@ -7,17 +7,14 @@ import {
   useCallback,
   type DragEvent,
 } from "react";
-import { MOCK_AUDIT, AUDIT_LOGS } from "@/lib/mock-data";
-import type { AuditLog, AgentName } from "@/lib/types";
+import { useAuditStream, type DocumentSlot } from "@/hooks/useAuditStream";
+import type { AgentName } from "@/lib/types";
 import ResultsView from "@/components/results-view";
 
 /* ================================================================= */
 /* Constants                                                          */
 /* ================================================================= */
 
-type Step = "idle" | "analyzing" | "complete";
-
-type DocumentSlot = "management" | "taxonomy" | "transition";
 type Documents = Record<DocumentSlot, string | null>;
 
 const EMPTY_DOCS: Documents = {
@@ -85,10 +82,25 @@ function EUFlag({ className }: { className?: string }) {
 /* ================================================================= */
 
 export default function AuditChamber() {
-  const [step, setStep] = useState<Step>("idle");
   const [entity, setEntity] = useState("");
   const [docs, setDocs] = useState<Documents>(EMPTY_DOCS);
-  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const filesRef = useRef<Record<DocumentSlot, File | null>>({
+    management: null,
+    taxonomy: null,
+    transition: null,
+  });
+
+  const {
+    step,
+    logs,
+    audit,
+    error,
+    progress,
+    totalLogs,
+    startAudit,
+    skipToComplete,
+    reset,
+  } = useAuditStream();
 
   const logEndRef = useRef<HTMLDivElement>(null);
 
@@ -97,35 +109,15 @@ export default function AuditChamber() {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
-  /* ---- log playback timer ---- */
-  useEffect(() => {
-    if (step !== "analyzing") return;
-
-    const timeouts: NodeJS.Timeout[] = [];
-
-    AUDIT_LOGS.forEach((log) => {
-      timeouts.push(
-        setTimeout(() => {
-          setLogs((prev) => [...prev, log]);
-        }, log.timestamp)
-      );
-    });
-
-    const lastTs = AUDIT_LOGS[AUDIT_LOGS.length - 1].timestamp;
-    timeouts.push(setTimeout(() => setStep("complete"), lastTs + 1400));
-
-    return () => timeouts.forEach(clearTimeout);
-  }, [step]);
-
   /* ---- handlers ---- */
   const handleAudit = () => {
     if (!canAudit) return;
-    setLogs([]);
-    setStep("analyzing");
+    startAudit(entity, filesRef.current);
   };
 
-  const setDoc = useCallback((slot: DocumentSlot, name: string) => {
+  const setDoc = useCallback((slot: DocumentSlot, name: string, file: File) => {
     setDocs((prev) => ({ ...prev, [slot]: name }));
+    filesRef.current[slot] = file;
   }, []);
 
   const allDocsReady =
@@ -133,8 +125,6 @@ export default function AuditChamber() {
     docs.taxonomy !== null &&
     docs.transition !== null;
   const canAudit = entity.trim().length > 0 && allDocsReady;
-  const progress =
-    AUDIT_LOGS.length > 0 ? logs.length / AUDIT_LOGS.length : 0;
   const docsUploaded = [docs.management, docs.taxonomy, docs.transition].filter(
     Boolean
   ).length;
@@ -144,7 +134,22 @@ export default function AuditChamber() {
   /* ================================================================= */
 
   if (step === "complete") {
-    return <ResultsView audit={MOCK_AUDIT} />;
+    if (!audit) {
+      return (
+        <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
+          <div className="text-center">
+            <p className="text-sm text-muted">No audit data available.</p>
+            <button
+              onClick={reset}
+              className="mt-4 rounded-card bg-accent px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              Start Over
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return <ResultsView audit={audit} />;
   }
 
   /* ================================================================= */
@@ -160,13 +165,13 @@ export default function AuditChamber() {
             <div className="h-1 w-full bg-slate-100">
               <div
                 className="h-full bg-accent transition-all duration-500 ease-out"
-                style={{ width: `${progress * 100}%` }}
+                style={{ width: `${Math.min(progress, 1) * 100}%` }}
               />
             </div>
 
             {/* Header — click to skip */}
             <button
-              onClick={() => setStep("complete")}
+              onClick={skipToComplete}
               className="flex w-full items-center justify-between border-b border-slate-100 px-5 py-3 text-left transition-colors hover:bg-slate-50"
             >
               <div className="flex items-center gap-2.5">
@@ -179,7 +184,10 @@ export default function AuditChamber() {
                 </span>
               </div>
               <span className="font-mono text-xs text-muted">
-                {logs.length}/{AUDIT_LOGS.length} &middot; skip
+                {totalLogs > 0
+                  ? `${logs.length}/${totalLogs}`
+                  : `${logs.length}`}{" "}
+                &middot; skip
               </span>
             </button>
 
@@ -199,7 +207,7 @@ export default function AuditChamber() {
                   </div>
                 ))}
 
-                {logs.length < AUDIT_LOGS.length && (
+                {progress < 1 && (
                   <div className="mt-1 flex items-center gap-2">
                     <span className="inline-block h-3.5 w-1.5 animate-blink bg-accent/70" />
                   </div>
@@ -236,6 +244,13 @@ export default function AuditChamber() {
             registry filings.
           </p>
         </div>
+
+        {/* Error display */}
+        {error && (
+          <div className="mb-4 rounded-card border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         {/* Chamber Card */}
         <div className="card overflow-hidden">
@@ -291,7 +306,7 @@ export default function AuditChamber() {
                   key={slot}
                   slot={slot}
                   fileName={docs[slot]}
-                  onFile={(name) => setDoc(slot, name)}
+                  onFile={(name, file) => setDoc(slot, name, file)}
                 />
               ))}
             </div>
@@ -300,7 +315,7 @@ export default function AuditChamber() {
 
         {/* Dev shortcut */}
         <button
-          onClick={() => setStep("complete")}
+          onClick={skipToComplete}
           className="mt-6 w-full text-center text-xs text-slate-400 transition-colors hover:text-accent"
         >
           Skip to results
@@ -321,7 +336,7 @@ function DocumentSlotCard({
 }: {
   slot: DocumentSlot;
   fileName: string | null;
-  onFile: (name: string) => void;
+  onFile: (name: string, file: File) => void;
 }) {
   const meta = SLOT_META[slot];
   const inputRef = useRef<HTMLInputElement>(null);
@@ -333,7 +348,7 @@ function DocumentSlotCard({
       setDragging(false);
       const file = e.dataTransfer.files[0];
       if (file?.type === "application/pdf") {
-        onFile(file.name);
+        onFile(file.name, file);
       }
     },
     [onFile]
@@ -342,7 +357,7 @@ function DocumentSlotCard({
   const handleSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) onFile(file.name);
+      if (file) onFile(file.name, file);
     },
     [onFile]
   );
