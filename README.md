@@ -1,27 +1,95 @@
-# ESG Accountability Engine: The "Say-Do Gap" Auditor
+# AI Infrastructure Accountability Engine
 
-## The Purpose
-The ESG Accountability Engine is an automated forensic auditing tool designed to combat corporate greenwashing. It solves a specific, high-stakes problem: companies often publish glossy sustainability reports (the "Say") that do not mathematically align with their actual financial spending (the "Do").
+## Scope
 
-Instead of forcing users to manually cross-reference 100-page PDFs against complex balance sheets, this application automates the entire process. By calculating the gap between public claims and actual capital expenditure, it delivers immediate, verifiable ROI for compliance officers, retail investors, and financial analysts.
+A B2B consulting platform that audits the gap between corporate sustainability claims and financial reality. A company uploads their ESG report as a PDF. Four specialized AI agents extract claims, fetch CapEx data, score alignment, and generate a three-pillar optimization roadmap.
 
-## Overall Architecture & Components
-This system is built as a cleanly engineered website that isn't doing too much. It focuses strictly on executing its core function flawlessly. It consists of three main components:
+The output is a single-page audit report showing the **Compute-to-Carbon Gap** — one number that answers: *are you spending where you're promising?*
 
-* **The Multi-Agent Backend:** An autonomous system of specialized AI workers that read documents, fetch financial data, and synthesize the findings without requiring rigid, brittle code.
-* **The Analysis Engine:** The translation layer that converts subjective corporate text into measurable financial metrics, ultimately calculating a definitive "Greenwashing Risk Score."
-* **The Minimalist Interface:** A highly focused frontend that requires zero learning curve. It takes a ticker and a PDF as inputs and immediately returns a side-by-side comparative ledger.
+## Architecture
 
-## The AI Agents (How They Work Together)
-The backend relies on three specialized AI agents working collaboratively to evaluate the data.
+```
+┌─────────────────────────────────────────────────────────┐
+│                      FRONTEND                           │
+│                  Next.js + TypeScript                    │
+│                                                         │
+│  ┌──────────┐  ┌──────────────┐  ┌───────────────────┐  │
+│  │ Gap Score │  │ Say vs. Do   │  │ Three-Pillar Plan │  │
+│  │  0-100    │  │   Ledger     │  │ HW / Power / Work │  │
+│  └──────────┘  └──────────────┘  └───────────────────┘  │
+│                  ┌──────────────┐                        │
+│                  │   Pipeline   │                        │
+│                  │   Timeline   │                        │
+│                  └──────────────┘                        │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+                       │  AuditReport (typed JSON contract)
+                       │
+┌──────────────────────┴──────────────────────────────────┐
+│                      BACKEND                            │
+│              LangGraph Multi-Agent Pipeline              │
+│              Anthropic Claude 3.5 Sonnet                 │
+│                                                         │
+│  PDF ──▶ [Extractor] ──▶ [Fetcher] ──▶ [Auditor] ──▶ [Consultant] │
+│           parse ESG      fetch CapEx    score gaps    gen roadmap   │
+│           claims         from filings   0-100 each   3 pillars     │
+└─────────────────────────────────────────────────────────┘
+```
 
-* **The Extractor (The Reader):** This agent reads the uploaded ESG report. It ignores the marketing fluff and specifically extracts forward-looking sustainability promises and capital commitments.
-* **The Fetcher (The Data Gatherer):** Operating in parallel, this agent queries external financial databases. It autonomously writes and executes small commands to retrieve the exact Capital Expenditure (CapEx) and operational costs for that specific company.
-* **The Auditor (The Orchestrator):** This agent manages the entire workflow. It receives the extracted text from the Reader and the hard numbers from the Fetcher. It cross-references the two, mathematically verifies the discrepancies, and formats the final data to be sent to the user interface.
+## Contract-First Workflow
 
-If the Fetcher hits a dead end (like a missing financial data point), the Auditor autonomously instructs it to try a different proxy metric, ensuring the system gracefully adapts instead of crashing.
+The frontend and backend are decoupled by a single TypeScript interface: **`AuditReport`**.
 
-## UI & Data Flow
-The philosophy for the frontend is that less is better. The application entirely avoids cluttered dashboards in favor of a stark, side-by-side ledger.
+```
+contracts/
+├── audit-report.schema.ts   ← the typed contract (source of truth)
+└── audit-report.mock.ts     ← realistic mock data for UI development
+```
 
-When the backend agents complete their audit, the data flows directly into the UI. We keep the color in it specifically to drive the data narrative: crisp greens highlight verified financial alignment, while stark reds instantly expose the "Say-Do" discrepancies. This functional design ensures the user instantly understands the risk score and the ROI of the tool the second the page renders.
+The frontend team builds against mock data. The backend team builds agents that produce the same shape. Neither blocks the other.
+
+### AuditReport Shape
+
+| Section | Purpose | Key Fields |
+|---|---|---|
+| `company` | Profile metadata | `name`, `ticker`, `sector`, `fiscal_year`, `report_title` |
+| `gap_score` | Single headline metric (0-100) | `value`, `label` |
+| `ledger[]` | 3-5 Say vs. Do rows | `the_say.claim`, `the_do.finding`, `alignment_score` |
+| `recommendations` | Three-pillar roadmap | `hardware`, `power`, `workload` — each with `title`, `summary`, `priority` |
+| `sources[]` | Consolidated citations | `document_name`, `document_type`, `url` |
+| `pipeline` | Agent execution timeline | `agents[]` with `name`, `duration_ms`, `status` |
+
+### UI Rendering Rules
+
+- **alignment_score** drives a red-to-green color gradient (0 = stark red, 100 = crisp green)
+- **Ledger items** are ordered worst-first (lowest score at the top)
+- **Priority** on each pillar is one of: `critical`, `high`, `moderate`, `low`
+- **Pipeline timeline** is visible to the user to build trust in the agent process
+
+## Agent Pipeline
+
+| Agent | Input | Output | Tools |
+|---|---|---|---|
+| **Extractor** | Raw ESG PDF | Parsed sustainability claims | PDF parser, Claude prompt cache |
+| **Fetcher** | Company identifiers | CapEx line items from public filings | SEC EDGAR, financial APIs |
+| **Auditor** | Claims + CapEx data | Scored ledger (0-100 per claim) + aggregate gap score | Claude financial reasoning |
+| **Consultant** | Scored ledger | Three-pillar recommendation summaries | Claude synthesis |
+
+Agents run sequentially. Each agent's output is the next agent's input. The pipeline trace records duration and status for each step.
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js, TypeScript |
+| Backend Orchestration | LangGraph (Python) |
+| LLM | Anthropic Claude 3.5 Sonnet |
+| LLM Optimization | Prompt Caching, XML-tag processing |
+| Contract | TypeScript interfaces (`contracts/`) |
+
+## Project Philosophy
+
+- **Less is better.** One page, one score, one ledger, one plan. No dashboard clutter.
+- **Truly agentic.** Agents use tool calling and multi-step reasoning, not prompt chaining.
+- **Anthropic-first.** Optimized for Claude's strengths: prompt caching, XML tags, financial reasoning.
+- **Contract-first.** Frontend and backend teams never block each other.
