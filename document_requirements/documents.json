@@ -2,107 +2,386 @@
   "csrd_reporting_requirements": [
     {
       "document_type": "Sustainability Report",
-      "frequency": "Annual",
-      "timeframe_covered": "Full financial year (align with financial reporting period)",
-      "lookback_base_year": "Previous year for comparative information",
-      "granularity": "High; numeric KPIs, narrative context, policies, targets, risk descriptions",
-      "areas": [
-        "All material ESG topics per ESRS",
-        "EU Taxonomy disclosures",
-        "Environmental, Social, Governance"
+      "governing_standards": [
+        "ESRS 1 - General Requirements (cross-cutting architecture, materiality, presentation rules)",
+        "ESRS 2 - General Disclosures (governance, strategy, risk management, metrics baseline)"
       ],
-      "notes": "Published in Management Report; tagged in XHTML/XBRL for machine readability"
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year (must align exactly with financial reporting period)",
+      "lookback_base_year": "Minimum 1 prior year for comparative information; 3+ years recommended for trend visibility",
+      "granularity": "High — numeric KPIs, narrative context, policies, targets, risk descriptions, forward-looking statements",
+      "areas": [
+        "All material ESG topics identified via Double Materiality Assessment",
+        "EU Taxonomy disclosures (eligibility, alignment, turnover/capex/opex KPIs)",
+        "Environmental topics (ESRS E1-E5)",
+        "Social topics (ESRS S1-S4)",
+        "Governance topics (ESRS G1)"
+      ],
+      "key_disclosures": [
+        "GOV-1: Board composition and oversight of sustainability",
+        "GOV-2: Management roles and responsibilities",
+        "GOV-3: Integration of sustainability performance in remuneration",
+        "GOV-4: Statement on due diligence",
+        "GOV-5: Risk and opportunity management",
+        "SBM-1: Strategy, business model and value chain",
+        "SBM-2: Stakeholder engagement",
+        "SBM-3: Material impacts, risks and opportunities",
+        "IRO-1: Identification and assessment of impacts, risks and opportunities",
+        "IRO-2: Disclosure requirements covered and data points"
+      ],
+      "format_requirements": "Published within the Management Report; tagged in XHTML/iXBRL for machine readability per ESRS Taxonomy",
+      "assurance": "Limited assurance required from first year; transitioning to reasonable assurance (timeline TBD by EU)",
+      "phased_application": {
+        "wave_1": "FY2024 — Large PIEs with >500 employees (report in 2025)",
+        "wave_2": "FY2025 — All other large companies (report in 2026)",
+        "wave_3": "FY2026 — Listed SMEs (report in 2027, with opt-out to 2028)"
+      }
     },
     {
       "document_type": "Double Materiality Assessment (DMA)",
-      "frequency": "Annual",
-      "timeframe_covered": "Current and historical data used for analysis",
-      "lookback_base_year": "Historical data where relevant to justify materiality decisions",
-      "granularity": "Analytical; for each ESG topic include evidence of impact and financial materiality",
-      "areas": [
-        "Impact materiality (company effects on environment/society)",
-        "Financial materiality (ESG impact on company performance)"
+      "governing_standards": [
+        "ESRS 1 - General Requirements (Section 3: Double Materiality)",
+        "ESRS 2 - IRO-1: Description of processes to identify and assess material IROs"
       ],
-      "notes": "Determines which topics are included in the sustainability report"
+      "frequency": "Annual (reviewed and updated each reporting cycle)",
+      "timeframe_covered": "Current and historical data used for analysis; forward-looking horizon of 1, 3, 5 and 10+ years",
+      "lookback_base_year": "Historical data where relevant to justify materiality decisions; no fixed minimum",
+      "granularity": "Analytical — for each ESG topic, evidence of impact magnitude, likelihood, scope, irremediability (impact materiality) and financial effect size and probability (financial materiality)",
+      "areas": [
+        "Impact materiality — company effects on environment and society (actual and potential, positive and negative)",
+        "Financial materiality — ESG risks and opportunities affecting company financial performance, position or cash flows"
+      ],
+      "topics_assessed": [
+        "ESRS E1 - Climate Change",
+        "ESRS E2 - Pollution",
+        "ESRS E3 - Water and Marine Resources",
+        "ESRS E4 - Biodiversity and Ecosystems",
+        "ESRS E5 - Resource Use and Circular Economy",
+        "ESRS S1 - Own Workforce",
+        "ESRS S2 - Workers in the Value Chain",
+        "ESRS S3 - Affected Communities",
+        "ESRS S4 - Consumers and End-users",
+        "ESRS G1 - Business Conduct"
+      ],
+      "process_requirements": [
+        "Stakeholder engagement to inform impact identification",
+        "Documentation of scoring methodology for impact and financial materiality",
+        "Validation by senior management and board",
+        "Clear rationale for topics assessed as not material (with disclosure of omissions per ESRS 1)"
+      ],
+      "notes": "Determines which ESRS disclosure requirements are included in the Sustainability Report. Non-material topics must still be documented with justification."
     },
     {
-      "document_type": "ESRS Disclosure Tables and Data Points",
+      "document_type": "ESRS E1 - Climate Change Disclosure",
+      "governing_standards": ["ESRS E1 - Climate Change"],
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year; forward-looking targets to 2030, 2040, 2050",
+      "lookback_base_year": "Base year for GHG inventory (typically 2019 or earliest available); prior year for comparison",
+      "granularity": "High quantitative and qualitative",
+      "key_disclosures": [
+        "E1-1: Transition plan for climate change mitigation",
+        "E1-2: Policies related to climate change mitigation and adaptation",
+        "E1-3: Actions and resources for climate change mitigation and adaptation",
+        "E1-4: Targets related to climate change mitigation and adaptation",
+        "E1-5: Energy consumption and mix (MWh, % renewables, intensity)",
+        "E1-6: Gross Scope 1, 2, 3 GHG emissions (tCO2e, with methodology)",
+        "E1-7: GHG removals and carbon credits (if applicable)",
+        "E1-8: Internal carbon pricing",
+        "E1-9: Anticipated financial effects of climate-related physical and transition risks"
+      ],
+      "alignment": ["GHG Protocol", "TCFD", "Science Based Targets initiative (SBTi)", "EU Climate Benchmarks Regulation"]
+    },
+    {
+      "document_type": "ESRS E2 - Pollution Disclosure",
+      "governing_standards": ["ESRS E2 - Pollution"],
       "frequency": "Annual",
       "timeframe_covered": "Full financial year",
-      "lookback_base_year": "Previous year for trend comparison; forward-looking targets also required",
-      "granularity": "High; quantitative KPIs + narrative explanations",
-      "areas": [
-        "Environmental (ESRS E1–E5: climate, pollution, water, biodiversity, resources)",
-        "Social (ESRS S1–S4: workforce, supply chain labor, community, consumer safety)",
-        "Governance (ESRS G1: business conduct, anti-corruption, corporate culture)"
+      "lookback_base_year": "Prior year for comparison",
+      "granularity": "High quantitative and qualitative",
+      "key_disclosures": [
+        "E2-1: Policies related to pollution",
+        "E2-2: Actions and resources related to pollution",
+        "E2-3: Targets related to pollution",
+        "E2-4: Pollution of air, water, and soil (pollutant types, quantities, units)",
+        "E2-5: Substances of concern and substances of very high concern (SVHC)",
+        "E2-6: Anticipated financial effects of pollution-related risks and opportunities"
       ],
-      "notes": "Structured per ESRS; data tables embedded in Sustainability Report"
+      "alignment": ["EU Industrial Emissions Directive", "REACH Regulation", "EU Zero Pollution Action Plan"]
     },
     {
-      "document_type": "Narrative Strategy & Governance Document",
+      "document_type": "ESRS E3 - Water and Marine Resources Disclosure",
+      "governing_standards": ["ESRS E3 - Water and Marine Resources"],
       "frequency": "Annual",
-      "timeframe_covered": "Current year and forward-looking",
-      "lookback_base_year": "Context against prior year",
-      "granularity": "Qualitative; detailed descriptions of strategy, governance roles, risk management processes",
-      "areas": [
-        "Integration of sustainability in business strategy",
-        "Board/senior management oversight",
-        "Risk and opportunity management for ESG topics"
+      "timeframe_covered": "Full financial year",
+      "lookback_base_year": "Prior year for comparison",
+      "granularity": "High quantitative and qualitative",
+      "key_disclosures": [
+        "E3-1: Policies related to water and marine resources",
+        "E3-2: Actions and resources related to water and marine resources",
+        "E3-3: Targets related to water and marine resources",
+        "E3-4: Water consumption (m³ total, in water-stressed areas, intensity)",
+        "E3-5: Anticipated financial effects of water and marine resource risks"
       ],
-      "notes": "Accompanies quantitative KPIs; explains rationale, targets, and policies"
+      "alignment": ["EU Water Framework Directive", "CDP Water Security", "Alliance for Water Stewardship (AWS)"]
     },
     {
-      "document_type": "Assurance Documentation",
+      "document_type": "ESRS E4 - Biodiversity and Ecosystems Disclosure",
+      "governing_standards": ["ESRS E4 - Biodiversity and Ecosystems"],
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year",
+      "lookback_base_year": "Prior year; historical baseline for ecosystem assessments where available",
+      "granularity": "High quantitative and qualitative; site-level data for sensitive areas",
+      "key_disclosures": [
+        "E4-1: Transition plan and consideration of biodiversity and ecosystems in strategy",
+        "E4-2: Policies related to biodiversity and ecosystems",
+        "E4-3: Actions and resources related to biodiversity and ecosystems",
+        "E4-4: Targets related to biodiversity and ecosystems",
+        "E4-5: Impact metrics (land use, land use change, species affected)",
+        "E4-6: Anticipated financial effects of biodiversity and ecosystem risks"
+      ],
+      "alignment": ["Kunming-Montreal Global Biodiversity Framework (GBF)", "TNFD", "EU Biodiversity Strategy 2030", "EU Nature Restoration Law"]
+    },
+    {
+      "document_type": "ESRS E5 - Resource Use and Circular Economy Disclosure",
+      "governing_standards": ["ESRS E5 - Resource Use and Circular Economy"],
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year",
+      "lookback_base_year": "Prior year for comparison",
+      "granularity": "High quantitative and qualitative",
+      "key_disclosures": [
+        "E5-1: Policies related to resource use and circular economy",
+        "E5-2: Actions and resources related to resource use and circular economy",
+        "E5-3: Targets related to resource use and circular economy",
+        "E5-4: Resource inflows (materials, virgin vs. recycled, weight in tonnes)",
+        "E5-5: Resource outflows (waste, by type and disposal method, tonnes)",
+        "E5-6: Anticipated financial effects of resource use and circular economy risks"
+      ],
+      "alignment": ["EU Circular Economy Action Plan", "EU Waste Framework Directive", "EU Ecodesign Regulation"]
+    },
+    {
+      "document_type": "ESRS S1 - Own Workforce Disclosure",
+      "governing_standards": ["ESRS S1 - Own Workforce"],
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year",
+      "lookback_base_year": "Prior year for comparison",
+      "granularity": "High quantitative (headcount, rates, pay) and qualitative (policies, grievance mechanisms)",
+      "key_disclosures": [
+        "S1-1: Policies related to own workforce",
+        "S1-2: Processes for engaging with own workers and workers' representatives",
+        "S1-3: Processes to remediate negative impacts and channels to raise concerns",
+        "S1-4: Action plans and resources on material impacts on own workforce",
+        "S1-5: Targets related to managing material negative impacts, risks and opportunities",
+        "S1-6: Characteristics of the undertaking's employees (headcount by gender, country, employment type)",
+        "S1-7: Characteristics of non-employee workers",
+        "S1-8: Collective bargaining coverage and social dialogue",
+        "S1-9: Diversity metrics (gender by management level, age distribution)",
+        "S1-10: Adequate wages (living wage benchmark compliance)",
+        "S1-11: Social protection coverage",
+        "S1-12: Persons with disabilities",
+        "S1-13: Training and skills development metrics (hours, % covered)",
+        "S1-14: Health and safety metrics (TRIR, lost-time injury rate, fatalities, work-related ill health)",
+        "S1-15: Work-life balance metrics (parental leave take-up)",
+        "S1-16: Compensation metrics (CEO pay ratio, gender pay gap)"
+      ],
+      "alignment": ["ILO Core Labour Standards", "UN Guiding Principles on Business and Human Rights", "EU Pay Transparency Directive"]
+    },
+    {
+      "document_type": "ESRS S2 - Workers in the Value Chain Disclosure",
+      "governing_standards": ["ESRS S2 - Workers in the Value Chain"],
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year",
+      "lookback_base_year": "Prior year for comparison",
+      "granularity": "Qualitative (policies, due diligence) and quantitative where available (audit findings, remediation cases)",
+      "key_disclosures": [
+        "S2-1: Policies related to value chain workers",
+        "S2-2: Processes for engaging with value chain workers",
+        "S2-3: Processes to remediate negative impacts and channels to raise concerns",
+        "S2-4: Action plans and resources on material impacts on value chain workers",
+        "S2-5: Targets related to managing material impacts on value chain workers"
+      ],
+      "alignment": ["UN Guiding Principles on Business and Human Rights", "OECD Guidelines for Multinational Enterprises", "EU Corporate Sustainability Due Diligence Directive (CS3D)"]
+    },
+    {
+      "document_type": "ESRS S3 - Affected Communities Disclosure",
+      "governing_standards": ["ESRS S3 - Affected Communities"],
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year",
+      "lookback_base_year": "Prior year for comparison",
+      "granularity": "Qualitative (engagement, grievance processes) and quantitative where available",
+      "key_disclosures": [
+        "S3-1: Policies related to affected communities",
+        "S3-2: Processes for engaging with affected communities",
+        "S3-3: Processes to remediate negative impacts and channels to raise concerns",
+        "S3-4: Action plans and resources on material impacts on affected communities",
+        "S3-5: Targets related to managing material impacts on affected communities"
+      ],
+      "alignment": ["UN Declaration on the Rights of Indigenous Peoples (UNDRIP)", "IFC Performance Standards", "UN Guiding Principles on Business and Human Rights"]
+    },
+    {
+      "document_type": "ESRS S4 - Consumers and End-users Disclosure",
+      "governing_standards": ["ESRS S4 - Consumers and End-users"],
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year",
+      "lookback_base_year": "Prior year for comparison",
+      "granularity": "Qualitative (policies, complaints handling) and quantitative (incidents, recall data)",
+      "key_disclosures": [
+        "S4-1: Policies related to consumers and end-users",
+        "S4-2: Processes for engaging with consumers and end-users",
+        "S4-3: Processes to remediate negative impacts and channels to raise concerns",
+        "S4-4: Action plans and resources on material impacts on consumers and end-users",
+        "S4-5: Targets related to managing material impacts on consumers and end-users"
+      ],
+      "alignment": ["EU General Product Safety Regulation", "GDPR", "EU AI Act (where applicable)", "Consumer Rights Directive"]
+    },
+    {
+      "document_type": "ESRS G1 - Business Conduct Disclosure",
+      "governing_standards": ["ESRS G1 - Business Conduct"],
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year",
+      "lookback_base_year": "Prior year for comparison",
+      "granularity": "Qualitative (policies, whistleblowing framework) and quantitative (confirmed incidents, fines)",
+      "key_disclosures": [
+        "G1-1: Corporate culture and business conduct policies (code of conduct, anti-corruption, anti-bribery)",
+        "G1-2: Management of relationships with suppliers",
+        "G1-3: Prevention and detection of corruption and bribery (training %, incidents investigated)",
+        "G1-4: Incidents of corruption and bribery (confirmed cases, sanctions, criminal proceedings)",
+        "G1-5: Political influence and lobbying activities",
+        "G1-6: Payment practices (average payment period vs. contractual terms, SME late payment data)"
+      ],
+      "alignment": ["UN Convention Against Corruption (UNCAC)", "OECD Anti-Bribery Convention", "EU Whistleblower Protection Directive", "UK Bribery Act (where applicable)"]
+    },
+    {
+      "document_type": "EU Taxonomy Disclosure",
+      "governing_standards": [
+        "EU Taxonomy Regulation (2020/852)",
+        "Delegated Acts for Climate Change Mitigation and Adaptation (2021)",
+        "Delegated Acts for remaining four objectives (2023)",
+        "ESRS 2 - Appendix B: Mandatory EU Taxonomy disclosures"
+      ],
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year",
+      "lookback_base_year": "Prior year for comparison",
+      "granularity": "High quantitative — KPIs expressed as % of turnover, capex, opex that are taxonomy-eligible and taxonomy-aligned",
+      "six_environmental_objectives": [
+        "1. Climate Change Mitigation",
+        "2. Climate Change Adaptation",
+        "3. Sustainable Use and Protection of Water and Marine Resources",
+        "4. Transition to a Circular Economy",
+        "5. Pollution Prevention and Control",
+        "6. Protection and Restoration of Biodiversity and Ecosystems"
+      ],
+      "dnsh_criteria": "Do No Significant Harm (DNSH) criteria must be met for all six objectives for an activity to be taxonomy-aligned",
+      "minimum_safeguards": "Compliance with OECD Guidelines for MNEs and UN Guiding Principles on Business and Human Rights required",
+      "key_disclosures": [
+        "Proportion of taxonomy-eligible vs. non-eligible economic activities",
+        "Proportion of taxonomy-aligned activities (subset of eligible)",
+        "Turnover KPI: % of revenue from aligned activities",
+        "CapEx KPI: % of capital expenditure associated with aligned activities",
+        "OpEx KPI: % of operational expenditure associated with aligned activities"
+      ]
+    },
+    {
+      "document_type": "Narrative Strategy and Governance Document",
+      "governing_standards": [
+        "ESRS 1 - General Requirements (Section 4-5: Strategy, Governance, Materiality integration)",
+        "ESRS 2 - GOV-1 to GOV-5, SBM-1 to SBM-3, IRO-1 to IRO-2"
+      ],
+      "frequency": "Annual",
+      "timeframe_covered": "Current year and forward-looking (short: <1 yr, medium: 1-5 yrs, long: >5 yrs)",
+      "lookback_base_year": "Context against prior year; multi-year strategic cycle where relevant",
+      "granularity": "Qualitative — detailed descriptions of strategy, governance roles, risk management processes, stakeholder engagement",
+      "areas": [
+        "Integration of sustainability in overall business strategy and business model",
+        "Board and senior management oversight of sustainability (committee structures, frequency of review)",
+        "Risk and opportunity identification, assessment, and management processes for all material ESG topics",
+        "Linkage between sustainability targets and financial planning",
+        "Stakeholder engagement approach and outcomes informing strategy"
+      ]
+    },
+    {
+      "document_type": "Assurance Documentation Package",
+      "governing_standards": [
+        "ESRS 1 - General Requirements (Section 9: Assurance)",
+        "ISAE 3000 (Revised) - Assurance Engagements Other than Audits or Reviews",
+        "ISSA 5000 - International Standard on Sustainability Assurance (forthcoming IAASB standard)"
+      ],
       "frequency": "Annual",
       "timeframe_covered": "Same period as Sustainability Report",
       "lookback_base_year": "N/A",
-      "granularity": "High; includes methodology, internal controls, data sources, verification evidence",
+      "granularity": "High — includes methodology documentation, internal controls evidence, source data traceability, verification evidence",
       "areas": [
-        "Verification of all reported ESG KPIs",
-        "Internal controls and calculation methodologies",
-        "Third-party assurance evidence"
+        "Verification of all reported ESG KPIs (Scope 1/2/3 GHG, energy, water, waste, social metrics)",
+        "Internal controls design and operating effectiveness",
+        "Calculation methodologies with GHG Protocol, ESRS, and other standard references",
+        "Third-party assurance engagement evidence (limited assurance as minimum; reasonable assurance roadmap)",
+        "Management representation letters",
+        "Audit trails linking reported figures to source systems"
       ],
-      "notes": "Required for external limited assurance; may transition to reasonable assurance over time"
+      "assurance_levels": {
+        "limited_assurance": "Required from first year of CSRD application (negative assurance: nothing has come to our attention)",
+        "reasonable_assurance": "Future requirement per EU Commission review; provides positive assurance equivalent to financial audit"
+      }
     },
     {
       "document_type": "Data Collection Logs",
-      "frequency": "Ongoing",
-      "timeframe_covered": "Current & historical",
-      "lookback_base_year": "Historical data maintained for trend analysis and audit support",
-      "granularity": "Detailed; includes source systems, measurement methods, data owner",
-      "areas": [
-        "Energy consumption",
-        "Emissions data (Scope 1, 2, 3)",
-        "HR metrics",
-        "Supplier and value chain ESG data"
+      "governing_standards": [
+        "ESRS 1 - General Requirements (Section 7: Reporting Quality Principles)",
+        "Internal data governance requirements to support ESRS disclosures"
       ],
-      "notes": "Internal document to support reporting accuracy and assurance"
+      "frequency": "Ongoing (monthly or quarterly collection; annual consolidation)",
+      "timeframe_covered": "Current and historical",
+      "lookback_base_year": "Historical data maintained for trend analysis, audit support, and base year recalculation (minimum 3 years recommended)",
+      "granularity": "Detailed — source systems, measurement methods, conversion factors used, data owner, date of extraction, version control",
+      "areas": [
+        "Energy consumption (electricity, heat, fuel by source — MWh/GJ)",
+        "GHG emissions Scope 1 (direct combustion, process, fugitive)",
+        "GHG emissions Scope 2 (market-based and location-based)",
+        "GHG emissions Scope 3 (all 15 categories; at minimum categories 1 and 11)",
+        "Water withdrawal and consumption by source and stress level",
+        "Waste generation by type, hazardous classification, and disposal route",
+        "HR metrics (headcount, turnover, absenteeism, training hours, pay gap data)",
+        "Health and safety metrics (TRIR, fatalities, near misses)",
+        "Supplier and value chain ESG data (audit results, corrective actions, screening outcomes)"
+      ]
     },
     {
-      "document_type": "Control & QA Procedure Documentation",
-      "frequency": "Ongoing",
-      "timeframe_covered": "Current & historical",
-      "lookback_base_year": "Operational records supporting trend analysis",
-      "granularity": "Procedural; description of internal controls, validation methods, and error tracking",
-      "areas": [
-        "Data quality and consistency",
-        "Calculation verification",
-        "Audit trail readiness"
+      "document_type": "Control and QA Procedure Documentation",
+      "governing_standards": [
+        "ESRS 1 - General Requirements (Section 7: Reporting Quality — accuracy, completeness, verifiability)",
+        "ISAE 3000 internal control requirements for assurance readiness"
       ],
-      "notes": "Supports internal compliance and external assurance"
+      "frequency": "Ongoing (updated as processes change; reviewed annually)",
+      "timeframe_covered": "Current and historical",
+      "lookback_base_year": "Operational records supporting trend analysis; version history of procedural changes",
+      "granularity": "Procedural — description of internal controls, validation steps, responsible parties, error tracking, correction procedures",
+      "areas": [
+        "Data quality controls (completeness checks, outlier detection, gap estimation methodology)",
+        "Calculation verification (formula documentation, unit conversion checks, third-party factor source references)",
+        "Scope boundary definitions (consolidation approach: operational control, financial control, or equity share)",
+        "Audit trail and version control for all reported data points",
+        "Escalation and restatement procedures for prior period corrections"
+      ]
     },
     {
       "document_type": "Historical Records for Trend Analysis",
-      "frequency": "Ongoing / maintained continuously",
-      "timeframe_covered": "Previous reporting years",
-      "lookback_base_year": "Multiple years to enable trend and target comparisons",
-      "granularity": "Quantitative & qualitative historical data",
-      "areas": [
-        "All previously reported ESG KPIs",
-        "Policy changes and updates",
-        "Materiality decisions from prior years"
+      "governing_standards": [
+        "ESRS 1 - General Requirements (Section 6: Comparative Information)",
+        "ESRS E1-6 (base year for GHG inventory)",
+        "EU Taxonomy Regulation (year-on-year KPI tracking)"
       ],
-      "notes": "Required for comparative analysis and board review"
+      "frequency": "Ongoing — maintained continuously; formally reviewed at each annual reporting cycle",
+      "timeframe_covered": "All previous reporting years from first year of CSRD application onwards",
+      "lookback_base_year": "Multiple years to enable trend, target progress, and base year comparisons (3-5 years minimum; 10+ years for GHG base year)",
+      "granularity": "Quantitative and qualitative historical data with consistent methodology notes to enable like-for-like comparison",
+      "areas": [
+        "All previously reported ESRS E1-E5, S1-S4, G1 KPIs",
+        "EU Taxonomy KPIs (turnover, capex, opex) by year",
+        "Policy changes, governance updates, and strategy revisions",
+        "Materiality decisions from prior years with rationale",
+        "Prior DMA outputs and changes in material topic scope",
+        "Target trajectories and progress against milestones"
+      ],
+      "restatement_rules": "Prior year figures must be restated and clearly flagged when: methodology changes, acquisitions/disposals alter scope, or errors are corrected — per ESRS 1 Section 6"
     }
   ]
 }

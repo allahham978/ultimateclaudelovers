@@ -1,54 +1,202 @@
 {
-  "phases": [
-    {
-      "phase": "Phase 1",
-      "data_collection_year": 2024,
-      "reporting_year": 2025,
-      "company_type": "Companies already in scope for NFRD (including non-EU subsidiaries)",
-      "continent": "EU",
-      "thresholds": {
-        "total_assets_eur": 20000000,
-        "net_turnover_eur": 40000000,
-        "average_employees": 500
+  "csrd_phases": {
+    "legislation": "Corporate Sustainability Reporting Directive (CSRD) — Directive 2022/2464/EU",
+    "transposition_deadline": "July 6, 2024 (EU Member States)",
+    "applicable_standards": "European Sustainability Reporting Standards (ESRS), adopted via Commission Delegated Regulation (EU) 2023/2772",
+    "assurance_requirement": "Limited assurance from first year of application; transition to reasonable assurance subject to Commission review",
+    "filing_format": "XHTML with iXBRL tagging per ESRS Digital Taxonomy; filed within the Management Report",
+    "phases": [
+      {
+        "phase": "Phase 1",
+        "label": "Large Public-Interest Entities already subject to NFRD",
+        "governing_directive": "CSRD Article 5(1)(a) — amending Accounting Directive 2013/34/EU",
+        "data_collection_year": 2024,
+        "reporting_year": 2025,
+        "first_report_due": "2025 (for FY2024 data)",
+        "scope": {
+          "company_type": "Large Public-Interest Entities (PIEs) already in scope for the Non-Financial Reporting Directive (NFRD / Directive 2014/95/EU)",
+          "geography": "EU / EEA",
+          "examples": [
+            "EU-listed companies with >500 employees",
+            "Large EU credit institutions and insurance undertakings with >500 employees",
+            "Non-EU parent companies with EU-listed subsidiaries qualifying as PIEs with >500 employees"
+          ]
+        },
+        "size_thresholds": {
+          "description": "Must meet at least 2 of the 3 criteria (and already exceed the 500-employee threshold as a PIE)",
+          "total_assets_eur": 20000000,
+          "net_turnover_eur": 40000000,
+          "average_employees": 500
+        },
+        "applicable_esrs": {
+          "mandatory_cross_cutting": [
+            "ESRS 1 - General Requirements",
+            "ESRS 2 - General Disclosures (fully mandatory, no materiality opt-out)"
+          ],
+          "topical_esrs_subject_to_materiality": [
+            "ESRS E1 - Climate Change",
+            "ESRS E2 - Pollution",
+            "ESRS E3 - Water and Marine Resources",
+            "ESRS E4 - Biodiversity and Ecosystems",
+            "ESRS E5 - Resource Use and Circular Economy",
+            "ESRS S1 - Own Workforce",
+            "ESRS S2 - Workers in the Value Chain",
+            "ESRS S3 - Affected Communities",
+            "ESRS S4 - Consumers and End-users",
+            "ESRS G1 - Business Conduct"
+          ]
+        },
+        "eu_taxonomy_reporting": "Required — turnover, capex, and opex KPIs across all six environmental objectives",
+        "phased_ins_and_reliefs": [
+          "ESRS 1 allows a 1-year phase-in for certain Scope 3 GHG (category-level) disclosures",
+          "ESRS 1 allows a 1-year phase-in for certain ESRS S2, S3, S4 disclosures in year 1",
+          "Value chain data: 3-year phase-in permitted where data is not yet obtainable from value chain partners"
+        ],
+        "notes": "Largest and most established EU companies; highest reporting maturity expected. Estimated ~50,000 companies EU-wide across all phases; approximately 2,000 already reported under NFRD and are Phase 1 in-scope."
       },
-      "notes": "Large, established EU companies; full ESRS reporting requirements apply."
-    },
-    {
-      "phase": "Phase 2",
-      "data_collection_year": 2025,
-      "reporting_year": 2026,
-      "company_type": "Other large EU-based subsidiaries of non-EU companies and all companies listed on EU-regulated markets",
-      "continent": "EU",
-      "thresholds": {
-        "total_assets_eur": 20000000,
-        "net_turnover_eur": 40000000,
-        "average_employees": 250
+      {
+        "phase": "Phase 2",
+        "label": "Other Large EU Companies (not previously subject to NFRD)",
+        "governing_directive": "CSRD Article 5(1)(b)",
+        "data_collection_year": 2025,
+        "reporting_year": 2026,
+        "first_report_due": "2026 (for FY2025 data)",
+        "scope": {
+          "company_type": "Large companies incorporated in the EU that were not previously subject to NFRD, plus EU-regulated market-listed companies regardless of size (excluding listed SMEs, covered in Phase 3)",
+          "geography": "EU / EEA",
+          "examples": [
+            "Large private EU companies not previously classified as PIEs",
+            "Large subsidiaries of non-EU parent groups incorporated in the EU",
+            "All companies listed on EU-regulated markets (excluding SMEs)"
+          ]
+        },
+        "size_thresholds": {
+          "description": "Must meet at least 2 of the 3 following criteria to qualify as 'large'",
+          "total_assets_eur": 20000000,
+          "net_turnover_eur": 40000000,
+          "average_employees": 250,
+          "note": "Companies below these thresholds but listed on EU-regulated markets are in scope regardless (unless qualifying as listed SMEs under Phase 3)"
+        },
+        "applicable_esrs": {
+          "mandatory_cross_cutting": [
+            "ESRS 1 - General Requirements",
+            "ESRS 2 - General Disclosures (fully mandatory)"
+          ],
+          "topical_esrs_subject_to_materiality": [
+            "ESRS E1 - Climate Change",
+            "ESRS E2 - Pollution",
+            "ESRS E3 - Water and Marine Resources",
+            "ESRS E4 - Biodiversity and Ecosystems",
+            "ESRS E5 - Resource Use and Circular Economy",
+            "ESRS S1 - Own Workforce",
+            "ESRS S2 - Workers in the Value Chain",
+            "ESRS S3 - Affected Communities",
+            "ESRS S4 - Consumers and End-users",
+            "ESRS G1 - Business Conduct"
+          ]
+        },
+        "eu_taxonomy_reporting": "Required — same as Phase 1",
+        "phased_ins_and_reliefs": [
+          "Same 1-year and 3-year phase-in reliefs available as for Phase 1 (applied relative to their own first reporting year)"
+        ],
+        "notes": "Significantly expands the reporting population to an estimated further 10,000-15,000 EU companies. Many will be reporting ESG data formally for the first time."
       },
-      "notes": "Large companies outside initial NFRD scope; full ESRS reporting applies."
-    },
-    {
-      "phase": "Phase 3",
-      "data_collection_year": 2026,
-      "reporting_year": 2027,
-      "company_type": "EU-based SMEs and SME subsidiaries of non-EU companies listed on EU-regulated markets",
-      "continent": "EU",
-      "thresholds": {
-        "criteria": "SMEs",
-        "reporting_simplified": true
+      {
+        "phase": "Phase 3",
+        "label": "Listed SMEs and Small Non-Complex Credit Institutions / Captive (Re)Insurers",
+        "governing_directive": "CSRD Article 5(1)(c)",
+        "data_collection_year": 2026,
+        "reporting_year": 2027,
+        "first_report_due": "2027 (for FY2026 data)",
+        "opt_out_available": {
+          "available": true,
+          "opt_out_deadline": "2028 (reporting year) — a 2-year opt-out/exemption period is available until FY2028 data, reported in 2029",
+          "condition": "Company must disclose reason for not reporting and state when it intends to comply"
+        },
+        "scope": {
+          "company_type": "Small and Medium Enterprises (SMEs) listed on EU-regulated markets; small and non-complex credit institutions; captive insurance and reinsurance undertakings",
+          "geography": "EU / EEA",
+          "examples": [
+            "SMEs with shares or bonds listed on EU stock exchanges (not just MTFs/OTFs)",
+            "Small non-complex credit institutions as defined under CRR Article 4(1)(145)",
+            "Captive insurance undertakings as defined under Solvency II"
+          ]
+        },
+        "size_thresholds": {
+          "description": "SME definition: meets at least 2 of the 3 following criteria",
+          "total_assets_eur": 5000000,
+          "net_turnover_eur": 10000000,
+          "average_employees": 250,
+          "note": "Upper bound: companies exceed the large company threshold are captured in Phases 1 or 2 regardless of listing status"
+        },
+        "applicable_esrs": {
+          "standard": "ESRS LSME — Listed SME Voluntary Standard (simplified subset of full ESRS)",
+          "description": "A proportionate, simplified set of disclosure requirements developed by EFRAG specifically for listed SMEs. Significantly reduced number of mandatory data points compared to full ESRS.",
+          "mandatory_disclosures": [
+            "Simplified ESRS 2 equivalent — governance, strategy, material topics",
+            "Selected quantitative KPIs from ESRS E1 (GHG emissions, energy)",
+            "Selected social KPIs from ESRS S1 (workforce characteristics, H&S)",
+            "ESRS G1 simplified (anti-corruption policies, business conduct)"
+          ],
+          "note": "Full topical ESRS (E1-E5, S1-S4, G1) apply only if topics are material per the simplified DMA"
+        },
+        "eu_taxonomy_reporting": "Required where applicable; simplified KPI presentation permitted",
+        "notes": "Estimated 3,000-4,000 listed SMEs in scope across the EU. Non-listed SMEs are not directly in scope of CSRD but will face indirect reporting pressure from large company value chain disclosure requirements (particularly ESRS S2 and Scope 3 category 1/11 data requests)."
       },
-      "notes": "SMEs phased in later with simplified ESRS reporting standards."
-    },
-    {
-      "phase": "Phase 4",
-      "data_collection_year": 2028,
-      "reporting_year": 2029,
-      "company_type": "Large non-EU-based companies and subsidiaries",
-      "continent": "Global",
-      "thresholds": {
-        "annual_turnover_eur": 150000000,
-        "subsidiary_requirement": "one large subsidiary listed on EU-regulated market"
-      },
-      "notes": "Only large non-EU companies; reporting aligned with EU ESRS."
+      {
+        "phase": "Phase 4",
+        "label": "Non-EU (Third-Country) Parent Companies with Significant EU Presence",
+        "governing_directive": "CSRD Article 40a — inserting Article 29b into Accounting Directive",
+        "data_collection_year": 2028,
+        "reporting_year": 2029,
+        "first_report_due": "2029 (for FY2028 data)",
+        "scope": {
+          "company_type": "Non-EU (third-country) parent companies that generate significant revenue within the EU via EU subsidiaries or branches, regardless of where the parent is incorporated",
+          "geography": "Global (non-EU parent, EU nexus required)",
+          "trigger_conditions": [
+            "Net turnover generated in the EU exceeds €150,000,000 for each of the last 2 consecutive financial years",
+            "AND has at least one large EU subsidiary (meeting Phase 1/2 size thresholds) OR at least one EU branch with net turnover exceeding €40,000,000"
+          ],
+          "examples": [
+            "US, UK, or Asian multinationals with large EU operating subsidiaries",
+            "Non-EU financial groups with significant EU banking or insurance arms",
+            "Non-EU technology companies with EU revenue hubs"
+          ]
+        },
+        "size_thresholds": {
+          "eu_net_turnover_threshold_eur": 150000000,
+          "consecutive_years_required": 2,
+          "subsidiary_threshold": "At least one EU subsidiary qualifying as a large company (Phase 2 thresholds) OR one EU branch with net turnover > €40,000,000"
+        },
+        "applicable_esrs": {
+          "standard": "ESRS VSME or full ESRS — determined by structure",
+          "description": "Non-EU parent companies must publish a group-level sustainability report covering EU operations. The Commission may adopt specific standards for third-country companies (ESRS equivalent for non-EU entities).",
+          "reporting_entity": "The report may be filed at the level of the non-EU ultimate parent or at the level of the largest EU subsidiary, with cross-reference permitted",
+          "equivalence": "If the non-EU parent already reports under a standard deemed equivalent by the EU Commission (e.g. if US SEC climate disclosure rules are recognised), that report may satisfy CSRD requirements",
+          "applicable_topics": [
+            "ESRS E1 - Climate Change (Scope 1, 2, 3 GHG for EU operations)",
+            "ESRS S1 - Own Workforce (EU employees as minimum)",
+            "ESRS G1 - Business Conduct",
+            "Other topical ESRS subject to materiality assessment of EU-nexus impacts"
+          ]
+        },
+        "eu_taxonomy_reporting": "Required for EU-based economic activities of the group meeting taxonomy thresholds",
+        "interaction_with_other_frameworks": {
+          "ISSB_IFRS_S1_S2": "EU Commission monitoring equivalence; partial overlap on climate disclosures",
+          "SEC_climate_rule": "Significant overlap with Scope 1/2 disclosures; Scope 3 and social topics remain additional EU requirements",
+          "UK_SDR": "UK Sustainability Disclosure Requirements partially aligned; not yet deemed equivalent"
+        },
+        "notes": "Estimated 3,000-10,000 non-EU groups globally will fall in scope. This phase has the most significant compliance complexity as it requires non-EU companies to map their EU revenue, identify the correct reporting entity, and potentially produce an ESRS-aligned report separately from their home-country sustainability reporting."
+      }
+    ],
+    "indirect_scope": {
+      "description": "Non-listed SMEs and micro-enterprises are NOT directly subject to CSRD but will face indirect reporting pressure",
+      "mechanism": "Large companies in Phases 1-4 must disclose Scope 3 GHG emissions (ESRS E1-6) and value chain social data (ESRS S2). To comply, they will request ESG data from their suppliers, many of which are SMEs.",
+      "voluntary_standard": "EFRAG has developed the VSME Standard (Voluntary Sustainability Reporting Standard for SMEs) to help non-listed SMEs respond to these data requests in a proportionate and structured way",
+      "vsme_tiers": {
+        "basic": "Minimum dataset — ~20 data points covering fundamental environmental and social indicators",
+        "narrative": "Extended narrative disclosures for SMEs wanting more comprehensive reporting"
+      }
     }
-  ]
-}   
+  }
+}
