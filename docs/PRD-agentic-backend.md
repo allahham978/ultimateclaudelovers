@@ -874,12 +874,25 @@ cache hit rates since the content is deterministic (no PDF extraction variance).
 
 **Gate**: Toggle between modes on UI. Compliance check with stub agents produces mock to-do list via SSE. Full audit path unchanged (zero regression). ✓
 
-### Iteration 6 — Real Fetcher Node
-- [ ] Write `agents/fetcher.py` — Claude API call to validate Taxonomy financials
-- [ ] Feed `taxonomy_data` (structured iXBRL JSON) to Claude with `SYSTEM_PROMPT_FETCHER`
-- [ ] Parse JSON response into `TaxonomyFinancials` → populate `state["taxonomy_financials"]`
+### Iteration 6 — Real Fetcher Node ✓ COMPLETE (2026-02-21)
+- [x] Write `agents/fetcher.py` — Claude API call to validate Taxonomy financials
+- [x] Feed `taxonomy_data` (structured iXBRL JSON) to Claude with `SYSTEM_PROMPT_FETCHER`
+- [x] Parse JSON response into `TaxonomyFinancials` → populate `state["taxonomy_financials"]`
 
-**Gate**: `taxonomy_financials.capex_total_eur` and `capex_green_eur` populated from real report JSON
+**Gate**: `taxonomy_financials.capex_total_eur` and `capex_green_eur` populated from real report JSON ✓
+
+**Implementation notes**:
+- `fetcher.py`: Real Claude API call using `anthropic.Anthropic()` client with `claude-sonnet-4-6` model
+- Prompt caching enabled: `taxonomy_data` JSON sent with `cache_control: {"type": "ephemeral"}` per PRD Section 9
+- `_parse_llm_json()`: Robust JSON parsing handles markdown fences (`json ... `), bare fences, and leading whitespace
+- `_build_taxonomy_financials()`: Constructs `TaxonomyFinancials` Pydantic model from Claude's response; handles both nested (`{"taxonomy_financials": {...}}`) and flat response shapes
+- `_safe_defaults()`: Returns zero-confidence `TaxonomyFinancials` with all financial fields as `None` on API error or parse failure — never halts the graph
+- Error handling: all exceptions caught, logged to `state["logs"]`, and safe defaults returned
+- `RegistrySource` populated with `name="Annual Management Report"`, `registry_type="eu_bris"`, `jurisdiction="EU"`
+- Updated `tests/conftest.py`: Added shared mock helpers (`_make_mock_claude_response`, `MOCK_FETCHER_RESPONSE_JSON`, `MOCK_EXTRACTOR_RESPONSE_JSON`, `mock_anthropic_client` fixture)
+- `backend/tests/test_iteration6.py` — 44 unit tests (API call construction, JSON parsing, TaxonomyFinancials building, safe defaults, error handling, state management, PRD gate, downstream integration), all passing
+- `backend/tests/integration_test_fetcher.py` — manual integration test for live Claude API with real XHTML report
+- All 242 tests across iterations 1, 2, 4, 6 passing; all 5 PRD gate checks green (`schemas OK`, `graph OK`, `parser OK`, `compliance_check gate OK`, `fetcher OK`)
 
 ### Iteration 7 — Real Auditor Node (Both Modes)
 - [ ] Write `agents/auditor.py` — full audit: scoring prompt + JSON parsing; compliance check: coverage assessment + cost estimate

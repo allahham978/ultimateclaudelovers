@@ -2,8 +2,10 @@
 Shared test fixtures for unit tests.
 """
 
+import json
 import sys
 import os
+from unittest.mock import MagicMock, patch
 
 # Ensure the backend directory is on the path so imports resolve correctly
 # when pytest is run from the repo root or the backend directory.
@@ -40,6 +42,74 @@ _SAMPLE_REPORT_JSON = {
 
 
 # ---------------------------------------------------------------------------
+# Mock Claude API helpers (shared across iteration 3, 6, etc.)
+# ---------------------------------------------------------------------------
+
+
+def _make_mock_claude_response(text: str) -> MagicMock:
+    """Create a mock Anthropic Messages API response with the given text content."""
+    mock_content_block = MagicMock()
+    mock_content_block.text = text
+    mock_response = MagicMock()
+    mock_response.content = [mock_content_block]
+    return mock_response
+
+
+# Realistic mock responses for each agent
+
+MOCK_EXTRACTOR_RESPONSE_JSON = json.dumps({
+    "company_meta": {
+        "name": "TestCorp SA",
+        "lei": "529900TESTCORP00001",
+        "sector": "AI Infrastructure",
+        "fiscal_year": 2024,
+        "jurisdiction": "EU",
+        "report_title": "Annual Management Report 2024",
+    },
+    "esrs_claims": {
+        "E1-1": {
+            "data_point": "Transition Plan for Climate Change Mitigation",
+            "disclosed_value": "Net-zero by 2040; 50% reduction by 2030 vs 2019 baseline",
+            "unit": None,
+            "confidence": 0.85,
+            "xbrl_concept": "esrs_E1-1_01_TransitionPlan",
+        },
+        "E1-5": {
+            "data_point": "Energy Consumption and Mix",
+            "disclosed_value": "Total energy: 45,000 MWh; Renewable mix: 38%",
+            "unit": "MWh",
+            "confidence": 0.90,
+            "xbrl_concept": "esrs_E1-5_04_TotalEnergyConsumption",
+        },
+        "E1-6": {
+            "data_point": "Gross Scopes 1, 2, 3 GHG Emissions",
+            "disclosed_value": "Scope 1: 1,200 tCO2eq; Scope 2 (market-based): 8,500 tCO2eq",
+            "unit": "tCO2eq",
+            "confidence": 0.80,
+            "xbrl_concept": "esrs_E1-6_01_GrossScope1GHGEmissions",
+        },
+    },
+})
+
+MOCK_FETCHER_RESPONSE_JSON = json.dumps({
+    "taxonomy_financials": {
+        "capex_total_eur": 50000000.0,
+        "capex_green_eur": 17500000.0,
+        "opex_total_eur": 120000000.0,
+        "opex_green_eur": 24000000.0,
+        "revenue_eur": 250000000.0,
+        "fiscal_year": "2024",
+        "taxonomy_activities": [
+            "8.1 Data processing, hosting and related activities",
+            "4.1 Electricity generation using solar photovoltaic technology",
+        ],
+        "source_document": "Annual Management Report — Taxonomy Section",
+        "confidence": 0.92,
+    }
+})
+
+
+# ---------------------------------------------------------------------------
 # Full Audit mode fixtures
 # ---------------------------------------------------------------------------
 
@@ -69,7 +139,7 @@ def state_after_extractor(minimal_state) -> AuditState:
 
 
 @pytest.fixture
-def state_after_fetcher(state_after_extractor) -> AuditState:
+def state_after_fetcher(state_after_extractor, mock_anthropic_client) -> AuditState:
     """State after fetcher node has run — includes taxonomy_financials and document_source."""
     from agents.fetcher import fetcher_node
 
@@ -84,6 +154,21 @@ def state_after_auditor(state_after_fetcher) -> AuditState:
 
     result = auditor_node(state_after_fetcher)
     return {**state_after_fetcher, **result}
+
+
+# ---------------------------------------------------------------------------
+# Mock Anthropic client fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mock_anthropic_client():
+    """Patch anthropic.Anthropic to return a mock client with a realistic response."""
+    mock_client = MagicMock()
+    mock_client.messages.create.return_value = _make_mock_claude_response(MOCK_FETCHER_RESPONSE_JSON)
+
+    with patch("agents.fetcher.anthropic.Anthropic", return_value=mock_client):
+        yield mock_client
 
 
 # ---------------------------------------------------------------------------
