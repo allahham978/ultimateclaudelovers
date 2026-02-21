@@ -423,10 +423,12 @@ class TestDownstreamIntegration:
         assert "taxonomy_alignment" in auditor_result
 
     def test_full_pipeline_with_real_fetcher(self, minimal_state, mock_anthropic_client):
-        """Full 4-node pipeline should complete with real fetcher + stub others."""
+        """v5.0 3-node pipeline completes end-to-end (extractor→scorer→advisor)."""
         from graph import graph
+        from schemas import ComplianceResult
 
         result = graph.invoke(minimal_state)
-        assert result.get("final_audit") is not None
-        audit = result["final_audit"]
-        assert audit.taxonomy_alignment is not None
+        assert result.get("final_result") is not None
+        fr = result["final_result"]
+        assert isinstance(fr, ComplianceResult)
+        assert fr.schema_version == "3.0"

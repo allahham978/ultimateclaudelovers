@@ -1,4 +1,8 @@
 """
+LEGACY v2.0 — This module is deprecated. The fetcher node has been replaced by
+the scorer node in the v5.0 unified 3-agent pipeline (extractor → scorer → advisor).
+Financial context extraction is now handled by the extractor node.
+
 Node 2 — Financial Extractor (Fetcher) — Real Claude API implementation.
 
 Reads: state["taxonomy_data"] (Taxonomy-tagged iXBRL sections from report JSON)

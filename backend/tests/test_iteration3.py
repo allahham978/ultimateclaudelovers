@@ -1,27 +1,18 @@
 """
 Iteration 3 tests — Real Extractor Node with mocked Claude API.
 
-Tests Claude API call construction, JSON response parsing, CompanyMeta extraction,
-error handling / fallback, state management, and the PRD gate.
-"""
+LEGACY: These tests target the v2.0 Claude-API-calling extractor which has been
+replaced by a dual-mode stub in v5.0 (Iteration 8). The functions tested here
+(MODEL, _build_claims, _build_company_meta, _parse_llm_json, _safe_defaults)
+no longer exist in agents/extractor.py.
 
-import json
-from unittest.mock import MagicMock, patch
+All tests in this file are skipped until the real Claude extractor is
+re-implemented (planned for a future iteration).
+"""
 
 import pytest
 
-from agents.extractor import (
-    MODEL,
-    MAX_TOKENS,
-    _build_claims,
-    _build_company_meta,
-    _parse_llm_json,
-    _safe_defaults,
-    extractor_node,
-)
-from schemas import CompanyMeta, ESRSClaim
-from tools.prompts import SYSTEM_PROMPT_EXTRACTOR
-from tests.conftest import MOCK_EXTRACTOR_RESPONSE_JSON, _make_mock_claude_response
+pytestmark = pytest.mark.skip(reason="v5.0 pivot: extractor is now a stub; real Claude API extractor tests deferred")
 
 
 # ═══════════════════════════════════════════════════════════════════════════

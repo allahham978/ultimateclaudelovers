@@ -15,7 +15,7 @@ if _backend_dir not in sys.path:
 
 import pytest
 from state import AuditState
-from schemas import ESRSClaim, TaxonomyFinancials
+from schemas import ESRSClaim, TaxonomyFinancials, CompanyInputs, FinancialContext
 
 
 # Sample iXBRL facts for testing — mimics the engineer's XHTML→JSON output
@@ -243,14 +243,15 @@ STUB_COMPLIANCE_ESRS_CLAIMS = {
 
 @pytest.fixture
 def minimal_state() -> AuditState:
-    """Minimal valid AuditState for testing — only INIT keys set (full_audit mode)."""
+    """Minimal valid AuditState for testing — only INIT keys set (structured_document mode)."""
     return {
         "audit_id": "test-audit-001",
-        "mode": "full_audit",
+        "mode": "structured_document",
         "report_json": _SAMPLE_REPORT_JSON,
         "esrs_data": _SAMPLE_ESRS_FACTS,
         "taxonomy_data": _SAMPLE_TAXONOMY_FACTS,
         "entity_id": "TestCorp SA",
+        "company_inputs": STUB_COMPANY_INPUTS,
         "logs": [],
         "pipeline_trace": [],
     }
@@ -307,16 +308,17 @@ def mock_anthropic_client():
 
 @pytest.fixture
 def compliance_check_state() -> AuditState:
-    """Minimal valid AuditState for compliance_check mode."""
+    """Minimal valid AuditState for free_text mode."""
     return {
         "audit_id": "test-compliance-001",
-        "mode": "compliance_check",
+        "mode": "free_text",
         "free_text_input": (
             "We are an AI infrastructure company based in France. "
             "We have set a net-zero target for 2040. "
             "Our data centers consume approximately 120 GWh annually with 29% renewable energy."
         ),
         "entity_id": "Lumiere Systemes SA",
+        "company_inputs": STUB_COMPANY_INPUTS_SMALL,
         "report_json": {},
         "esrs_data": {},
         "taxonomy_data": {},
@@ -356,7 +358,11 @@ def stub_taxonomy_financials() -> TaxonomyFinancials:
 
 @pytest.fixture
 def auditor_full_audit_state() -> AuditState:
-    """State ready for auditor in full_audit mode (after extractor + fetcher stubs)."""
+    """State ready for auditor in full_audit mode (after extractor + fetcher stubs).
+
+    NOTE: Uses legacy "full_audit" mode for testing the deprecated auditor module.
+    The v5.0 pipeline uses "structured_document" mode instead.
+    """
     return {
         "audit_id": "test-auditor-full-001",
         "mode": "full_audit",
@@ -387,6 +393,58 @@ def auditor_compliance_state() -> AuditState:
         "extracted_goals": [
             {"id": "goal-1", "description": "Net-zero target mentioned", "esrs_relevance": "E1-1", "confidence": 0.5},
         ],
+        "logs": [],
+        "pipeline_trace": [],
+    }
+
+
+# ---------------------------------------------------------------------------
+# v5.0 Fixtures — Unified 3-agent pipeline
+# ---------------------------------------------------------------------------
+
+STUB_COMPANY_INPUTS = CompanyInputs(
+    number_of_employees=500,
+    revenue_eur=85_000_000.0,
+    total_assets_eur=42_000_000.0,
+    reporting_year=2025,
+)
+
+STUB_COMPANY_INPUTS_SMALL = CompanyInputs(
+    number_of_employees=50,
+    revenue_eur=5_000_000.0,
+    total_assets_eur=2_000_000.0,
+    reporting_year=2025,
+)
+
+
+@pytest.fixture
+def v5_structured_state() -> AuditState:
+    """v5.0 AuditState for structured_document mode."""
+    return {
+        "audit_id": "test-v5-structured-001",
+        "mode": "structured_document",
+        "report_json": _SAMPLE_REPORT_JSON,
+        "esrs_data": _SAMPLE_ESRS_FACTS,
+        "taxonomy_data": _SAMPLE_TAXONOMY_FACTS,
+        "entity_id": "TestCorp SA",
+        "company_inputs": STUB_COMPANY_INPUTS,
+        "logs": [],
+        "pipeline_trace": [],
+    }
+
+
+@pytest.fixture
+def v5_free_text_state() -> AuditState:
+    """v5.0 AuditState for free_text mode."""
+    return {
+        "audit_id": "test-v5-freetext-001",
+        "mode": "free_text",
+        "free_text_input": "Net-zero by 2040.",
+        "entity_id": "GateCorp",
+        "company_inputs": STUB_COMPANY_INPUTS_SMALL,
+        "report_json": {},
+        "esrs_data": {},
+        "taxonomy_data": {},
         "logs": [],
         "pipeline_trace": [],
     }

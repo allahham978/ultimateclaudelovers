@@ -1,4 +1,7 @@
 """
+LEGACY v2.0 — This module is deprecated. The consultant node has been replaced by
+the advisor node in the v5.0 unified 3-agent pipeline (extractor → scorer → advisor).
+
 Node 4 — Taxonomy Consultant + Final Assembly — dual-mode stub.
 
 Full Audit:       Reads esrs_ledger + taxonomy_alignment → roadmap + final_audit (CSRDAudit)

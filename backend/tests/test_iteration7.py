@@ -1083,55 +1083,58 @@ class TestGraphIntegration:
     """Verify auditor integrates correctly into the LangGraph pipeline."""
 
     def test_full_audit_graph_with_real_auditor(self):
-        """Full audit pipeline runs end-to-end with real auditor (deterministic fallback)."""
+        """v5.0 structured pipeline runs end-to-end (extractor→scorer→advisor)."""
         from graph import graph
+        from schemas import ComplianceResult, CompanyInputs
 
-        with patch("agents.auditor.Anthropic") as MockClass:
-            mock_client = MagicMock()
-            MockClass.return_value = mock_client
-            mock_client.messages.create.return_value = _make_mock_claude_response(
-                json.dumps(MOCK_AUDITOR_RESPONSE_JSON)
-            )
-            state = {
-                "audit_id": "graph-test-full",
-                "mode": "full_audit",
-                "report_json": {"report_info": {}, "facts": []},
-                "esrs_data": {"facts": []},
-                "taxonomy_data": {"facts": []},
-                "entity_id": "GraphTestCorp",
-                "logs": [],
-                "pipeline_trace": [],
-            }
-            result = graph.invoke(state)
+        state = {
+            "audit_id": "graph-test-full",
+            "mode": "structured_document",
+            "report_json": {"report_info": {}, "facts": []},
+            "esrs_data": {"facts": []},
+            "taxonomy_data": {"facts": []},
+            "entity_id": "GraphTestCorp",
+            "company_inputs": CompanyInputs(
+                number_of_employees=500,
+                revenue_eur=85_000_000.0,
+                total_assets_eur=42_000_000.0,
+                reporting_year=2025,
+            ),
+            "logs": [],
+            "pipeline_trace": [],
+        }
+        result = graph.invoke(state)
 
-            assert "esrs_ledger" in result
-            assert len(result["esrs_ledger"]) == 3
-            assert "final_audit" in result
+        assert "final_result" in result
+        fr = result["final_result"]
+        assert isinstance(fr, ComplianceResult)
+        assert fr.schema_version == "3.0"
 
     def test_compliance_check_graph_with_real_auditor(self):
-        """Compliance check pipeline runs end-to-end with real auditor."""
+        """v5.0 free_text pipeline runs end-to-end (extractor→scorer→advisor)."""
         from graph import graph
-        from schemas import ComplianceCheckResult
+        from schemas import ComplianceResult, CompanyInputs
 
-        with patch("agents.auditor.Anthropic") as MockClass:
-            mock_client = MagicMock()
-            MockClass.return_value = mock_client
-            mock_client.messages.create.return_value = _make_mock_claude_response(
-                json.dumps(MOCK_AUDITOR_LITE_RESPONSE_JSON)
-            )
-            state = {
-                "audit_id": "graph-test-compliance",
-                "mode": "compliance_check",
-                "free_text_input": "We target net-zero by 2040.",
-                "entity_id": "GraphTestCorp",
-                "report_json": {},
-                "esrs_data": {},
-                "taxonomy_data": {},
-                "logs": [],
-                "pipeline_trace": [],
-            }
-            result = graph.invoke(state)
+        state = {
+            "audit_id": "graph-test-compliance",
+            "mode": "free_text",
+            "free_text_input": "We target net-zero by 2040.",
+            "entity_id": "GraphTestCorp",
+            "company_inputs": CompanyInputs(
+                number_of_employees=50,
+                revenue_eur=5_000_000.0,
+                total_assets_eur=2_000_000.0,
+                reporting_year=2025,
+            ),
+            "report_json": {},
+            "esrs_data": {},
+            "taxonomy_data": {},
+            "logs": [],
+            "pipeline_trace": [],
+        }
+        result = graph.invoke(state)
 
-            assert "esrs_coverage" in result
-            assert "final_compliance_check" in result
-            assert isinstance(result["final_compliance_check"], ComplianceCheckResult)
+        assert "final_result" in result
+        fr = result["final_result"]
+        assert isinstance(fr, ComplianceResult)
+        assert fr.schema_version == "3.0"

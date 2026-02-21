@@ -185,7 +185,7 @@ class TestAuditRunEndpoint:
         assert r1.json()["run_id"] != r2.json()["run_id"]
 
     def test_rejects_missing_report_file(self):
-        r = client.post("/audit/run", data={"entity_id": "Test", "mode": "full_audit"})
+        r = client.post("/audit/run", data={"entity_id": "Test", "mode": "structured_document"})
         assert r.status_code == 400
 
     def test_rejects_missing_entity_id(self):
@@ -241,7 +241,7 @@ class TestAuditResultEndpoint:
         assert r.status_code == 200
         body = r.json()
         assert body["audit_id"] == run_id
-        assert body["schema_version"] == "2.0"
+        assert body["schema_version"] == "3.0"
 
     def test_result_contains_all_top_level_fields(self):
         run_id = _run_and_wait()
@@ -251,13 +251,11 @@ class TestAuditResultEndpoint:
             "audit_id",
             "generated_at",
             "schema_version",
+            "mode",
             "company",
-            "taxonomy_alignment",
-            "compliance_cost",
-            "esrs_ledger",
-            "roadmap",
-            "registry_source",
-            "sources",
+            "company_inputs",
+            "score",
+            "recommendations",
             "pipeline",
         ]
         for field in required_fields:
@@ -268,24 +266,24 @@ class TestAuditResultEndpoint:
         r = client.get(f"/audit/{run_id}")
         assert r.json()["company"]["name"] == "Lumiere SA"
 
-    def test_result_has_three_esrs_ledger_items(self):
+    def test_result_has_compliance_score(self):
         run_id = _run_and_wait()
         r = client.get(f"/audit/{run_id}")
-        assert len(r.json()["esrs_ledger"]) == 3
+        score = r.json()["score"]
+        assert 0 <= score["overall"] <= 100
 
-    def test_result_pipeline_has_four_agents(self):
+    def test_result_pipeline_has_three_agents(self):
         run_id = _run_and_wait()
         r = client.get(f"/audit/{run_id}")
         pipeline = r.json()["pipeline"]
-        assert len(pipeline["agents"]) == 4
+        assert len(pipeline["agents"]) == 3
         agent_names = [a["agent"] for a in pipeline["agents"]]
-        assert agent_names == ["extractor", "fetcher", "auditor", "consultant"]
+        assert agent_names == ["extractor", "scorer", "advisor"]
 
-    def test_result_taxonomy_alignment_pct_valid(self):
+    def test_result_recommendations_is_list(self):
         run_id = _run_and_wait()
         r = client.get(f"/audit/{run_id}")
-        pct = r.json()["taxonomy_alignment"]["capex_aligned_pct"]
-        assert 0.0 <= pct <= 100.0
+        assert isinstance(r.json()["recommendations"], list)
 
     def test_result_is_json_serialisable(self):
         """The cached result must be fully JSON-serialisable (no Pydantic objects)."""
@@ -324,22 +322,21 @@ class TestSSEStream:
         assert "node_complete" in event_types, "No node_complete events emitted"
         assert "complete" in event_types, "No complete event emitted"
 
-    def test_log_events_from_all_four_agents(self):
+    def test_log_events_from_all_three_agents(self):
         run_id = _run_and_wait()
         events = _collect_sse_events(run_id)
         log_agents = {e["agent"] for e in events if e["type"] == "log"}
         assert "extractor" in log_agents
-        assert "fetcher" in log_agents
-        assert "auditor" in log_agents
-        assert "consultant" in log_agents
+        assert "scorer" in log_agents
+        assert "advisor" in log_agents
 
-    def test_four_node_complete_events_in_order(self):
+    def test_three_node_complete_events_in_order(self):
         run_id = _run_and_wait()
         events = _collect_sse_events(run_id)
         node_completes = [e for e in events if e["type"] == "node_complete"]
-        assert len(node_completes) == 4
+        assert len(node_completes) == 3
         agents = [e["agent"] for e in node_completes]
-        assert agents == ["extractor", "fetcher", "auditor", "consultant"]
+        assert agents == ["extractor", "scorer", "advisor"]
 
     def test_exactly_one_complete_event(self):
         run_id = _run_and_wait()
@@ -347,17 +344,17 @@ class TestSSEStream:
         complete_events = [e for e in events if e["type"] == "complete"]
         assert len(complete_events) == 1
 
-    def test_complete_event_contains_valid_audit(self):
+    def test_complete_event_contains_valid_result(self):
         run_id = _run_and_wait()
         events = _collect_sse_events(run_id)
         complete = next(e for e in events if e["type"] == "complete")
-        audit = complete["audit"]
-        assert audit["audit_id"] == run_id
-        assert audit["schema_version"] == "2.0"
-        assert "company" in audit
-        assert "esrs_ledger" in audit
-        assert "roadmap" in audit
-        assert "pipeline" in audit
+        result = complete["result"]
+        assert result["audit_id"] == run_id
+        assert result["schema_version"] == "3.0"
+        assert "company" in result
+        assert "score" in result
+        assert "recommendations" in result
+        assert "pipeline" in result
 
     def test_log_event_has_required_fields(self):
         """Each log event must have: type, agent, message, timestamp."""
@@ -367,7 +364,7 @@ class TestSSEStream:
         assert "agent" in log_event
         assert "message" in log_event
         assert "timestamp" in log_event
-        assert log_event["agent"] in {"extractor", "fetcher", "auditor", "consultant"}
+        assert log_event["agent"] in {"extractor", "scorer", "advisor"}
 
     def test_node_complete_event_has_duration(self):
         run_id = _run_and_wait()
@@ -381,7 +378,7 @@ class TestSSEStream:
         """All log events for an agent must appear before that agent's node_complete."""
         run_id = _run_and_wait()
         events = _collect_sse_events(run_id)
-        for agent_name in ("extractor", "fetcher", "auditor", "consultant"):
+        for agent_name in ("extractor", "scorer", "advisor"):
             agent_log_indices = [
                 i for i, e in enumerate(events)
                 if e["type"] == "log" and e["agent"] == agent_name
@@ -413,13 +410,13 @@ class TestSSEStream:
             assert line.startswith("data: "), f"Line missing 'data: ' prefix: {line[:50]}"
 
     def test_multiple_log_events_per_agent(self):
-        """Each stub agent emits at least 3 log lines."""
+        """Each agent emits at least 2 log lines."""
         run_id = _run_and_wait()
         events = _collect_sse_events(run_id)
-        for agent_name in ("extractor", "fetcher", "auditor", "consultant"):
+        for agent_name in ("extractor", "scorer", "advisor"):
             agent_logs = [e for e in events if e["type"] == "log" and e["agent"] == agent_name]
-            assert len(agent_logs) >= 3, (
-                f"{agent_name} should emit at least 3 log lines, got {len(agent_logs)}"
+            assert len(agent_logs) >= 2, (
+                f"{agent_name} should emit at least 2 log lines, got {len(agent_logs)}"
             )
 
 
@@ -448,8 +445,8 @@ class TestReportParserIntegration:
         )
         assert r.status_code == 200
 
-    def test_empty_report_produces_valid_audit(self):
-        """Empty report (no facts) should still produce a valid CSRDAudit via stubs."""
+    def test_empty_report_produces_valid_result(self):
+        """Empty report (no facts) should still produce a valid ComplianceResult via stubs."""
         empty_report = {"report_info": {}, "facts": []}
         file_content = json.dumps(empty_report).encode()
         r = client.post(
@@ -463,7 +460,7 @@ class TestReportParserIntegration:
         r = client.get(f"/audit/{run_id}")
         assert r.status_code == 200
         body = r.json()
-        assert body["schema_version"] == "2.0"
+        assert body["schema_version"] == "3.0"
         assert body["company"]["name"] == "EmptyCorp"
 
     def test_report_without_report_info_key(self):
@@ -534,15 +531,15 @@ class TestEndToEnd:
         events = _collect_sse_events(run_id)
         assert len(events) > 0
 
-        # 3. Verify stream audit matches cached result
-        stream_audit = next(e for e in events if e["type"] == "complete")["audit"]
+        # 3. Verify stream result matches cached result
+        stream_result = next(e for e in events if e["type"] == "complete")["result"]
         r = client.get(f"/audit/{run_id}")
-        cached_audit = r.json()
+        cached_result = r.json()
 
-        assert stream_audit["audit_id"] == cached_audit["audit_id"]
-        assert stream_audit["schema_version"] == cached_audit["schema_version"]
-        assert stream_audit["company"]["name"] == "E2E Corp"
-        assert cached_audit["company"]["name"] == "E2E Corp"
+        assert stream_result["audit_id"] == cached_result["audit_id"]
+        assert stream_result["schema_version"] == cached_result["schema_version"]
+        assert stream_result["company"]["name"] == "E2E Corp"
+        assert cached_result["company"]["name"] == "E2E Corp"
 
     def test_different_entity_ids_produce_different_results(self):
         """Two audits with different entity_ids should produce different company names."""

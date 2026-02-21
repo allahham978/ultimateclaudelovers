@@ -17,7 +17,7 @@ TaxonomyStatus = Literal["aligned", "partially_aligned", "non_compliant"]
 MaterialityLevel = Literal["high", "medium", "low", "not_material"]
 ESRSStatus = Literal["disclosed", "partial", "missing", "non_compliant"]
 Priority = Literal["critical", "high", "moderate", "low"]
-AgentName = Literal["extractor", "fetcher", "auditor", "consultant"]
+AgentName = Literal["extractor", "scorer", "advisor", "fetcher", "auditor", "consultant"]
 EvidenceSource = Literal["management_report", "taxonomy_table", "transition_plan"]
 
 
@@ -38,6 +38,7 @@ class CompanyMeta(BaseModel):
 # 3. EU Taxonomy Alignment
 # ---------------------------------------------------------------------------
 
+# LEGACY v2.0
 class TaxonomyAlignment(BaseModel):
     capex_aligned_pct: float  # 0–100
     status: TaxonomyStatus
@@ -48,6 +49,7 @@ class TaxonomyAlignment(BaseModel):
 # 4. Compliance Cost
 # ---------------------------------------------------------------------------
 
+# LEGACY v2.0
 class ComplianceCost(BaseModel):
     projected_fine_eur: float
     basis: str
@@ -57,6 +59,7 @@ class ComplianceCost(BaseModel):
 # 5. ESRS Ledger
 # ---------------------------------------------------------------------------
 
+# LEGACY v2.0
 class ESRSLedgerItem(BaseModel):
     id: str
     esrs_id: str
@@ -72,6 +75,7 @@ class ESRSLedgerItem(BaseModel):
 # 6. Taxonomy Roadmap
 # ---------------------------------------------------------------------------
 
+# LEGACY v2.0
 class RoadmapPillar(BaseModel):
     title: str
     summary: str
@@ -79,6 +83,7 @@ class RoadmapPillar(BaseModel):
     alignment_increase_pct: float
 
 
+# LEGACY v2.0
 class TaxonomyRoadmap(BaseModel):
     hardware: RoadmapPillar
     power: RoadmapPillar
@@ -135,6 +140,7 @@ class AuditLog(BaseModel):
 # 1. Top-Level Response
 # ---------------------------------------------------------------------------
 
+# LEGACY v2.0
 class CSRDAudit(BaseModel):
     audit_id: str
     generated_at: str  # ISO 8601
@@ -164,6 +170,63 @@ class ESRSClaim(BaseModel):
     xbrl_concept: Optional[str] = None  # iXBRL concept name for traceability
 
 
+# ---------------------------------------------------------------------------
+# v5.0 Models — Unified 3-agent pipeline
+# ---------------------------------------------------------------------------
+
+class CompanyInputs(BaseModel):
+    """User-provided company parameters for compliance sizing."""
+    number_of_employees: int
+    revenue_eur: float
+    total_assets_eur: float
+    reporting_year: int
+
+
+class FinancialContext(BaseModel):
+    """Financial context extracted from iXBRL Taxonomy sections — internal to extractor."""
+    capex_total_eur: Optional[float] = None
+    capex_green_eur: Optional[float] = None
+    opex_total_eur: Optional[float] = None
+    opex_green_eur: Optional[float] = None
+    revenue_eur: Optional[float] = None
+    taxonomy_activities: list[str] = []
+    confidence: float
+
+
+class ComplianceScore(BaseModel):
+    """Aggregated compliance score produced by the scorer node."""
+    overall: int  # 0-100
+    size_category: str
+    applicable_standards_count: int
+    disclosed_count: int
+    partial_count: int
+    missing_count: int
+
+
+class Recommendation(BaseModel):
+    """Single actionable recommendation produced by the advisor node."""
+    id: str
+    priority: Priority
+    esrs_id: str
+    title: str
+    description: str
+    regulatory_reference: str
+
+
+class ComplianceResult(BaseModel):
+    """Unified top-level response for both structured_document and free_text modes (v5.0)."""
+    audit_id: str
+    generated_at: str  # ISO 8601
+    schema_version: str = "3.0"
+    mode: str
+    company: CompanyMeta
+    company_inputs: CompanyInputs
+    score: ComplianceScore
+    recommendations: list[Recommendation]
+    pipeline: PipelineTrace
+
+
+# LEGACY v2.0
 class TaxonomyFinancials(BaseModel):
     """CapEx/revenue data from Taxonomy sections of the management report JSON — internal to fetcher node."""
     capex_total_eur: Optional[float] = None
@@ -185,6 +248,7 @@ CoverageLevel = Literal["covered", "partial", "not_covered"]
 EffortLevel = Literal["low", "medium", "high"]
 
 
+# LEGACY v2.0
 class ExtractedGoal(BaseModel):
     """Sustainability goal/claim extracted from free-text input — compliance check mode."""
     id: str
@@ -193,6 +257,7 @@ class ExtractedGoal(BaseModel):
     confidence: float  # 0.0–1.0
 
 
+# LEGACY v2.0
 class ESRSCoverageItem(BaseModel):
     """ESRS standard coverage assessment — compliance check mode."""
     esrs_id: str
@@ -201,6 +266,7 @@ class ESRSCoverageItem(BaseModel):
     details: str
 
 
+# LEGACY v2.0
 class ComplianceTodo(BaseModel):
     """Prioritised regulatory action item — compliance check mode."""
     id: str
@@ -212,6 +278,7 @@ class ComplianceTodo(BaseModel):
     estimated_effort: EffortLevel
 
 
+# LEGACY v2.0
 class ComplianceCostEstimate(BaseModel):
     """Rough compliance cost range — compliance check mode (no structured financial data)."""
     estimated_range_low_eur: float
@@ -220,6 +287,7 @@ class ComplianceCostEstimate(BaseModel):
     caveat: str
 
 
+# LEGACY v2.0
 class ComplianceCheckResult(BaseModel):
     """Top-level response for compliance check mode — mirrors TypeScript ComplianceCheckResult."""
     audit_id: str

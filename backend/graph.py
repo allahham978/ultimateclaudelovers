@@ -1,46 +1,30 @@
 """
-LangGraph state machine — dual-mode with conditional routing.
+LangGraph state machine — v5.0 unified 3-agent pipeline.
 
-Graph topology:
-  Full Audit:       START → extractor → fetcher → auditor → consultant → END
-  Compliance Check: START → extractor → auditor → consultant → END  (fetcher skipped)
+Graph topology (both modes):
+  START → extractor → scorer → advisor → END
 
-Conditional routing after extractor: checks state["mode"] to decide whether
-to proceed to fetcher (full_audit) or skip directly to auditor (compliance_check).
+No conditional routing. Linear 3-node pipeline for both
+structured_document and free_text modes.
 """
 
 from langgraph.graph import END, StateGraph
 
-from agents.auditor import auditor_node
-from agents.consultant import consultant_node
 from agents.extractor import extractor_node
-from agents.fetcher import fetcher_node
+from agents.scorer import scorer_node
+from agents.advisor import advisor_node
 from state import AuditState
-
-
-def route_after_extractor(state: AuditState) -> str:
-    """Conditional routing: skip fetcher in compliance_check mode."""
-    if state.get("mode") == "compliance_check":
-        return "auditor"
-    return "fetcher"
-
 
 workflow = StateGraph(AuditState)
 
 workflow.add_node("extractor", extractor_node)
-workflow.add_node("fetcher", fetcher_node)
-workflow.add_node("auditor", auditor_node)
-workflow.add_node("consultant", consultant_node)
+workflow.add_node("scorer", scorer_node)
+workflow.add_node("advisor", advisor_node)
 
 workflow.set_entry_point("extractor")
 
-workflow.add_conditional_edges("extractor", route_after_extractor, {
-    "fetcher": "fetcher",
-    "auditor": "auditor",
-})
-
-workflow.add_edge("fetcher", "auditor")
-workflow.add_edge("auditor", "consultant")
-workflow.add_edge("consultant", END)
+workflow.add_edge("extractor", "scorer")
+workflow.add_edge("scorer", "advisor")
+workflow.add_edge("advisor", END)
 
 graph = workflow.compile()

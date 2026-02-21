@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from graph import graph
+from schemas import CompanyInputs
 from state import AuditState
 from tools.report_parser import parse_report
 
@@ -108,18 +109,13 @@ def _run_graph(audit_id: str, state: AuditState, job: _AuditJob) -> None:
                 }
             )
 
-        # Complete event — check which mode produced the result
-        final_audit = result.get("final_audit")
-        final_check = result.get("final_compliance_check")
+        # Complete event — unified final_result for both modes
+        final_result = result.get("final_result")
 
-        if final_audit:
-            audit_dict = final_audit.model_dump()
-            job.result = audit_dict
-            job.events.append({"type": "complete", "audit": audit_dict})
-        elif final_check:
-            check_dict = final_check.model_dump() if hasattr(final_check, "model_dump") else final_check
-            job.result = check_dict
-            job.events.append({"type": "complete", "compliance_check": check_dict})
+        if final_result:
+            result_dict = final_result.model_dump() if hasattr(final_result, "model_dump") else final_result
+            job.result = result_dict
+            job.events.append({"type": "complete", "result": result_dict})
 
     except Exception as exc:
         job.events.append({"type": "error", "message": str(exc)})
@@ -141,21 +137,33 @@ async def health():
 @app.post("/audit/run")
 async def audit_run(
     entity_id: str = Form(...),
-    mode: str = Form("full_audit"),
+    mode: str = Form("structured_document"),
     report_json: UploadFile | None = File(None),
     free_text: str | None = Form(None),
+    number_of_employees: int | None = Form(None),
+    revenue_eur: float | None = Form(None),
+    total_assets_eur: float | None = Form(None),
+    reporting_year: int | None = Form(None),
 ):
-    """Accept a report JSON (full_audit) or free text (compliance_check), start audit."""
+    """Accept a report JSON (structured_document) or free text (free_text), start audit."""
     # Validate mode
-    if mode not in ("full_audit", "compliance_check"):
-        raise HTTPException(400, f"Invalid mode: {mode}. Must be 'full_audit' or 'compliance_check'.")
+    if mode not in ("structured_document", "free_text"):
+        raise HTTPException(400, f"Invalid mode: {mode}. Must be 'structured_document' or 'free_text'.")
 
     audit_id = str(uuid.uuid4())
 
-    if mode == "full_audit":
-        # full_audit requires report_json file
+    # Build CompanyInputs from form fields
+    company_inputs = CompanyInputs(
+        number_of_employees=number_of_employees or 0,
+        revenue_eur=revenue_eur or 0.0,
+        total_assets_eur=total_assets_eur or 0.0,
+        reporting_year=reporting_year or 2025,
+    )
+
+    if mode == "structured_document":
+        # structured_document requires report_json file
         if report_json is None:
-            raise HTTPException(400, "mode=full_audit requires a report_json file upload.")
+            raise HTTPException(400, "mode=structured_document requires a report_json file upload.")
 
         raw_bytes = await report_json.read()
         try:
@@ -168,25 +176,27 @@ async def audit_run(
 
         initial_state: AuditState = {
             "audit_id": audit_id,
-            "mode": "full_audit",
+            "mode": "structured_document",
             "report_json": cleaned,
             "esrs_data": esrs_data,
             "taxonomy_data": taxonomy_data,
             "entity_id": entity_id,
+            "company_inputs": company_inputs,
             "logs": [],
             "pipeline_trace": [],
         }
 
     else:
-        # compliance_check requires free_text
+        # free_text requires free_text
         if not free_text or not free_text.strip():
-            raise HTTPException(400, "mode=compliance_check requires a non-empty free_text field.")
+            raise HTTPException(400, "mode=free_text requires a non-empty free_text field.")
 
         initial_state = {
             "audit_id": audit_id,
-            "mode": "compliance_check",
+            "mode": "free_text",
             "free_text_input": free_text,
             "entity_id": entity_id,
+            "company_inputs": company_inputs,
             "report_json": {},
             "esrs_data": {},
             "taxonomy_data": {},

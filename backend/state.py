@@ -1,13 +1,13 @@
 """
-AuditState TypedDict — shared memory for all LangGraph nodes (dual-mode).
+AuditState TypedDict — shared memory for all LangGraph nodes (v5.0 unified pipeline).
 
 Each node reads from this dict and writes only to its own output keys.
-Input keys (audit_id, report_json, esrs_data, taxonomy_data, entity_id, mode,
-free_text_input) are set once by FastAPI and never modified.
+Input keys (audit_id, mode, report_json, esrs_data, taxonomy_data, entity_id,
+company_inputs, free_text_input) are set once by FastAPI and never modified.
 
-Dual-mode support:
-  - mode="full_audit":       Extractor → Fetcher → Auditor → Consultant
-  - mode="compliance_check": Extractor → Auditor → Consultant (Fetcher skipped)
+Pipeline: extractor → scorer → advisor (both modes)
+  - mode="structured_document": iXBRL report input, financial_context extracted
+  - mode="free_text":           raw text input, financial_context=None
 """
 
 from __future__ import annotations
@@ -16,49 +16,63 @@ from typing import TypedDict, Optional
 
 from schemas import (
     CompanyMeta,
-    TaxonomyFinancials,
+    CompanyInputs,
+    ComplianceCheckResult,
+    ComplianceCost,
+    ComplianceResult,
+    ComplianceScore,
+    CSRDAudit,
     ESRSClaim,
     ESRSLedgerItem,
-    TaxonomyAlignment,
-    ComplianceCost,
-    TaxonomyRoadmap,
-    CSRDAudit,
+    FinancialContext,
+    Recommendation,
     RegistrySource,
-    ComplianceCheckResult,
+    TaxonomyAlignment,
+    TaxonomyFinancials,
+    TaxonomyRoadmap,
 )
 
 
 class AuditState(TypedDict, total=False):
     # ── INIT — set by FastAPI before graph.invoke() ──────────────────────────
     audit_id: str               # UUID for this audit run
+    mode: str                   # "structured_document" | "free_text"
     report_json: dict           # Full cleaned JSON from XHTML management report
     esrs_data: dict             # ESRS-tagged iXBRL sections (for Extractor)
-    taxonomy_data: dict         # Taxonomy-tagged iXBRL sections (for Fetcher)
+    taxonomy_data: dict         # Taxonomy-tagged iXBRL sections (for Extractor financial_context)
     entity_id: str              # Company name / LEI from user input
+    company_inputs: CompanyInputs  # User-provided company parameters
+    free_text_input: str        # Raw user text (free_text mode only)
     logs: list[dict]            # Accumulates { agent, msg, ts } entries
     pipeline_trace: list[dict]  # Accumulates { agent, started_at, ms }
-    mode: str                   # "full_audit" | "compliance_check"
-    free_text_input: str        # Raw user text (compliance_check only)
 
     # ── NODE 1 OUTPUT — Extractor writes ─────────────────────────────────────
-    esrs_claims: dict[str, ESRSClaim]   # keyed by ESRS ID, e.g. "E1-1"
+    esrs_claims: dict[str, ESRSClaim]        # keyed by ESRS ID, e.g. "E1-1"
     company_meta: CompanyMeta
-    extracted_goals: list[dict]          # ExtractedGoal dicts (compliance_check only)
+    financial_context: Optional[FinancialContext]  # structured_document only; None for free_text
 
-    # ── NODE 2 OUTPUT — Fetcher writes (SKIPPED in compliance_check) ─────────
+    # ── NODE 2 OUTPUT — Scorer writes ────────────────────────────────────────
+    compliance_score: ComplianceScore
+    applicable_reqs: list[dict]              # matched requirements per standard
+    coverage_gaps: list[dict]                # {esrs_id, status, details} per standard
+
+    # ── NODE 3 OUTPUT — Advisor writes ───────────────────────────────────────
+    recommendations: list[Recommendation]
+    final_result: ComplianceResult
+
+    # ── LEGACY v2.0 — backward-compat keys for legacy agent modules ────────
+    # These keys are written by the deprecated fetcher/auditor/consultant
+    # nodes (still present in the codebase). They are NOT used by v5.0.
     taxonomy_financials: TaxonomyFinancials
     document_source: RegistrySource
-
-    # ── NODE 3 OUTPUT — Auditor writes ───────────────────────────────────────
-    esrs_ledger: list[ESRSLedgerItem]            # full_audit only
-    taxonomy_alignment: TaxonomyAlignment         # full_audit only
-    compliance_cost: ComplianceCost               # full_audit only
-    taxonomy_alignment_score: float               # full_audit only (raw 0–100)
-    esrs_coverage: list[dict]                     # ESRSCoverageItem dicts (compliance_check)
-    compliance_cost_estimate: dict                # ComplianceCostEstimate dict (compliance_check)
-
-    # ── NODE 4 OUTPUT — Consultant writes ────────────────────────────────────
-    roadmap: TaxonomyRoadmap                      # full_audit only
-    final_audit: CSRDAudit                        # full_audit only
-    todo_list: list[dict]                         # ComplianceTodo dicts (compliance_check)
-    final_compliance_check: ComplianceCheckResult  # compliance_check only
+    esrs_ledger: list[ESRSLedgerItem]
+    taxonomy_alignment: TaxonomyAlignment
+    compliance_cost: ComplianceCost
+    taxonomy_alignment_score: float
+    roadmap: TaxonomyRoadmap
+    final_audit: CSRDAudit
+    extracted_goals: list[dict]
+    esrs_coverage: list[dict]
+    compliance_cost_estimate: dict
+    todo_list: list[dict]
+    final_compliance_check: ComplianceCheckResult

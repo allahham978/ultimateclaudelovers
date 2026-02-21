@@ -1,4 +1,7 @@
 """
+LEGACY v2.0 — This module is deprecated. The auditor node has been replaced by
+the scorer node in the v5.0 unified 3-agent pipeline (extractor → scorer → advisor).
+
 Node 3 — Double Materiality Evaluator (Auditor) — real Claude API call.
 
 Full Audit:       Reads esrs_claims + taxonomy_financials → esrs_ledger, taxonomy_alignment, compliance_cost

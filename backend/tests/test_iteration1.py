@@ -496,6 +496,8 @@ class TestAuditState:
 
 
 class TestGraphEndToEnd:
+    """v5.0 graph end-to-end: 3-agent linear pipeline (extractor → scorer → advisor)."""
+
     def test_graph_imports(self):
         from graph import graph  # noqa: F401
 
@@ -510,89 +512,89 @@ class TestGraphEndToEnd:
         result = graph.invoke(minimal_state)
         assert result is not None
 
-    def test_final_audit_present_in_result(self, minimal_state):
+    def test_final_result_present_in_result(self, minimal_state):
         from graph import graph
+        from schemas import ComplianceResult
 
         result = graph.invoke(minimal_state)
-        assert "final_audit" in result
-        assert isinstance(result["final_audit"], CSRDAudit)
+        assert "final_result" in result
+        assert isinstance(result["final_result"], ComplianceResult)
 
-    def test_all_four_nodes_executed_in_order(self, minimal_state):
+    def test_three_nodes_executed_in_order(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         agents = [t["agent"] for t in result["pipeline_trace"]]
-        assert agents == ["extractor", "fetcher", "auditor", "consultant"], (
+        assert agents == ["extractor", "scorer", "advisor"], (
             f"Unexpected node execution order: {agents}"
         )
 
-    def test_audit_id_propagated_to_final_audit(self, minimal_state):
+    def test_audit_id_propagated_to_final_result(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
-        assert result["final_audit"].audit_id == minimal_state["audit_id"]
+        assert result["final_result"].audit_id == minimal_state["audit_id"]
 
-    def test_esrs_ledger_has_three_items(self, minimal_state):
+    def test_compliance_score_present(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
-        assert len(result["final_audit"].esrs_ledger) == 3
+        score = result["final_result"].score
+        assert 0 <= score.overall <= 100
 
-    def test_pipeline_has_four_agents(self, minimal_state):
+    def test_pipeline_has_three_agents(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
-        assert len(result["final_audit"].pipeline.agents) == 4
+        assert len(result["final_result"].pipeline.agents) == 3
 
-    def test_pipeline_agent_order_in_final_audit(self, minimal_state):
+    def test_pipeline_agent_order_in_final_result(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
-        names = [a.agent for a in result["final_audit"].pipeline.agents]
-        assert names == ["extractor", "fetcher", "auditor", "consultant"]
+        names = [a.agent for a in result["final_result"].pipeline.agents]
+        assert names == ["extractor", "scorer", "advisor"]
 
     def test_all_agent_timings_are_completed(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
-        for agent_timing in result["final_audit"].pipeline.agents:
+        for agent_timing in result["final_result"].pipeline.agents:
             assert agent_timing.status == "completed", (
                 f"{agent_timing.agent} status is '{agent_timing.status}', expected 'completed'"
             )
 
-    def test_logs_contain_entries_from_all_four_agents(self, minimal_state):
+    def test_logs_contain_entries_from_all_three_agents(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         logged_agents = {log["agent"] for log in result["logs"]}
         assert "extractor" in logged_agents
-        assert "fetcher" in logged_agents
-        assert "auditor" in logged_agents
-        assert "consultant" in logged_agents
+        assert "scorer" in logged_agents
+        assert "advisor" in logged_agents
 
-    def test_taxonomy_alignment_pct_is_number(self, minimal_state):
+    def test_schema_version_is_3_0(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
-        pct = result["final_audit"].taxonomy_alignment.capex_aligned_pct
-        assert isinstance(pct, float)
-        assert 0.0 <= pct <= 100.0
+        assert result["final_result"].schema_version == "3.0"
 
-    def test_sources_has_documents(self, minimal_state):
+    def test_recommendations_is_list(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
-        assert len(result["final_audit"].sources) >= 1
+        assert isinstance(result["final_result"].recommendations, list)
 
-    def test_company_name_in_final_audit(self, minimal_state):
+    def test_company_name_in_final_result(self, minimal_state):
         from graph import graph
 
         result = graph.invoke(minimal_state)
-        assert result["final_audit"].company.name == minimal_state["entity_id"]
+        assert result["final_result"].company.name == minimal_state["entity_id"]
 
     def test_graph_handles_empty_report_json(self):
         """Graph must not crash when report JSON has no facts."""
         from graph import graph
+        from schemas import ComplianceResult, CompanyInputs
 
         state = {
             "audit_id": "test-empty-docs",
@@ -600,35 +602,44 @@ class TestGraphEndToEnd:
             "esrs_data": {"facts": []},
             "taxonomy_data": {"facts": []},
             "entity_id": "EmptyCorp",
+            "company_inputs": CompanyInputs(
+                number_of_employees=100, revenue_eur=10_000_000,
+                total_assets_eur=5_000_000, reporting_year=2025,
+            ),
             "logs": [],
             "pipeline_trace": [],
         }
         result = graph.invoke(state)
-        assert isinstance(result["final_audit"], CSRDAudit)
+        assert isinstance(result["final_result"], ComplianceResult)
 
     def test_graph_handles_missing_entity_id(self):
         """Graph must not crash when entity_id is absent."""
         from graph import graph
+        from schemas import ComplianceResult, CompanyInputs
 
         state = {
             "audit_id": "test-no-entity",
             "report_json": {"report_info": {}, "facts": []},
             "esrs_data": {"facts": []},
             "taxonomy_data": {"facts": []},
+            "company_inputs": CompanyInputs(
+                number_of_employees=100, revenue_eur=10_000_000,
+                total_assets_eur=5_000_000, reporting_year=2025,
+            ),
             "logs": [],
             "pipeline_trace": [],
         }
         result = graph.invoke(state)
-        assert isinstance(result["final_audit"], CSRDAudit)
+        assert isinstance(result["final_result"], ComplianceResult)
 
-    def test_final_audit_json_serialisable(self, minimal_state):
-        """Final audit must be serialisable to JSON (as required for SSE streaming)."""
+    def test_final_result_json_serialisable(self, minimal_state):
+        """Final result must be serialisable to JSON (as required for SSE streaming)."""
         import json
         from graph import graph
 
         result = graph.invoke(minimal_state)
-        json_str = result["final_audit"].model_dump_json()
+        json_str = result["final_result"].model_dump_json()
         parsed = json.loads(json_str)
         assert parsed["audit_id"] == minimal_state["audit_id"]
-        assert "esrs_ledger" in parsed
-        assert "roadmap" in parsed
+        assert "score" in parsed
+        assert "recommendations" in parsed
