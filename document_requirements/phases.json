@@ -1,0 +1,54 @@
+{
+  "phases": [
+    {
+      "phase": "Phase 1",
+      "data_collection_year": 2024,
+      "reporting_year": 2025,
+      "company_type": "Companies already in scope for NFRD (including non-EU subsidiaries)",
+      "continent": "EU",
+      "thresholds": {
+        "total_assets_eur": 20000000,
+        "net_turnover_eur": 40000000,
+        "average_employees": 500
+      },
+      "notes": "Large, established EU companies; full ESRS reporting requirements apply."
+    },
+    {
+      "phase": "Phase 2",
+      "data_collection_year": 2025,
+      "reporting_year": 2026,
+      "company_type": "Other large EU-based subsidiaries of non-EU companies and all companies listed on EU-regulated markets",
+      "continent": "EU",
+      "thresholds": {
+        "total_assets_eur": 20000000,
+        "net_turnover_eur": 40000000,
+        "average_employees": 250
+      },
+      "notes": "Large companies outside initial NFRD scope; full ESRS reporting applies."
+    },
+    {
+      "phase": "Phase 3",
+      "data_collection_year": 2026,
+      "reporting_year": 2027,
+      "company_type": "EU-based SMEs and SME subsidiaries of non-EU companies listed on EU-regulated markets",
+      "continent": "EU",
+      "thresholds": {
+        "criteria": "SMEs",
+        "reporting_simplified": true
+      },
+      "notes": "SMEs phased in later with simplified ESRS reporting standards."
+    },
+    {
+      "phase": "Phase 4",
+      "data_collection_year": 2028,
+      "reporting_year": 2029,
+      "company_type": "Large non-EU-based companies and subsidiaries",
+      "continent": "Global",
+      "thresholds": {
+        "annual_turnover_eur": 150000000,
+        "subsidiary_requirement": "one large subsidiary listed on EU-regulated market"
+      },
+      "notes": "Only large non-EU companies; reporting aligned with EU ESRS."
+    }
+  ]
+}   

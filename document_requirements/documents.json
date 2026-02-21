@@ -1,0 +1,108 @@
+{
+  "csrd_reporting_requirements": [
+    {
+      "document_type": "Sustainability Report",
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year (align with financial reporting period)",
+      "lookback_base_year": "Previous year for comparative information",
+      "granularity": "High; numeric KPIs, narrative context, policies, targets, risk descriptions",
+      "areas": [
+        "All material ESG topics per ESRS",
+        "EU Taxonomy disclosures",
+        "Environmental, Social, Governance"
+      ],
+      "notes": "Published in Management Report; tagged in XHTML/XBRL for machine readability"
+    },
+    {
+      "document_type": "Double Materiality Assessment (DMA)",
+      "frequency": "Annual",
+      "timeframe_covered": "Current and historical data used for analysis",
+      "lookback_base_year": "Historical data where relevant to justify materiality decisions",
+      "granularity": "Analytical; for each ESG topic include evidence of impact and financial materiality",
+      "areas": [
+        "Impact materiality (company effects on environment/society)",
+        "Financial materiality (ESG impact on company performance)"
+      ],
+      "notes": "Determines which topics are included in the sustainability report"
+    },
+    {
+      "document_type": "ESRS Disclosure Tables and Data Points",
+      "frequency": "Annual",
+      "timeframe_covered": "Full financial year",
+      "lookback_base_year": "Previous year for trend comparison; forward-looking targets also required",
+      "granularity": "High; quantitative KPIs + narrative explanations",
+      "areas": [
+        "Environmental (ESRS E1–E5: climate, pollution, water, biodiversity, resources)",
+        "Social (ESRS S1–S4: workforce, supply chain labor, community, consumer safety)",
+        "Governance (ESRS G1: business conduct, anti-corruption, corporate culture)"
+      ],
+      "notes": "Structured per ESRS; data tables embedded in Sustainability Report"
+    },
+    {
+      "document_type": "Narrative Strategy & Governance Document",
+      "frequency": "Annual",
+      "timeframe_covered": "Current year and forward-looking",
+      "lookback_base_year": "Context against prior year",
+      "granularity": "Qualitative; detailed descriptions of strategy, governance roles, risk management processes",
+      "areas": [
+        "Integration of sustainability in business strategy",
+        "Board/senior management oversight",
+        "Risk and opportunity management for ESG topics"
+      ],
+      "notes": "Accompanies quantitative KPIs; explains rationale, targets, and policies"
+    },
+    {
+      "document_type": "Assurance Documentation",
+      "frequency": "Annual",
+      "timeframe_covered": "Same period as Sustainability Report",
+      "lookback_base_year": "N/A",
+      "granularity": "High; includes methodology, internal controls, data sources, verification evidence",
+      "areas": [
+        "Verification of all reported ESG KPIs",
+        "Internal controls and calculation methodologies",
+        "Third-party assurance evidence"
+      ],
+      "notes": "Required for external limited assurance; may transition to reasonable assurance over time"
+    },
+    {
+      "document_type": "Data Collection Logs",
+      "frequency": "Ongoing",
+      "timeframe_covered": "Current & historical",
+      "lookback_base_year": "Historical data maintained for trend analysis and audit support",
+      "granularity": "Detailed; includes source systems, measurement methods, data owner",
+      "areas": [
+        "Energy consumption",
+        "Emissions data (Scope 1, 2, 3)",
+        "HR metrics",
+        "Supplier and value chain ESG data"
+      ],
+      "notes": "Internal document to support reporting accuracy and assurance"
+    },
+    {
+      "document_type": "Control & QA Procedure Documentation",
+      "frequency": "Ongoing",
+      "timeframe_covered": "Current & historical",
+      "lookback_base_year": "Operational records supporting trend analysis",
+      "granularity": "Procedural; description of internal controls, validation methods, and error tracking",
+      "areas": [
+        "Data quality and consistency",
+        "Calculation verification",
+        "Audit trail readiness"
+      ],
+      "notes": "Supports internal compliance and external assurance"
+    },
+    {
+      "document_type": "Historical Records for Trend Analysis",
+      "frequency": "Ongoing / maintained continuously",
+      "timeframe_covered": "Previous reporting years",
+      "lookback_base_year": "Multiple years to enable trend and target comparisons",
+      "granularity": "Quantitative & qualitative historical data",
+      "areas": [
+        "All previously reported ESG KPIs",
+        "Policy changes and updates",
+        "Materiality decisions from prior years"
+      ],
+      "notes": "Required for comparative analysis and board review"
+    }
+  ]
+}
