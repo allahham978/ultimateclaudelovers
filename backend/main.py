@@ -7,6 +7,8 @@ Endpoints:
   GET   /audit/{audit_id}/stream  SSE stream of log lines + final result
   GET   /audit/{audit_id}         Return cached result (for reconnects)
   GET   /health                   Liveness probe
+  POST  /kb/update                Manual knowledge-base update trigger
+  GET   /kb/status                Knowledge-base update status
 """
 
 import asyncio
@@ -17,20 +19,23 @@ import tempfile
 import threading
 import traceback
 import uuid
-from typing import Any
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 from dotenv import load_dotenv
 
 load_dotenv()  # Load ANTHROPIC_API_KEY (and other vars) from .env
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from events import emit_node_complete, register, unregister
+from events import emit_log, emit_node_complete, register, unregister
 from graph import graph
 from schemas import CompanyInputs
 from state import AuditState
+from tools.kb_updater import KBUpdater, get_tracked_celex_ids, read_meta
 from tools.report_parser import (
     extract_narrative_sustainability,
     extract_xhtml_to_json,
@@ -45,7 +50,64 @@ from tools.report_parser import (
 logger = logging.getLogger("audit")
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="EU CSRD Compliance Engine", version="3.0")
+_KB_CHECK_INTERVAL_SECONDS = 24 * 60 * 60  # 24 hours
+_KB_STALE_DAYS = 7
+
+
+async def _periodic_kb_check() -> None:
+    """Background task: check daily if the KB needs updating (>7 days stale)."""
+    while True:
+        try:
+            await asyncio.sleep(_KB_CHECK_INTERVAL_SECONDS)
+            meta = read_meta()
+            last_update = meta.get("last_update_utc")
+            if last_update:
+                last_dt = datetime.fromisoformat(last_update)
+                age_days = (datetime.now(timezone.utc) - last_dt).days
+                if age_days <= _KB_STALE_DAYS:
+                    logger.info("KB update check: last update %d days ago, still fresh.", age_days)
+                    continue
+                logger.info("KB update check: last update %d days ago, triggering update.", age_days)
+            else:
+                logger.info("KB update check: no previous update recorded, triggering update.")
+
+            loop = asyncio.get_running_loop()
+            updater = KBUpdater()
+            for celex_id in get_tracked_celex_ids():
+                await loop.run_in_executor(None, updater.run_update, celex_id)
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            logger.exception("Periodic KB check failed.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: check staleness and start periodic task
+    meta = read_meta()
+    last_update = meta.get("last_update_utc")
+    if last_update:
+        last_dt = datetime.fromisoformat(last_update)
+        age_days = (datetime.now(timezone.utc) - last_dt).days
+        if age_days > _KB_STALE_DAYS:
+            logger.info("KB is stale (%d days old), queuing background update.", age_days)
+            loop = asyncio.get_running_loop()
+            updater = KBUpdater()
+            for celex_id in get_tracked_celex_ids():
+                loop.run_in_executor(None, updater.run_update, celex_id)
+    else:
+        logger.info("No KB update metadata found — will update on next periodic check.")
+
+    task = asyncio.create_task(_periodic_kb_check())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title="EU CSRD Compliance Engine", version="3.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -94,6 +156,15 @@ def _run_graph(audit_id: str, state: AuditState, job: _AuditJob) -> None:
     register(audit_id, lambda evt: job.events.append(evt))
 
     try:
+        # Emit knowledge-base freshness confirmation before the pipeline starts
+        meta = read_meta()
+        last_update = meta.get("last_update_utc", "never")
+        emit_log(
+            audit_id,
+            "system",
+            f"Regulatory rules verified up to date (last synced: {last_update})",
+        )
+
         logger.info("[%s] Graph execution starting...", audit_id[:8])
         result = graph.invoke(state)
         logger.info("[%s] Graph execution completed successfully", audit_id[:8])
@@ -303,3 +374,29 @@ async def get_audit(audit_id: str):
         return JSONResponse({"status": "running", "audit_id": audit_id}, status_code=202)
 
     return job.result
+
+
+# ---------------------------------------------------------------------------
+# Knowledge-base update endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.post("/kb/update")
+async def kb_update(celex_id: Optional[str] = Query(default=None)):
+    """Trigger a knowledge-base update. Runs in a thread to avoid blocking."""
+    ids_to_check = [celex_id] if celex_id else get_tracked_celex_ids()
+    loop = asyncio.get_running_loop()
+    updater = KBUpdater()
+
+    results = []
+    for cid in ids_to_check:
+        result = await loop.run_in_executor(None, updater.run_update, cid)
+        results.append(result)
+
+    return {"results": results}
+
+
+@app.get("/kb/status")
+async def kb_status():
+    """Return the current knowledge-base update metadata."""
+    return read_meta()

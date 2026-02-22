@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -41,12 +42,22 @@ _DISCLOSURE_ID_RE = re.compile(r"^([A-Za-z0-9]+-\d+)")
 # ---------------------------------------------------------------------------
 
 
+_kb_lock = threading.Lock()
+
+
 @lru_cache(maxsize=1)
 def load_requirements() -> CSRDReportingRequirements:
     """Parse and cache master_requirements.json using Pydantic validation."""
     with open(_KB_PATH) as f:
         raw = json.load(f)
     return CSRDReportingRequirements.model_validate(raw)
+
+
+def reload_requirements() -> CSRDReportingRequirements:
+    """Clear the LRU cache and reload from disk. Thread-safe."""
+    with _kb_lock:
+        load_requirements.cache_clear()
+        return load_requirements()
 
 
 # ---------------------------------------------------------------------------
