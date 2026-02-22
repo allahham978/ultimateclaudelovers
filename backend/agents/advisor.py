@@ -37,6 +37,7 @@ from schemas import (
     PipelineTrace,
     Recommendation,
 )
+from events import emit_log
 from state import AuditState
 from tools.prompts import SYSTEM_PROMPT_ADVISOR
 
@@ -49,6 +50,31 @@ _CORE_MANDATORY_PREFIXES = (
     "E1-",                      # Climate Change
     "S1-",                      # Own Workforce
 )
+
+# Map ESRS ID prefixes to human-readable categories
+_CATEGORY_MAP = {
+    "E1-": "Climate & Energy",
+    "E2-": "Pollution & Resources",
+    "E3-": "Pollution & Resources",
+    "E4-": "Biodiversity & Ecosystems",
+    "E5-": "Pollution & Resources",
+    "S1-": "Workforce & Social",
+    "S2-": "Workforce & Social",
+    "S3-": "Communities & Consumers",
+    "S4-": "Communities & Consumers",
+    "G1-": "Governance",
+    "GOV-": "Governance",
+    "SBM-": "General Disclosures",
+    "IRO-": "General Disclosures",
+}
+
+
+def _infer_category(esrs_id: str) -> str:
+    """Infer a human-readable category from the ESRS ID prefix."""
+    for prefix, category in _CATEGORY_MAP.items():
+        if esrs_id.startswith(prefix):
+            return category
+    return "General"
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +218,7 @@ def _call_claude(
     client = anthropic.Anthropic()
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=4096,
+        max_tokens=8192,
         system=SYSTEM_PROMPT_ADVISOR,
         messages=[{"role": "user", "content": user_message}],
     )
@@ -231,18 +257,26 @@ def _generate_fallback_recommendations(
 
         priority = _assign_priority(status, esrs_id, mandatory, mandatory_if_material)
 
+        category = _infer_category(esrs_id)
+
         if status == "missing":
-            title = f"Establish {esrs_id} disclosure — currently missing"
+            title = f"Start Reporting on {standard_name}"
             description = (
-                f"No adequate {esrs_id} ({standard_name}) disclosure was found. "
-                f"This is a {'mandatory' if mandatory else 'material-dependent'} CSRD disclosure requirement. "
-                f"Begin by conducting a baseline assessment and data collection exercise."
+                f"Your report does not include information on {standard_name}. "
+                f"This is a {'mandatory' if mandatory else 'material-dependent'} CSRD requirement. "
+                f"Begin by conducting a baseline assessment and collecting relevant data."
+            )
+            impact = (
+                f"Missing {standard_name} disclosure may result in non-compliance with EU reporting requirements."
             )
         else:  # partial
-            title = f"Complete {esrs_id} disclosure — key metrics missing"
+            title = f"Complete Your {standard_name} Disclosure"
             description = (
-                f"Partial {esrs_id} ({standard_name}) information was found but critical metrics are absent. "
-                f"Review the ESRS {esrs_id} disclosure requirements and fill the identified gaps."
+                f"Some {standard_name} information was found but key metrics are missing. "
+                f"Review what data points are required and fill the remaining gaps."
+            )
+            impact = (
+                f"Incomplete {standard_name} data reduces your compliance score and may not satisfy auditor requirements."
             )
 
         # Enrich with financial context if available
@@ -260,7 +294,9 @@ def _generate_fallback_recommendations(
             esrs_id=esrs_id,
             title=title,
             description=description,
-            regulatory_reference=f"ESRS {esrs_id}, Commission Delegated Regulation (EU) 2023/2772",
+            regulatory_reference=f"{standard_name} (ESRS {esrs_id})",
+            category=category,
+            impact=impact,
         ))
         rec_idx += 1
 
@@ -307,6 +343,8 @@ def _build_recommendations(
                 "regulatory_reference",
                 f"ESRS {esrs_id}, Commission Delegated Regulation (EU) 2023/2772",
             ),
+            category=raw.get("category", _infer_category(esrs_id)),
+            impact=raw.get("impact", ""),
         ))
 
     return recommendations
@@ -325,8 +363,13 @@ def advisor_node(state: AuditState) -> dict[str, Any]:
     pipeline_trace: list[dict] = list(state.get("pipeline_trace") or [])
 
     ts = lambda: int(time.time() * 1000)  # noqa: E731
+    audit_id = state.get("audit_id", "")
 
-    logs.append({"agent": "advisor", "msg": "Generating recommendations from coverage gaps...", "ts": ts()})
+    def log(msg: str) -> None:
+        logs.append({"agent": "advisor", "msg": msg, "ts": ts()})
+        emit_log(audit_id, "advisor", msg)
+
+    log("Generating recommendations from coverage gaps...")
 
     # Read inputs from state
     coverage_gaps: list[dict] = state.get("coverage_gaps") or []
@@ -346,17 +389,15 @@ def advisor_node(state: AuditState) -> dict[str, Any]:
     financial_context: Optional[FinancialContext] = state.get("financial_context")
 
     gaps_needing_recs = [g for g in coverage_gaps if g.get("status") != "disclosed"]
-    logs.append({
-        "agent": "advisor",
-        "msg": f"Found {len(gaps_needing_recs)} gaps requiring recommendations "
-               f"(financial context: {'available' if financial_context else 'not available'})",
-        "ts": ts(),
-    })
+    log(
+        f"Found {len(gaps_needing_recs)} gaps requiring recommendations "
+        f"(financial context: {'available' if financial_context else 'not available'})"
+    )
 
     # Generate recommendations via Claude (with fallback)
     recommendations: list[Recommendation]
     try:
-        logs.append({"agent": "advisor", "msg": "Calling Claude for recommendation generation...", "ts": ts()})
+        log("Calling Claude for recommendation generation...")
 
         raw_recs = _call_claude(
             coverage_gaps, applicable_reqs, company_meta,
@@ -365,18 +406,10 @@ def advisor_node(state: AuditState) -> dict[str, Any]:
 
         recommendations = _build_recommendations(raw_recs, coverage_gaps, applicable_reqs)
 
-        logs.append({
-            "agent": "advisor",
-            "msg": f"Claude generated {len(recommendations)} recommendations",
-            "ts": ts(),
-        })
+        log(f"Claude generated {len(recommendations)} recommendations")
 
     except Exception as exc:
-        logs.append({
-            "agent": "advisor",
-            "msg": f"Claude API failed ({type(exc).__name__}: {exc}), using deterministic fallback",
-            "ts": ts(),
-        })
+        log(f"Claude API failed ({type(exc).__name__}: {exc}), using deterministic fallback")
         recommendations = _generate_fallback_recommendations(
             coverage_gaps, applicable_reqs, financial_context,
         )
@@ -384,15 +417,13 @@ def advisor_node(state: AuditState) -> dict[str, Any]:
     # Sort by priority tier (critical → high → moderate → low)
     recommendations.sort(key=lambda r: _PRIORITY_ORDER.get(r.priority, 99))
 
-    logs.append({
-        "agent": "advisor",
-        "msg": f"Final: {len(recommendations)} recommendations "
-               f"({sum(1 for r in recommendations if r.priority == 'critical')} critical, "
-               f"{sum(1 for r in recommendations if r.priority == 'high')} high, "
-               f"{sum(1 for r in recommendations if r.priority == 'moderate')} moderate, "
-               f"{sum(1 for r in recommendations if r.priority == 'low')} low)",
-        "ts": ts(),
-    })
+    log(
+        f"Final: {len(recommendations)} recommendations "
+        f"({sum(1 for r in recommendations if r.priority == 'critical')} critical, "
+        f"{sum(1 for r in recommendations if r.priority == 'high')} high, "
+        f"{sum(1 for r in recommendations if r.priority == 'moderate')} moderate, "
+        f"{sum(1 for r in recommendations if r.priority == 'low')} low)"
+    )
 
     # Finalise pipeline trace
     duration_ms = int((time.time() - started_at) * 1000)
@@ -424,7 +455,7 @@ def advisor_node(state: AuditState) -> dict[str, Any]:
         pipeline=PipelineTrace(total_duration_ms=total_ms, agents=agent_timings),
     )
 
-    logs.append({"agent": "advisor", "msg": f"ComplianceResult assembled in {duration_ms}ms", "ts": ts()})
+    log(f"ComplianceResult assembled in {duration_ms}ms")
 
     return {
         "recommendations": recommendations,

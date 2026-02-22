@@ -16,6 +16,7 @@ from typing import Any, Optional
 
 import anthropic
 
+from events import emit_log
 from schemas import CompanyMeta, ESRSClaim, FinancialContext
 from state import AuditState
 from tools.prompts import SYSTEM_PROMPT_EXTRACTOR, SYSTEM_PROMPT_EXTRACTOR_LITE
@@ -138,13 +139,18 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
     pipeline_trace: list[dict] = list(state.get("pipeline_trace") or [])
 
     ts = lambda: int(time.time() * 1000)  # noqa: E731
+    audit_id = state.get("audit_id", "")
+
+    def log(msg: str) -> None:
+        logs.append({"agent": "extractor", "msg": msg, "ts": ts()})
+        emit_log(audit_id, "extractor", msg)
 
     if mode == "free_text":
         # ── Free text mode ────────────────────────────────────────────────
         free_text = state.get("free_text_input", "")
-        logs.append({"agent": "extractor", "msg": "Reading free-text sustainability description...", "ts": ts()})
-        logs.append({"agent": "extractor", "msg": f"Input text: {len(free_text)} characters", "ts": ts()})
-        logs.append({"agent": "extractor", "msg": "Sending text to Claude for ESRS claim extraction...", "ts": ts()})
+        log("Reading free-text sustainability description...")
+        log(f"Input text: {len(free_text)} characters")
+        log("Sending text to Claude for ESRS claim extraction...")
 
         try:
             client = anthropic.Anthropic()
@@ -167,28 +173,24 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
             )
 
             raw_text = response.content[0].text
-            logs.append({"agent": "extractor", "msg": "Claude response received, parsing JSON...", "ts": ts()})
+            log("Claude response received, parsing JSON...")
 
             parsed = _parse_llm_json(raw_text)
 
             company_meta = _build_company_meta(parsed.get("company_meta", {}), entity_id)
             esrs_claims = _build_esrs_claims(parsed.get("esrs_claims", {}))
 
-            logs.append({
-                "agent": "extractor",
-                "msg": f"Extracted {len(esrs_claims)} ESRS claims from free text",
-                "ts": ts(),
-            })
+            log(f"Extracted {len(esrs_claims)} ESRS claims from free text")
 
         except Exception as exc:
-            logs.append({"agent": "extractor", "msg": f"Error calling Claude API: {exc}", "ts": ts()})
+            log(f"Error calling Claude API: {exc}")
             defaults = _safe_defaults(entity_id, mode)
             company_meta = defaults["company_meta"]
             esrs_claims = defaults["esrs_claims"]
 
         duration_ms = int((time.time() - started_at) * 1000)
         pipeline_trace.append({"agent": "extractor", "started_at": started_at, "ms": duration_ms})
-        logs.append({"agent": "extractor", "msg": f"Extraction complete in {duration_ms}ms", "ts": ts()})
+        log(f"Extraction complete in {duration_ms}ms")
 
         return {
             "company_meta": company_meta,
@@ -202,14 +204,12 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
     taxonomy_data = state.get("taxonomy_data", {})
     narrative_sections = state.get("narrative_sections", [])
 
-    logs.append({"agent": "extractor", "msg": "Reading ESRS + Taxonomy sections from management report JSON...", "ts": ts()})
-    logs.append({
-        "agent": "extractor",
-        "msg": f"ESRS data: {len(json.dumps(esrs_data))} chars, Taxonomy data: {len(json.dumps(taxonomy_data))} chars, "
-               f"Narrative sections: {len(narrative_sections)} sections ({sum(s.get('char_count', 0) for s in narrative_sections)} chars)",
-        "ts": ts(),
-    })
-    logs.append({"agent": "extractor", "msg": "Sending iXBRL data + narrative text to Claude for all ESRS standards + financial context...", "ts": ts()})
+    log("Reading ESRS + Taxonomy sections from management report JSON...")
+    log(
+        f"ESRS data: {len(json.dumps(esrs_data))} chars, Taxonomy data: {len(json.dumps(taxonomy_data))} chars, "
+        f"Narrative sections: {len(narrative_sections)} sections ({sum(s.get('char_count', 0) for s in narrative_sections)} chars)"
+    )
+    log("Sending iXBRL data + narrative text to Claude for all ESRS standards + financial context...")
 
     try:
         client = anthropic.Anthropic()
@@ -259,7 +259,7 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
         )
 
         raw_text = response.content[0].text
-        logs.append({"agent": "extractor", "msg": "Claude response received, parsing JSON...", "ts": ts()})
+        log("Claude response received, parsing JSON...")
 
         parsed = _parse_llm_json(raw_text)
 
@@ -267,16 +267,14 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
         esrs_claims = _build_esrs_claims(parsed.get("esrs_claims", {}))
         financial_context = _build_financial_context(parsed.get("financial_context"))
 
-        logs.append({
-            "agent": "extractor",
-            "msg": f"Extracted {len(esrs_claims)} ESRS claims + financial context "
-                   f"(CapEx={financial_context.capex_total_eur if financial_context else 'N/A'}, "
-                   f"Revenue={financial_context.revenue_eur if financial_context else 'N/A'})",
-            "ts": ts(),
-        })
+        log(
+            f"Extracted {len(esrs_claims)} ESRS claims + financial context "
+            f"(CapEx={financial_context.capex_total_eur if financial_context else 'N/A'}, "
+            f"Revenue={financial_context.revenue_eur if financial_context else 'N/A'})"
+        )
 
     except Exception as exc:
-        logs.append({"agent": "extractor", "msg": f"Error calling Claude API: {exc}", "ts": ts()})
+        log(f"Error calling Claude API: {exc}")
         defaults = _safe_defaults(entity_id, mode)
         company_meta = defaults["company_meta"]
         esrs_claims = defaults["esrs_claims"]
@@ -284,7 +282,7 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
 
     duration_ms = int((time.time() - started_at) * 1000)
     pipeline_trace.append({"agent": "extractor", "started_at": started_at, "ms": duration_ms})
-    logs.append({"agent": "extractor", "msg": f"Extraction complete in {duration_ms}ms", "ts": ts()})
+    log(f"Extraction complete in {duration_ms}ms")
 
     return {
         "company_meta": company_meta,

@@ -77,9 +77,10 @@ export async function startAnalysis(params: AnalysisParams): Promise<string> {
 // ============================================================================
 
 /**
- * GET /audit/{id}/stream — opens an EventSource for real-time SSE events.
+ * GET /audit/{id}/stream — consumes SSE via fetch + ReadableStream.
+ * More reliable than EventSource for cross-origin streaming.
  * Calls `onEvent` for each parsed event; calls `onError` on failure.
- * Returns a cleanup function that closes the connection.
+ * Returns a cleanup function that aborts the connection.
  */
 export function streamAuditEvents(
   auditId: string,
@@ -87,36 +88,68 @@ export function streamAuditEvents(
   onError: (err: string) => void
 ): () => void {
   const url = `${config.apiUrl}/audit/${auditId}/stream`;
-  console.log(`[SSE] Opening EventSource: ${url}`);
-  const source = new EventSource(url);
+  console.log(`[SSE] Opening fetch stream: ${url}`);
 
-  source.onopen = () => {
-    console.log(`[SSE] Connection opened (readyState=${source.readyState})`);
-  };
+  const controller = new AbortController();
 
-  source.onmessage = (e) => {
+  (async () => {
+    let res: Response;
     try {
-      const parsed: SSEEvent = JSON.parse(e.data);
-      console.log(`[SSE] Event:`, parsed.type, parsed.type === "log" ? parsed.message : "");
-      onEvent(parsed);
-    } catch {
-      console.error(`[SSE] Failed to parse event:`, e.data);
-      onError(`Failed to parse SSE event: ${e.data}`);
-    }
-  };
-
-  source.onerror = (e) => {
-    console.error(`[SSE] Error event — readyState=${source.readyState}`, e);
-    if (source.readyState === EventSource.CLOSED) {
-      console.log(`[SSE] Connection closed by server`);
+      res = await fetch(url, { signal: controller.signal });
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      onError(`Failed to connect to audit stream: ${err}`);
       return;
     }
-    onError(`Lost connection to audit stream (readyState=${source.readyState}).`);
-    source.close();
-  };
+
+    if (!res.ok || !res.body) {
+      onError(`Audit stream returned ${res.status}`);
+      return;
+    }
+
+    console.log(`[SSE] Connection opened`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE lines from buffer
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith(":")) continue;
+
+          if (trimmed.startsWith("data: ")) {
+            const jsonStr = trimmed.slice(6);
+            try {
+              const parsed: SSEEvent = JSON.parse(jsonStr);
+              console.log(`[SSE] Event:`, parsed.type, parsed.type === "log" ? (parsed as { message?: string }).message : "");
+              onEvent(parsed);
+            } catch {
+              console.error(`[SSE] Failed to parse:`, jsonStr);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      console.error(`[SSE] Stream read error:`, err);
+      onError(`Lost connection to audit stream.`);
+    }
+
+    console.log(`[SSE] Stream ended`);
+  })();
 
   return () => {
-    console.log(`[SSE] Cleanup — closing connection`);
-    source.close();
+    console.log(`[SSE] Cleanup — aborting connection`);
+    controller.abort();
   };
 }
