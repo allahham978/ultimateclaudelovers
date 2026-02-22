@@ -35,6 +35,42 @@ def _classify_claim(claim: ESRSClaim) -> str:
     return "missing"
 
 
+def _find_best_claim(
+    disc_id: str, esrs_claims: dict[str, ESRSClaim]
+) -> ESRSClaim | None:
+    """Find the best matching ESRS claim for a disclosure ID.
+
+    Handles both exact matches (e.g., "E1-1") and compound keys from the
+    extractor (e.g., "E1-1_transition_plan", "E1-4_scope1_gross_emissions_2024").
+
+    When multiple claims match the same base ID, returns the one with the
+    highest confidence score.
+    """
+    # Exact match first
+    if disc_id in esrs_claims:
+        return esrs_claims[disc_id]
+
+    # Prefix match: find all claims whose key starts with disc_id + "_"
+    prefix = disc_id + "_"
+    matches = [
+        claim for key, claim in esrs_claims.items()
+        if key.startswith(prefix)
+    ]
+
+    if not matches:
+        # Also check the claim's .standard field
+        matches = [
+            claim for claim in esrs_claims.values()
+            if claim.standard == disc_id
+        ]
+
+    if not matches:
+        return None
+
+    # Return the claim with highest confidence
+    return max(matches, key=lambda c: c.confidence)
+
+
 def scorer_node(state: AuditState) -> dict[str, Any]:
     """Knowledge-base-driven compliance scorer.
 
@@ -98,8 +134,8 @@ def scorer_node(state: AuditState) -> dict[str, Any]:
         disc_name = req["disclosure_name"]
         standard = req["standard"]
 
-        # Look for a matching claim
-        claim = esrs_claims.get(disc_id)
+        # Look for a matching claim (supports compound keys like "E1-1_transition_plan")
+        claim = _find_best_claim(disc_id, esrs_claims)
 
         if claim is not None:
             status = _classify_claim(claim)

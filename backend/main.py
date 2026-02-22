@@ -11,6 +11,8 @@ Endpoints:
 
 import asyncio
 import json
+import os
+import tempfile
 import threading
 import uuid
 from typing import Any
@@ -26,7 +28,12 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from graph import graph
 from schemas import CompanyInputs
 from state import AuditState
-from tools.report_parser import parse_report
+from tools.report_parser import (
+    extract_narrative_sustainability,
+    extract_xhtml_to_json,
+    parse_report,
+    summarize_narrative_sections,
+)
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -170,13 +177,27 @@ async def audit_run(
             raise HTTPException(400, "mode=structured_document requires a report_json file upload.")
 
         raw_bytes = await report_json.read()
-        try:
-            raw_json = json.loads(raw_bytes)
-        except json.JSONDecodeError as exc:
-            raise HTTPException(400, f"Invalid JSON in uploaded file: {exc}")
+        is_xhtml = raw_bytes.lstrip()[:10].startswith((b"<?xml", b"<html", b"<!DOC"))
 
-        # Clean + route sections via report_parser
-        cleaned, esrs_data, taxonomy_data = parse_report(raw_json)
+        if is_xhtml:
+            # XHTML upload: parse iXBRL facts + extract narrative sustainability text
+            tmp_fd, tmp_path = tempfile.mkstemp(suffix=".xhtml")
+            try:
+                os.write(tmp_fd, raw_bytes)
+                os.close(tmp_fd)
+                raw_json = extract_xhtml_to_json(tmp_path)
+                cleaned, esrs_data, taxonomy_data, narrative_sections = parse_report(
+                    raw_json, file_path=tmp_path
+                )
+            finally:
+                os.unlink(tmp_path)
+        else:
+            # JSON upload (existing path)
+            try:
+                raw_json = json.loads(raw_bytes)
+            except json.JSONDecodeError as exc:
+                raise HTTPException(400, f"Invalid JSON in uploaded file: {exc}")
+            cleaned, esrs_data, taxonomy_data, narrative_sections = parse_report(raw_json)
 
         initial_state: AuditState = {
             "audit_id": audit_id,
@@ -184,6 +205,7 @@ async def audit_run(
             "report_json": cleaned,
             "esrs_data": esrs_data,
             "taxonomy_data": taxonomy_data,
+            "narrative_sections": narrative_sections,
             "entity_id": entity_id,
             "company_inputs": company_inputs,
             "logs": [],

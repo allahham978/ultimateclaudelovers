@@ -4,6 +4,8 @@ End-to-end test with REAL Claude API — structured_document mode using ASML XHT
 Parses the XHTML file from docs/, runs the full LangGraph pipeline
 (extractor → scorer → advisor) with a live Anthropic API key.
 
+Now includes narrative sustainability extraction from untagged HTML text.
+
 Requires:
   - ANTHROPIC_API_KEY set in backend/.env or environment
   - docs/asml-2024-12-31-en.xhtml present
@@ -39,11 +41,15 @@ def parsed_report():
     """Parse the ASML XHTML file once for all tests in this module."""
     assert os.path.exists(XHTML_PATH), f"XHTML file not found: {XHTML_PATH}"
     raw_json = extract_xhtml_to_json(XHTML_PATH)
-    cleaned, esrs_data, taxonomy_data = parse_report(raw_json)
+    cleaned, esrs_data, taxonomy_data, narrative_sections = parse_report(
+        raw_json, file_path=XHTML_PATH
+    )
     print(f"\n[XHTML parsed] {len(cleaned['facts'])} clean facts, "
           f"{len(esrs_data['facts'])} ESRS facts, "
-          f"{len(taxonomy_data['facts'])} taxonomy facts")
-    return cleaned, esrs_data, taxonomy_data
+          f"{len(taxonomy_data['facts'])} taxonomy facts, "
+          f"{len(narrative_sections)} narrative sections "
+          f"({sum(s['char_count'] for s in narrative_sections)} chars)")
+    return cleaned, esrs_data, taxonomy_data, narrative_sections
 
 
 @pytest.mark.skipif(
@@ -55,7 +61,7 @@ class TestRealAPIStructuredDocument:
 
     def test_full_pipeline_real_api(self, parsed_report):
         """extractor → scorer → advisor with real Claude API and ASML XHTML."""
-        cleaned, esrs_data, taxonomy_data = parsed_report
+        cleaned, esrs_data, taxonomy_data, narrative_sections = parsed_report
 
         state: AuditState = {
             "audit_id": "real-api-asml-001",
@@ -63,6 +69,7 @@ class TestRealAPIStructuredDocument:
             "report_json": cleaned,
             "esrs_data": esrs_data,
             "taxonomy_data": taxonomy_data,
+            "narrative_sections": narrative_sections,
             "entity_id": "ASML Holding N.V.",
             "company_inputs": CompanyInputs(
                 number_of_employees=43000,
@@ -123,6 +130,11 @@ class TestRealAPIStructuredDocument:
         esrs_claims = result.get("esrs_claims", {})
         print(f"[Result] {len(esrs_claims)} ESRS claims in state")
         assert len(esrs_claims) > 0, "Extractor should have produced ESRS claims"
+
+        # With narrative extraction, we expect significantly more claims
+        for claim_id, claim in esrs_claims.items():
+            print(f"  {claim_id}: {claim.data_point} = {claim.disclosed_value} "
+                  f"(conf={claim.confidence}, xbrl={claim.xbrl_concept})")
 
         financial_context = result.get("financial_context")
         if financial_context is not None:

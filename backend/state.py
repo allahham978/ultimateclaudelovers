@@ -35,6 +35,7 @@ class AuditState(TypedDict, total=False):
     entity_id: str              # Company name / LEI from user input
     company_inputs: CompanyInputs  # User-provided company parameters
     free_text_input: str        # Raw user text (free_text mode only)
+    narrative_sections: list[dict]  # Sustainability narrative extracted from HTML (not iXBRL-tagged)
     logs: list[dict]            # Accumulates { agent, msg, ts } entries
     pipeline_trace: list[dict]  # Accumulates { agent, started_at, ms }
 

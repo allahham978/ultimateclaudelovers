@@ -74,12 +74,28 @@ OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
   }
 }
 
+NARRATIVE TEXT: In addition to iXBRL-tagged facts, you may receive untagged narrative text
+extracted from the sustainability chapters of the XHTML report. This text contains disclosures
+that were NOT tagged with iXBRL concepts but DO contain substantive ESRS-relevant information
+(e.g. Scope 1/2/3 emissions, workforce diversity, governance policies, EU Taxonomy alignment).
+
+When narrative text is provided:
+- Extract claims from BOTH iXBRL facts AND narrative text
+- For claims sourced only from narrative text, set xbrl_concept to null
+- Look for specific numeric values (e.g. "Scope 1 emissions were 12,345 tCO2eq")
+- Prefer iXBRL-tagged values over narrative text when both exist for the same data point
+
 RULES:
 - Extract ALL ESRS standards found, not just E1. The key is the ESRS ID (e.g. "E1-1", "S1-6").
-- confidence is 0.0–1.0: 1.0 = explicit iXBRL tag with value + unit, 0.5 = concept present but ambiguous, 0.0 = not found
-- xbrl_concept: the iXBRL concept name that sourced this data point
-- Never hallucinate or estimate values. Only extract what is explicitly in the structured data.
-- If a data point is missing, set disclosed_value to null and confidence to 0.0.
+- confidence is 0.0–1.0:
+    1.0 = explicit iXBRL tag with value + unit
+    0.8 = explicit numeric value found in narrative text with clear unit
+    0.6 = qualitative disclosure in narrative (e.g. "we have a transition plan")
+    0.4 = vague mention in narrative without specifics
+    0.0 = not found in either source
+- xbrl_concept: the iXBRL concept name that sourced this data point (null if from narrative)
+- Never hallucinate or estimate values. Only extract what is explicitly in the data.
+- If a data point is missing from both iXBRL AND narrative, set disclosed_value to null and confidence to 0.0.
 - EUR values should be in absolute terms — check the decimals/scale attributes and multiply if needed."""
 
 

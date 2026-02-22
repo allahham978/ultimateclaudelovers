@@ -21,7 +21,7 @@ from state import AuditState
 from tools.prompts import SYSTEM_PROMPT_EXTRACTOR, SYSTEM_PROMPT_EXTRACTOR_LITE
 
 MODEL = "claude-sonnet-4-6"
-MAX_TOKENS = 8192
+MAX_TOKENS = 16384
 
 
 # ---------------------------------------------------------------------------
@@ -200,14 +200,16 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
     # ── Structured document mode (default) ────────────────────────────────
     esrs_data = state.get("esrs_data", {})
     taxonomy_data = state.get("taxonomy_data", {})
+    narrative_sections = state.get("narrative_sections", [])
 
     logs.append({"agent": "extractor", "msg": "Reading ESRS + Taxonomy sections from management report JSON...", "ts": ts()})
     logs.append({
         "agent": "extractor",
-        "msg": f"ESRS data: {len(json.dumps(esrs_data))} chars, Taxonomy data: {len(json.dumps(taxonomy_data))} chars",
+        "msg": f"ESRS data: {len(json.dumps(esrs_data))} chars, Taxonomy data: {len(json.dumps(taxonomy_data))} chars, "
+               f"Narrative sections: {len(narrative_sections)} sections ({sum(s.get('char_count', 0) for s in narrative_sections)} chars)",
         "ts": ts(),
     })
-    logs.append({"agent": "extractor", "msg": "Sending iXBRL data to Claude for all ESRS standards + financial context...", "ts": ts()})
+    logs.append({"agent": "extractor", "msg": "Sending iXBRL data + narrative text to Claude for all ESRS standards + financial context...", "ts": ts()})
 
     try:
         client = anthropic.Anthropic()
@@ -226,8 +228,26 @@ def extractor_node(state: AuditState) -> dict[str, Any]:
                 "text": json.dumps(taxonomy_data, indent=2),
                 "cache_control": {"type": "ephemeral"},
             },
-            {"type": "text", "text": "\n\nExtract all ESRS data points and financial context as specified."},
         ]
+
+        # Add narrative sustainability text if available
+        if narrative_sections:
+            narrative_text = "\n\n".join(
+                f"### {s['heading']}\n{s['text']}" for s in narrative_sections
+            )
+            content_parts.extend([
+                {"type": "text", "text": "\n\nNARRATIVE SUSTAINABILITY TEXT (extracted from report HTML — NOT iXBRL-tagged but contains substantive ESG disclosures):\n\n"},
+                {
+                    "type": "text",
+                    "text": narrative_text,
+                    "cache_control": {"type": "ephemeral"},
+                },
+            ])
+
+        content_parts.append(
+            {"type": "text", "text": "\n\nExtract all ESRS data points and financial context as specified. "
+             "Use BOTH the iXBRL-tagged facts AND the narrative text to identify disclosures."},
+        )
 
         messages = [{"role": "user", "content": content_parts}]
 
