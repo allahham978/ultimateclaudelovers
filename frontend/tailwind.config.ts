@@ -9,26 +9,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        canvas: "#F8FAFC",
+        canvas: "#F5F4F0",
         paper: "#FFFFFF",
-        accent: "#4F46E5",
-        "accent-light": "#EEF2FF",
-        muted: "#64748B",
+        accent: "#3B82F6",
+        "accent-light": "#EFF6FF",
+        muted: "#78716C",
         verified: "#10B981",
         discrepancy: "#EF4444",
       },
       borderRadius: {
-        card: "12px",
+        card: "16px",
       },
       fontFamily: {
-        display: ["var(--font-instrument-serif)", "Georgia", "serif"],
-        body: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-plus-jakarta)", "system-ui", "sans-serif"],
+        body: ["var(--font-plus-jakarta)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
       },
       boxShadow: {
-        card: "0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.03)",
+        card: "0 0 0 1px rgb(0 0 0 / 0.02), 0 4px 32px -8px rgb(0 0 0 / 0.06)",
         "card-hover":
-          "0 4px 12px 0 rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04)",
+          "0 0 0 1px rgb(0 0 0 / 0.03), 0 8px 40px -8px rgb(0 0 0 / 0.09)",
       },
     },
   },

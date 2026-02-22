@@ -49,6 +49,28 @@ function EUFlag({ className }: { className?: string }) {
 }
 
 /* ================================================================= */
+/* Upload Cloud Icon                                                   */
+/* ================================================================= */
+
+function UploadCloudIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+      <path d="M12 12v8" />
+      <path d="m16 16-4-4-4 4" />
+    </svg>
+  );
+}
+
+/* ================================================================= */
 /* Orchestrator                                                        */
 /* ================================================================= */
 
@@ -142,12 +164,12 @@ export default function AuditChamber() {
       return <ComplianceResultView result={result} />;
     }
     return (
-      <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
+      <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
         <div className="text-center">
-          <p className="text-sm text-muted">No data available.</p>
+          <p className="text-sm text-stone-400">No data available.</p>
           <button
             onClick={reset}
-            className="mt-4 rounded-card bg-accent px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            className="mt-4 rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-600"
           >
             Start Over
           </button>
@@ -162,11 +184,11 @@ export default function AuditChamber() {
 
   if (step === "analyzing") {
     return (
-      <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
+      <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
         <div className="animate-fade-in w-full max-w-2xl">
           <div className="card overflow-hidden">
             {/* Progress bar */}
-            <div className="h-1 w-full bg-slate-100">
+            <div className="h-0.5 w-full bg-stone-100">
               <div
                 className="h-full bg-accent transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(progress, 1) * 100}%` }}
@@ -176,18 +198,18 @@ export default function AuditChamber() {
             {/* Header — click to skip */}
             <button
               onClick={() => skipToComplete()}
-              className="flex w-full items-center justify-between border-b border-slate-100 px-5 py-3 text-left transition-colors hover:bg-slate-50"
+              className="flex w-full items-center justify-between border-b border-stone-100 px-6 py-4 text-left transition-colors hover:bg-stone-50/50"
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3">
                 <div className="h-2 w-2 animate-pulse rounded-full bg-accent" />
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-stone-600">
                   Compliance Analysis{" "}
                   <span className="font-mono font-semibold text-accent">
                     {entity.toUpperCase() || "ENTITY"}
                   </span>
                 </span>
               </div>
-              <span className="font-mono text-xs text-muted">
+              <span className="font-mono text-xs text-stone-400">
                 {totalLogs > 0
                   ? `${logs.length}/${totalLogs}`
                   : `${logs.length}`}{" "}
@@ -196,7 +218,7 @@ export default function AuditChamber() {
             </button>
 
             {/* Terminal */}
-            <div className="bg-slate-900 p-5">
+            <div className="bg-stone-900 p-6">
               <div className="h-80 overflow-y-auto pr-2 scrollbar-thin">
                 {logs.map((log, i) => (
                   <div key={i} className="mb-1.5 flex gap-2 animate-log-line">
@@ -205,7 +227,7 @@ export default function AuditChamber() {
                     >
                       {log.agent}
                     </span>
-                    <span className="font-mono text-xs leading-relaxed text-slate-400">
+                    <span className="font-mono text-xs leading-relaxed text-stone-400">
                       {log.message}
                     </span>
                   </div>
@@ -230,181 +252,199 @@ export default function AuditChamber() {
   /* ================================================================= */
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
-      <div className="animate-fade-in w-full max-w-3xl">
-        {/* Headline */}
-        <div className="mb-8 text-center">
-          <div className="mb-3 flex items-center justify-center gap-2">
-            <EUFlag className="h-5 w-5" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-accent">
+    <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center">
+      <div className="animate-fade-in w-full max-w-[700px]">
+        {/* ---- Hero Section ---- */}
+        <div className="mb-16 text-center">
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <EUFlag className="h-4 w-4" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
               EU Directive 2022/2464
             </span>
           </div>
-          <h1 className="font-display text-3xl tracking-tight text-slate-900 sm:text-4xl">
-            CSRD Compliance Engine
+          <h1 className="text-[2.5rem] font-medium leading-tight tracking-[-0.02em] text-stone-800">
+            ESGateway
           </h1>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mx-auto mt-4 max-w-md text-[15px] font-light leading-relaxed text-stone-400">
             {mode === "structured_document"
-              ? "Upload a pre-parsed Annual Management Report (JSON) and company details to receive a compliance score and prioritized recommendations."
-              : "Describe your current sustainability situation and company details to receive a compliance score and prioritized recommendations."}
+              ? "Upload your management report and company details to receive a compliance score with prioritized recommendations."
+              : "Describe your sustainability situation and company details to receive a compliance score with prioritized recommendations."}
           </p>
         </div>
 
-        {/* Error display */}
+        {/* ---- Error display ---- */}
         {error && (
-          <div className="mb-4 rounded-card border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-6 rounded-2xl border border-red-200/60 bg-red-50/50 px-5 py-4 text-sm text-red-600/80">
             {error}
           </div>
         )}
 
-        {/* Chamber Card */}
+        {/* ---- Chamber Card ---- */}
         <div className="card overflow-hidden">
-          {/* Mode Toggle */}
-          <div className="flex items-center justify-center gap-1 border-b border-slate-100 px-5 py-3">
-            <button
-              onClick={() => setMode("structured_document")}
-              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
-                mode === "structured_document"
-                  ? "bg-accent text-white"
-                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-              }`}
-            >
-              Structured Document
-            </button>
-            <button
-              onClick={() => setMode("free_text")}
-              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
-                mode === "free_text"
-                  ? "bg-accent text-white"
-                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-              }`}
-            >
-              Free Text
-            </button>
+          {/* Pill Toggle */}
+          <div className="flex justify-center px-8 pt-8 pb-2">
+            <div className="relative rounded-full bg-stone-100/80 p-1">
+              <div className="relative grid grid-cols-2">
+                {/* Sliding indicator */}
+                <div
+                  className="absolute inset-y-0 w-1/2 rounded-full bg-white transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                  style={{
+                    transform: `translateX(${mode === "structured_document" ? "0%" : "100%"})`,
+                    boxShadow: "0 1px 3px rgb(0 0 0 / 0.08)",
+                  }}
+                />
+                <button
+                  onClick={() => setMode("structured_document")}
+                  className={`relative z-10 rounded-full px-6 py-2.5 text-[13px] font-medium transition-colors duration-200 ${
+                    mode === "structured_document"
+                      ? "text-stone-800"
+                      : "text-stone-400"
+                  }`}
+                >
+                  Structured Document
+                </button>
+                <button
+                  onClick={() => setMode("free_text")}
+                  className={`relative z-10 rounded-full px-6 py-2.5 text-[13px] font-medium transition-colors duration-200 ${
+                    mode === "free_text"
+                      ? "text-stone-800"
+                      : "text-stone-400"
+                  }`}
+                >
+                  Free Text
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Entity Search + Run Button */}
-          <div className="flex items-center gap-3 border-b border-slate-100 p-5">
-            <label
-              htmlFor="entity-input"
-              className="shrink-0 text-xs font-medium uppercase tracking-widest text-muted"
-            >
-              Entity
-            </label>
-            <input
-              id="entity-input"
-              type="text"
-              value={entity}
-              onChange={(e) => setEntity(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleRun()}
-              placeholder="LEI or company name"
-              className="h-9 flex-1 rounded-card border border-slate-200 bg-slate-50 px-3 font-mono text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-            />
+          {/* Form Content */}
+          <div className="px-8 pb-8 pt-6">
+            {/* Entity Input */}
+            <div className="mb-8">
+              <label
+                htmlFor="entity-input"
+                className="mb-2 block text-[11px] font-medium uppercase tracking-[0.12em] text-stone-400"
+              >
+                Entity
+              </label>
+              <input
+                id="entity-input"
+                type="text"
+                value={entity}
+                onChange={(e) => setEntity(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleRun()}
+                placeholder="LEI or company name"
+                className="h-11 w-full rounded-xl border-0 bg-stone-50 px-4 text-sm text-stone-700 placeholder:text-stone-300 transition-all focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent/25"
+              />
+            </div>
+
+            {/* Company Details */}
+            <div className="mb-8">
+              <label className="mb-3 block text-[11px] font-medium uppercase tracking-[0.12em] text-stone-400">
+                Company Details
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <CompanyInput
+                  id="employees"
+                  label="Employees"
+                  value={employees}
+                  onChange={setEmployees}
+                  placeholder="500"
+                  type="number"
+                />
+                <CompanyInput
+                  id="revenue"
+                  label="Revenue (EUR)"
+                  value={revenue}
+                  onChange={setRevenue}
+                  placeholder="85000000"
+                  type="number"
+                />
+                <CompanyInput
+                  id="assets"
+                  label="Total Assets (EUR)"
+                  value={assets}
+                  onChange={setAssets}
+                  placeholder="42000000"
+                  type="number"
+                />
+                <CompanyInput
+                  id="reporting-year"
+                  label="Reporting Year"
+                  value={reportingYear}
+                  onChange={setReportingYear}
+                  placeholder="2025"
+                  type="number"
+                />
+              </div>
+            </div>
+
+            {/* Subtle Separator */}
+            <div className="mb-8 border-t border-stone-100/80" />
+
+            {/* Content Area — conditional on mode */}
+            <div className="mb-10">
+              {mode === "structured_document" ? (
+                <>
+                  <div className="mb-3 flex items-center justify-between">
+                    <label className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-400">
+                      Document Vault
+                    </label>
+                    <span className="text-[11px] text-stone-300">
+                      <span className="font-mono font-semibold text-stone-500">
+                        {reportFileName ? "1" : "0"}
+                      </span>
+                      /1
+                    </span>
+                  </div>
+                  <ReportUploadCard
+                    fileName={reportFileName}
+                    onFile={setReportFile}
+                  />
+                </>
+              ) : (
+                <>
+                  <label className="mb-3 block text-[11px] font-medium uppercase tracking-[0.12em] text-stone-400">
+                    Sustainability Description
+                  </label>
+                  <textarea
+                    value={freeText}
+                    onChange={(e) => setFreeText(e.target.value)}
+                    placeholder="Describe your current sustainability situation, goals, emissions data, energy consumption, transition plans..."
+                    rows={6}
+                    className="w-full resize-none rounded-xl border-0 bg-stone-50 px-4 py-3 text-sm text-stone-700 placeholder:text-stone-300 transition-all focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent/25"
+                  />
+                  <p className="mt-2 text-[11px] text-stone-300">
+                    The more detail you provide, the more accurate the
+                    assessment will be.
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* CTA */}
             <button
               onClick={handleRun}
               disabled={!canRun}
               className={`
-                h-9 shrink-0 rounded-card px-5 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 focus:ring-offset-2
+                h-12 w-full rounded-full text-[15px] font-semibold transition-all duration-200
+                focus:outline-none focus:ring-2 focus:ring-accent/30 focus:ring-offset-2
                 ${
                   canRun
-                    ? "bg-accent text-white hover:bg-indigo-700"
-                    : "border border-slate-200 bg-white text-slate-400 cursor-not-allowed"
+                    ? "bg-accent text-white hover:bg-blue-600 hover:shadow-lg hover:shadow-accent/20"
+                    : "bg-stone-100 text-stone-300 cursor-not-allowed"
                 }
               `}
             >
               Run Analysis
             </button>
           </div>
-
-          {/* Company Details — 2x2 grid */}
-          <div className="border-b border-slate-100 p-5">
-            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
-              Company Details
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <CompanyInput
-                id="employees"
-                label="Employees"
-                value={employees}
-                onChange={setEmployees}
-                placeholder="500"
-                type="number"
-              />
-              <CompanyInput
-                id="revenue"
-                label="Revenue (EUR)"
-                value={revenue}
-                onChange={setRevenue}
-                placeholder="85000000"
-                type="number"
-              />
-              <CompanyInput
-                id="assets"
-                label="Total Assets (EUR)"
-                value={assets}
-                onChange={setAssets}
-                placeholder="42000000"
-                type="number"
-              />
-              <CompanyInput
-                id="reporting-year"
-                label="Reporting Year"
-                value={reportingYear}
-                onChange={setReportingYear}
-                placeholder="2025"
-                type="number"
-              />
-            </div>
-          </div>
-
-          {/* Content Area — conditional on mode */}
-          <div className="p-5">
-            {mode === "structured_document" ? (
-              <>
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs font-medium uppercase tracking-widest text-muted">
-                    Document Vault
-                  </p>
-                  <p className="text-xs text-muted">
-                    <span className="font-mono font-semibold text-slate-700">
-                      {reportFileName ? "1" : "0"}
-                    </span>
-                    /1 uploaded
-                  </p>
-                </div>
-                <ReportUploadCard
-                  fileName={reportFileName}
-                  onFile={setReportFile}
-                />
-              </>
-            ) : (
-              <>
-                <div className="mb-3">
-                  <p className="text-xs font-medium uppercase tracking-widest text-muted">
-                    Sustainability Description
-                  </p>
-                </div>
-                <textarea
-                  value={freeText}
-                  onChange={(e) => setFreeText(e.target.value)}
-                  placeholder="Paste or describe your current sustainability situation, goals, emissions data, energy consumption, transition plans — whatever information you have available..."
-                  rows={8}
-                  className="w-full rounded-card border border-slate-200 bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-                />
-                <p className="mt-2 text-[11px] text-muted">
-                  The more detail you provide, the more accurate the compliance
-                  assessment will be. Include any emissions figures, energy data,
-                  targets, and transition plans you have.
-                </p>
-              </>
-            )}
-          </div>
         </div>
 
         {/* Dev shortcut */}
         <button
           onClick={() => skipToComplete(mode)}
-          className="mt-6 w-full text-center text-xs text-slate-400 transition-colors hover:text-accent"
+          className="mt-8 w-full text-center text-xs text-stone-300 transition-colors hover:text-accent"
         >
           Skip to results
         </button>
@@ -436,7 +476,7 @@ function CompanyInput({
     <div>
       <label
         htmlFor={id}
-        className="mb-1 block text-[11px] font-medium text-slate-500"
+        className="mb-1.5 block text-[11px] font-medium text-stone-400"
       >
         {label}
       </label>
@@ -446,7 +486,7 @@ function CompanyInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-9 w-full rounded-card border border-slate-200 bg-slate-50 px-3 font-mono text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+        className="h-10 w-full rounded-xl border-0 bg-stone-50 px-4 font-mono text-sm text-stone-700 placeholder:text-stone-300 transition-all focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent/25"
       />
     </div>
   );
@@ -498,13 +538,13 @@ function ReportUploadCard({
       onDrop={handleDrop}
       onClick={() => inputRef.current?.click()}
       className={`
-        flex cursor-pointer flex-col justify-between rounded-card p-6 transition-all
+        group flex cursor-pointer flex-col items-center justify-center rounded-2xl p-8 text-center transition-all duration-200
         ${
           dragging
-            ? "border-2 border-accent bg-indigo-50/40"
+            ? "border-2 border-accent bg-blue-50/30 scale-[1.01]"
             : isFilled
-              ? "border border-slate-200 bg-white shadow-card"
-              : "border-2 border-dashed border-slate-200 bg-white hover:border-slate-300"
+              ? "border border-stone-200/80 bg-stone-50/50"
+              : "border border-stone-200/60 bg-stone-50/30 hover:bg-stone-50 hover:border-stone-200"
         }
       `}
     >
@@ -513,34 +553,44 @@ function ReportUploadCard({
         type="file"
         accept=".json,.xhtml"
         onChange={handleSelect}
-        className="hidden"
+        onClick={(e) => e.stopPropagation()}
+        className="sr-only"
       />
 
-      {/* Number */}
-      <span className="font-mono text-[10px] font-semibold text-slate-300">
-        01
-      </span>
-
-      {/* Title */}
-      <p className="mt-3 text-sm font-medium leading-snug text-slate-800">
-        Annual Management Report
-      </p>
-
-      {/* Subtitle or file feedback */}
       {isFilled ? (
-        <div className="mt-3">
-          <p className="truncate font-mono text-xs text-slate-600">
+        <>
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              className="h-5 w-5 text-emerald-500"
+            >
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+          </div>
+          <p className="max-w-[280px] truncate text-sm font-medium text-stone-600">
             {fileName}
           </p>
-          <p className="mt-1 text-[11px] font-semibold text-accent">
-            File Ready
-          </p>
-        </div>
+          <p className="mt-1 text-xs font-medium text-emerald-600">Ready</p>
+        </>
       ) : (
-        <p className="mt-3 text-xs leading-relaxed text-muted">
-          Pre-parsed XHTML/iXBRL management report (JSON format). Contains ESRS
-          sustainability statement, EU Taxonomy table, and audited financials.
-        </p>
+        <>
+          <div className="mb-3 transition-transform duration-200 group-hover:-translate-y-0.5">
+            <UploadCloudIcon className="h-10 w-10 text-stone-300" />
+          </div>
+          <p className="text-sm font-medium text-stone-500">
+            Annual Management Report
+          </p>
+          <p className="mt-1 text-xs text-stone-300">
+            Drop file here or click to browse
+          </p>
+          <p className="mt-3 text-[10px] font-medium uppercase tracking-wider text-stone-300">
+            .json &nbsp; .xhtml
+          </p>
+        </>
       )}
     </div>
   );

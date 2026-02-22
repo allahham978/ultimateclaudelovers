@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, Instrument_Serif } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -7,17 +7,10 @@ import "./globals.css";
 /* Fonts                                                            */
 /* --------------------------------------------------------------- */
 
-const dmSans = DM_Sans({
+const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-dm-sans",
-  weight: ["400", "500", "600", "700"],
-});
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  variable: "--font-instrument-serif",
-  weight: "400",
-  style: "normal",
+  variable: "--font-plus-jakarta",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const geistMono = localFont({
@@ -31,7 +24,7 @@ const geistMono = localFont({
 /* --------------------------------------------------------------- */
 
 export const metadata: Metadata = {
-  title: "CSRD Compliance Engine",
+  title: "ESGateway — CSRD Compliance Engine",
   description:
     "EU Taxonomy alignment audit against ESRS disclosures and national registry filings.",
 };
@@ -49,14 +42,13 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`
-          ${dmSans.variable}
-          ${instrumentSerif.variable}
+          ${plusJakarta.variable}
           ${geistMono.variable}
-          font-body antialiased bg-canvas text-slate-900
+          font-body antialiased bg-canvas text-stone-800
         `}
       >
         <NavHeader />
-        <div className="mx-auto max-w-5xl px-6 pb-16 pt-10">{children}</div>
+        <div className="mx-auto max-w-6xl px-8 pb-20 pt-12">{children}</div>
       </body>
     </html>
   );
@@ -68,34 +60,34 @@ export default function RootLayout({
 
 function NavHeader() {
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-        {/* Logo / Wordmark with EU authority */}
-        <div className="flex items-center gap-2.5">
-          <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0" aria-label="EU flag">
+    <header className="sticky top-0 z-50 border-b border-stone-200/40 bg-canvas/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-8">
+        {/* Logo / Wordmark */}
+        <div className="flex items-center gap-3">
+          <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" aria-label="EU flag">
             <rect width="24" height="24" rx="4" fill="#003399" />
             {Array.from({ length: 12 }, (_, i) => {
               const a = (i * 30 - 90) * (Math.PI / 180);
               return <circle key={i} cx={12 + 8 * Math.cos(a)} cy={12 + 8 * Math.sin(a)} r={1.2} fill="#FFD617" />;
             })}
           </svg>
-          <span className="text-[15px] font-semibold tracking-tight text-slate-900">
-            CSRD Compliance Engine
+          <span className="text-[15px] font-semibold tracking-tight text-stone-800">
+            ESGateway
           </span>
-          <span className="hidden rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-accent sm:inline">
+          <span className="hidden rounded-full bg-stone-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-stone-500 sm:inline">
             ESRS
           </span>
         </div>
 
-        {/* Ticker Search */}
+        {/* Search */}
         <div className="relative">
           <input
             type="text"
             placeholder="Search LEI..."
-            className="h-8 w-48 rounded-card border border-slate-200 bg-slate-50 pl-8 pr-3 font-mono text-xs text-slate-700 placeholder:text-slate-400 transition-all focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+            className="h-8 w-52 rounded-full border-0 bg-stone-100/80 pl-8 pr-3 font-mono text-xs text-stone-600 placeholder:text-stone-400 transition-all focus:bg-white focus:outline-none focus:ring-1 focus:ring-stone-300"
           />
           <svg
-            className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+            className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
