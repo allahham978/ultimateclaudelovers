@@ -155,7 +155,8 @@ def clean_report_json(raw_json: dict) -> dict:
 # ESRS concept patterns — matches ESRS taxonomy concept names
 _ESRS_PATTERNS = re.compile(
     r"esrs[_:]|"                     # ESRS namespace prefix
-    r"E1[-_]|E2[-_]|S1[-_]|G1[-_]|"  # ESRS standard IDs
+    r"E[1-5][-_]|S[1-4][-_]|G1[-_]|"  # ALL ESRS standard IDs
+    r"GOV[-_]|SBM[-_]|IRO[-_]|"     # ESRS 2 general disclosures
     r"GrossScope|Scope[123]|"         # GHG emissions concepts
     r"GHG|ghg|"                       # GHG references
     r"EnergyConsumption|RenewableEnergy|"  # Energy concepts

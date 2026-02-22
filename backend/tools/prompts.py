@@ -28,22 +28,106 @@ FRAMEWORK: ESRS (European Sustainability Reporting Standards), Commission Delega
 REQUIRED EXTRACTION TARGETS — ALL ESRS STANDARDS:
 ════════════════════════════════════════════════════
 
+ESRS 2 (General Requirements / Cross-cutting):
+  GOV-1 | Board composition and sustainability oversight
+  GOV-2 | Management roles and responsibilities
+  GOV-3 | Sustainability performance in remuneration
+  GOV-4 | Statement on due diligence
+  GOV-5 | Risk and opportunity management
+  SBM-1 | Strategy, business model and value chain
+  SBM-2 | Stakeholder engagement
+  SBM-3 | Material impacts, risks and opportunities
+  IRO-1 | Identification and assessment of material IROs
+  IRO-2 | Disclosure requirements and data points index
+
 E1 (Climate Change):
-  E1-1 | Transition Plan: net-zero target year, interim milestones, green CapEx
-  E1-5 | Energy: total consumption (MWh/GWh), renewable %, breakdown by source
-  E1-6 | GHG Emissions: Scope 1/2/3 (tCO₂eq), GHG intensity, base year
+  E1-1 | Transition plan for climate change mitigation
+  E1-2 | Policies related to climate change mitigation and adaptation
+  E1-3 | Actions and resources for climate change mitigation and adaptation
+  E1-4 | Targets related to climate change mitigation and adaptation
+  E1-5 | Energy consumption and mix (MWh by source, % renewables, intensity)
+  E1-6 | Gross Scope 1, 2, and Scope 3 GHG emissions (tCO₂eq)
+  E1-7 | GHG removals and carbon credits
+  E1-8 | Internal carbon price
+  E1-9 | Anticipated financial effects of climate risks
 
-E2 (Pollution): pollution prevention policies, substance disclosures
-E3 (Water): water consumption, stress area operations
-E4 (Biodiversity): biodiversity impact assessments, protected area proximity
-E5 (Circular Economy): waste generation, recycling rates, circular design
+E2 (Pollution):
+  E2-1 | Policies related to pollution prevention and control
+  E2-2 | Actions and resources related to pollution
+  E2-3 | Targets related to pollution reduction
+  E2-4 | Pollution of air, water, and soil
+  E2-5 | Substances of concern and SVHC
+  E2-6 | Anticipated financial effects of pollution risks
 
-S1 (Own Workforce): headcount, diversity, training hours, health & safety
-S2 (Workers in Value Chain): due diligence, grievance mechanisms
-S3 (Affected Communities): community engagement, impact assessments
-S4 (Consumers): product safety, data privacy measures
+E3 (Water and Marine Resources):
+  E3-1 | Policies related to water and marine resources
+  E3-2 | Actions and resources related to water
+  E3-3 | Targets related to water
+  E3-4 | Water consumption metrics
+  E3-5 | Anticipated financial effects of water risks
 
-G1 (Business Conduct): anti-corruption, whistleblower protection, political engagement
+E4 (Biodiversity and Ecosystems):
+  E4-1 | Transition plan and consideration of biodiversity
+  E4-2 | Policies related to biodiversity
+  E4-3 | Actions and resources related to biodiversity
+  E4-4 | Targets related to biodiversity
+  E4-5 | Impact metrics (land use, species affected)
+  E4-6 | Anticipated financial effects of biodiversity risks
+
+E5 (Resource Use and Circular Economy):
+  E5-1 | Policies related to resource use and circular economy
+  E5-2 | Actions and resources related to circular economy
+  E5-3 | Targets related to resource use
+  E5-4 | Resource inflows
+  E5-5 | Resource outflows (waste by type, recycling rate)
+  E5-6 | Anticipated financial effects of circular economy risks
+
+S1 (Own Workforce):
+  S1-1 | Policies related to own workforce
+  S1-2 | Processes for engaging with workers
+  S1-3 | Processes to remediate negative impacts
+  S1-4 | Action plans on material workforce impacts
+  S1-5 | Targets for managing workforce impacts
+  S1-6 | Employee headcount (by gender, country, contract type)
+  S1-7 | Non-employee worker characteristics
+  S1-8 | Collective bargaining coverage
+  S1-9 | Diversity metrics (gender by management level, age)
+  S1-10 | Adequate wages (% below living wage)
+  S1-11 | Social protection coverage
+  S1-12 | Employees with disabilities
+  S1-13 | Training metrics (hours/employee, coverage)
+  S1-14 | Health and safety metrics (TRIR, lost-time injury rate)
+  S1-15 | Work-life balance (parental leave take-up)
+  S1-16 | Compensation (CEO pay ratio, gender pay gap)
+
+S2 (Workers in Value Chain):
+  S2-1 | Policies related to value chain workers
+  S2-2 | Processes for engaging with value chain workers
+  S2-3 | Processes to remediate negative impacts
+  S2-4 | Action plans on value chain worker impacts
+  S2-5 | Targets for value chain worker impacts
+
+S3 (Affected Communities):
+  S3-1 | Policies related to affected communities
+  S3-2 | Processes for engaging with communities
+  S3-3 | Processes to remediate negative impacts
+  S3-4 | Action plans on community impacts
+  S3-5 | Targets for community impacts
+
+S4 (Consumers and End-users):
+  S4-1 | Policies related to consumers
+  S4-2 | Processes for engaging with consumers
+  S4-3 | Processes to remediate negative impacts
+  S4-4 | Action plans on consumer impacts
+  S4-5 | Targets for consumer impacts
+
+G1 (Business Conduct):
+  G1-1 | Corporate culture and business conduct policies
+  G1-2 | Management of supplier relationships
+  G1-3 | Prevention and detection of corruption
+  G1-4 | Incidents of corruption and bribery
+  G1-5 | Political influence and lobbying activities
+  G1-6 | Payment practices
 
 FINANCIAL CONTEXT (from Taxonomy sections):
   - CapEx total / green (EUR)
@@ -89,9 +173,10 @@ RULES:
 - Extract ALL ESRS standards found, not just E1. The key is the ESRS ID (e.g. "E1-1", "S1-6").
 - confidence is 0.0–1.0:
     1.0 = explicit iXBRL tag with value + unit
-    0.8 = explicit numeric value found in narrative text with clear unit
-    0.6 = qualitative disclosure in narrative (e.g. "we have a transition plan")
-    0.4 = vague mention in narrative without specifics
+    0.85 = explicit numeric value found in narrative text with clear unit and context
+    0.75 = specific qualitative claim in narrative with clear intent (e.g. "we have a transition plan targeting net zero by 2040")
+    0.5 = qualitative disclosure in narrative without specifics (e.g. "we are working on climate goals")
+    0.3 = vague or passing mention in narrative
     0.0 = not found in either source
 - xbrl_concept: the iXBRL concept name that sourced this data point (null if from narrative)
 - Never hallucinate or estimate values. Only extract what is explicitly in the data.

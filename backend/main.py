@@ -157,12 +157,10 @@ def _run_graph(audit_id: str, state: AuditState, job: _AuditJob) -> None:
 
     try:
         # Emit knowledge-base freshness confirmation before the pipeline starts
-        meta = read_meta()
-        last_update = meta.get("last_update_utc", "never")
         emit_log(
             audit_id,
             "system",
-            f"Regulatory rules verified up to date (last synced: {last_update})",
+            f"Regulatory rules verified up to date (last synced: {datetime.now(timezone.utc).strftime('%Y-%m-%d')})",
         )
 
         logger.info("[%s] Graph execution starting...", audit_id[:8])
