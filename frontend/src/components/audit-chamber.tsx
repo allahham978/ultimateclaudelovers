@@ -123,7 +123,7 @@ export default function AuditChamber() {
 
   /* ---- build CompanyInputs from form state ---- */
   const buildCompanyInputs = (): CompanyInputs | null => {
-    const emp = parseInt(employees, 10);
+    const emp = Math.round(parseAmount(employees));
     const rev = parseAmount(revenue);
     const ast = parseAmount(assets);
     const yr = parseInt(reportingYear, 10);
@@ -517,8 +517,8 @@ function IdleView({
                     label="Employees"
                     value={employees}
                     onChange={setEmployees}
-                    placeholder="e.g., 250"
-                    type="number"
+                    placeholder="e.g., 1.5K"
+                    type="text"
                   />
                   <TechInput
                     id="revenue"
