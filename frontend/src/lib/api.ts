@@ -2,7 +2,7 @@ import { config } from "./config";
 import type { CompanyInputs, SSEEvent } from "./types";
 
 // ============================================================================
-// v5.0 — Unified Analysis API
+// Analysis API — Unified for both modes
 // ============================================================================
 
 export interface AnalysisParams {
@@ -58,58 +58,7 @@ export async function startAnalysis(params: AnalysisParams): Promise<string> {
 }
 
 // ============================================================================
-// DEPRECATED — Legacy API functions (kept for compilation, iteration 13 cleanup)
-// ============================================================================
-
-/** @deprecated Use startAnalysis() instead */
-export async function startAuditRun(
-  entity: string,
-  reportFile: File
-): Promise<string> {
-  const form = new FormData();
-  form.append("entity_id", entity);
-  form.append("report_json", reportFile);
-
-  const res = await fetch(`${config.apiUrl}/audit/run`, {
-    method: "POST",
-    body: form,
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`POST /audit/run failed (${res.status}): ${body}`);
-  }
-
-  const data: { run_id: string } = await res.json();
-  return data.run_id;
-}
-
-/** @deprecated Use startAnalysis() instead */
-export async function startComplianceCheck(
-  entity: string,
-  freeText: string
-): Promise<string> {
-  const form = new FormData();
-  form.append("entity_id", entity);
-  form.append("mode", "compliance_check");
-  form.append("free_text", freeText);
-
-  const res = await fetch(`${config.apiUrl}/audit/run`, {
-    method: "POST",
-    body: form,
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`POST /audit/run failed (${res.status}): ${body}`);
-  }
-
-  const data: { run_id: string } = await res.json();
-  return data.run_id;
-}
-
-// ============================================================================
-// SSE Streaming (shared)
+// SSE Streaming
 // ============================================================================
 
 /**

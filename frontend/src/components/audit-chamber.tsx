@@ -10,9 +10,6 @@ import {
 import { useAuditStream } from "@/hooks/useAuditStream";
 import type { AgentName, CompanyInputs } from "@/lib/types";
 import ComplianceResultView from "@/components/compliance-result-view";
-// Legacy views — kept for backward compatibility (iteration 13 cleanup)
-import ResultsView from "@/components/results-view";
-import ComplianceCheckView from "@/components/compliance-check-view";
 
 /* ================================================================= */
 /* Constants                                                           */
@@ -20,18 +17,12 @@ import ComplianceCheckView from "@/components/compliance-check-view";
 
 const AGENT_COLORS: Record<AgentName, string> = {
   extractor: "text-cyan-400",
-  fetcher: "text-amber-400",
-  auditor: "text-violet-400",
-  consultant: "text-emerald-400",
   scorer: "text-blue-400",
   advisor: "text-emerald-400",
 };
 
 const AGENT_BG: Record<AgentName, string> = {
   extractor: "bg-cyan-400/10",
-  fetcher: "bg-amber-400/10",
-  auditor: "bg-violet-400/10",
-  consultant: "bg-emerald-400/10",
   scorer: "bg-blue-400/10",
   advisor: "bg-emerald-400/10",
 };
@@ -80,8 +71,6 @@ export default function AuditChamber() {
     step,
     logs,
     result,
-    audit,
-    complianceCheck,
     error,
     progress,
     totalLogs,
@@ -149,16 +138,8 @@ export default function AuditChamber() {
   /* ================================================================= */
 
   if (step === "complete") {
-    // v5.0 unified result — primary path
     if (result) {
       return <ComplianceResultView result={result} />;
-    }
-    // Legacy fallbacks — kept for backward compatibility
-    if (complianceCheck) {
-      return <ComplianceCheckView result={complianceCheck} />;
-    }
-    if (audit) {
-      return <ResultsView audit={audit} />;
     }
     return (
       <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
@@ -335,7 +316,7 @@ export default function AuditChamber() {
             </button>
           </div>
 
-          {/* Company Details — 2×2 grid */}
+          {/* Company Details — 2x2 grid */}
           <div className="border-b border-slate-100 p-5">
             <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
               Company Details
