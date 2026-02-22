@@ -1,9 +1,9 @@
 """
-FastAPI app — EU CSRD Audit Engine (dual-mode).
+FastAPI app — EU CSRD Compliance Engine (v3.0 unified pipeline).
 
 Endpoints:
-  POST  /audit/run               Accept report JSON + entity_id (full_audit)
-                                  OR free_text + entity_id (compliance_check)
+  POST  /audit/run               Accept report JSON + company inputs (structured_document)
+                                  OR free text + company inputs (free_text)
   GET   /audit/{audit_id}/stream  SSE stream of log lines + final result
   GET   /audit/{audit_id}         Return cached result (for reconnects)
   GET   /health                   Liveness probe
@@ -14,6 +14,10 @@ import json
 import threading
 import uuid
 from typing import Any
+
+from dotenv import load_dotenv
+
+load_dotenv()  # Load ANTHROPIC_API_KEY (and other vars) from .env
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,7 +32,7 @@ from tools.report_parser import parse_report
 # App setup
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="EU CSRD Audit Engine", version="2.0")
+app = FastAPI(title="EU CSRD Compliance Engine", version="3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -215,7 +219,7 @@ async def audit_run(
     )
     thread.start()
 
-    return {"run_id": audit_id}
+    return {"audit_id": audit_id}
 
 
 @app.get("/audit/{audit_id}/stream")

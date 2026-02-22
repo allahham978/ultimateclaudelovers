@@ -17,19 +17,11 @@ from typing import TypedDict, Optional
 from schemas import (
     CompanyMeta,
     CompanyInputs,
-    ComplianceCheckResult,
-    ComplianceCost,
     ComplianceResult,
     ComplianceScore,
-    CSRDAudit,
     ESRSClaim,
-    ESRSLedgerItem,
     FinancialContext,
     Recommendation,
-    RegistrySource,
-    TaxonomyAlignment,
-    TaxonomyFinancials,
-    TaxonomyRoadmap,
 )
 
 
@@ -59,20 +51,3 @@ class AuditState(TypedDict, total=False):
     # ── NODE 3 OUTPUT — Advisor writes ───────────────────────────────────────
     recommendations: list[Recommendation]
     final_result: ComplianceResult
-
-    # ── LEGACY v2.0 — backward-compat keys for legacy agent modules ────────
-    # These keys are written by the deprecated fetcher/auditor/consultant
-    # nodes (still present in the codebase). They are NOT used by v5.0.
-    taxonomy_financials: TaxonomyFinancials
-    document_source: RegistrySource
-    esrs_ledger: list[ESRSLedgerItem]
-    taxonomy_alignment: TaxonomyAlignment
-    compliance_cost: ComplianceCost
-    taxonomy_alignment_score: float
-    roadmap: TaxonomyRoadmap
-    final_audit: CSRDAudit
-    extracted_goals: list[dict]
-    esrs_coverage: list[dict]
-    compliance_cost_estimate: dict
-    todo_list: list[dict]
-    final_compliance_check: ComplianceCheckResult
