@@ -21,6 +21,65 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
+/* Cinematic Hero Animations                                          */
+/* ------------------------------------------------------------------ */
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.hero-stagger-1 {
+  opacity: 0;
+  animation: hero-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.hero-stagger-2 {
+  opacity: 0;
+  animation: hero-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
+.hero-stagger-3 {
+  opacity: 0;
+  animation: hero-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+}
+
+.hero-stagger-4 {
+  opacity: 0;
+  animation: hero-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both;
+}
+
+/* Scroll-reveal for the form card */
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-reveal {
+  opacity: 0;
+  animation: card-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-play-state: paused;
+}
+
+.card-reveal.is-visible {
+  animation-play-state: running;
+}
+
+/* ------------------------------------------------------------------ */
 /* Staggered Reveal (Results View)                                    */
 /* ------------------------------------------------------------------ */
 

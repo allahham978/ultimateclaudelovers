@@ -248,82 +248,188 @@ export default function AuditChamber() {
   }
 
   /* ================================================================= */
-  /* Render: Idle — Input Form                                          */
+  /* Render: Idle — Cinematic Single-Column                             */
   /* ================================================================= */
 
   return (
-    <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center">
-      <div className="animate-fade-in w-full max-w-[700px]">
-        {/* ---- Hero Section ---- */}
-        <div className="mb-16 text-center">
-          <div className="mb-4 flex items-center justify-center gap-2">
-            <EUFlag className="h-4 w-4" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
-              EU Directive 2022/2464
-            </span>
-          </div>
-          <h1 className="text-[2.5rem] font-medium leading-tight tracking-[-0.02em] text-stone-800">
-            ESGateway
-          </h1>
-          <p className="mx-auto mt-4 max-w-md text-[15px] font-light leading-relaxed text-stone-400">
-            {mode === "structured_document"
-              ? "Upload your management report and company details to receive a compliance score with prioritized recommendations."
-              : "Describe your sustainability situation and company details to receive a compliance score with prioritized recommendations."}
-          </p>
+    <IdleView
+      mode={mode}
+      setMode={setMode}
+      entity={entity}
+      setEntity={setEntity}
+      employees={employees}
+      setEmployees={setEmployees}
+      revenue={revenue}
+      setRevenue={setRevenue}
+      assets={assets}
+      setAssets={setAssets}
+      reportingYear={reportingYear}
+      setReportingYear={setReportingYear}
+      freeText={freeText}
+      setFreeText={setFreeText}
+      reportFileName={reportFileName}
+      setReportFile={setReportFile}
+      canRun={canRun}
+      handleRun={handleRun}
+      skipToComplete={skipToComplete}
+      error={error}
+    />
+  );
+}
+
+/* ================================================================= */
+/* Idle View — Cinematic single-column hero + scroll-reveal form       */
+/* ================================================================= */
+
+function IdleView({
+  mode,
+  setMode,
+  entity,
+  setEntity,
+  employees,
+  setEmployees,
+  revenue,
+  setRevenue,
+  assets,
+  setAssets,
+  reportingYear,
+  setReportingYear,
+  freeText,
+  setFreeText,
+  reportFileName,
+  setReportFile,
+  canRun,
+  handleRun,
+  skipToComplete,
+  error,
+}: {
+  mode: "structured_document" | "free_text";
+  setMode: (m: "structured_document" | "free_text") => void;
+  entity: string;
+  setEntity: (v: string) => void;
+  employees: string;
+  setEmployees: (v: string) => void;
+  revenue: string;
+  setRevenue: (v: string) => void;
+  assets: string;
+  setAssets: (v: string) => void;
+  reportingYear: string;
+  setReportingYear: (v: string) => void;
+  freeText: string;
+  setFreeText: (v: string) => void;
+  reportFileName: string | null;
+  setReportFile: (name: string, file: File) => void;
+  canRun: boolean;
+  handleRun: () => void;
+  skipToComplete: (m?: "structured_document" | "free_text") => void;
+  error: string | null;
+}) {
+  /* ---- Scroll-triggered card reveal ---- */
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [cardVisible, setCardVisible] = useState(false);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setCardVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="-mx-8 -mt-12">
+      {/* ============================================================ */}
+      {/* Section 1: Cinematic Hero Viewport                            */}
+      {/* ============================================================ */}
+      <section className="flex min-h-[85vh] flex-col items-center justify-center px-8 text-center">
+        {/* Badge */}
+        <div className="hero-stagger-1 mb-8 inline-flex items-center gap-2.5 rounded-full border border-zinc-200 bg-white/80 px-4 py-1.5">
+          <EUFlag className="h-3.5 w-3.5" />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+            EU Directive 2022/2464
+          </span>
         </div>
 
-        {/* ---- Error display ---- */}
-        {error && (
-          <div className="mb-6 rounded-2xl border border-red-200/60 bg-red-50/50 px-5 py-4 text-sm text-red-600/80">
-            {error}
-          </div>
-        )}
+        {/* Headline */}
+        <h1 className="hero-stagger-2 text-[3.5rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-zinc-900 md:text-[5rem]">
+          Seamless ESRS
+          <br />
+          Reporting
+        </h1>
 
-        {/* ---- Chamber Card ---- */}
-        <div className="card overflow-hidden">
-          {/* Pill Toggle */}
-          <div className="flex justify-center px-8 pt-8 pb-2">
-            <div className="relative rounded-full bg-stone-100/80 p-1">
-              <div className="relative grid grid-cols-2">
-                {/* Sliding indicator */}
-                <div
-                  className="absolute inset-y-0 w-1/2 rounded-full bg-white transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                  style={{
-                    transform: `translateX(${mode === "structured_document" ? "0%" : "100%"})`,
-                    boxShadow: "0 1px 3px rgb(0 0 0 / 0.08)",
-                  }}
-                />
-                <button
-                  onClick={() => setMode("structured_document")}
-                  className={`relative z-10 rounded-full px-6 py-2.5 text-[13px] font-medium transition-colors duration-200 ${
-                    mode === "structured_document"
-                      ? "text-stone-800"
-                      : "text-stone-400"
-                  }`}
-                >
-                  Structured Document
-                </button>
-                <button
-                  onClick={() => setMode("free_text")}
-                  className={`relative z-10 rounded-full px-6 py-2.5 text-[13px] font-medium transition-colors duration-200 ${
-                    mode === "free_text"
-                      ? "text-stone-800"
-                      : "text-stone-400"
-                  }`}
-                >
-                  Free Text
-                </button>
+        {/* Subtitle */}
+        <p className="hero-stagger-3 mx-auto mt-7 max-w-2xl text-xl leading-relaxed text-zinc-500">
+          Upload your management report and company details to receive a
+          compliance score with prioritized recommendations.
+        </p>
+      </section>
+
+      {/* ============================================================ */}
+      {/* Section 2: Scroll-Revealed Form Card                          */}
+      {/* ============================================================ */}
+      <section className="flex justify-center px-8 pb-32">
+        <div className="w-full max-w-4xl">
+          {/* Error display */}
+          {error && (
+            <div className="mb-4 rounded-2xl border border-red-200/60 bg-red-50/50 px-5 py-4 text-sm text-red-600/80">
+              {error}
+            </div>
+          )}
+
+          <div
+            ref={cardRef}
+            className={`card-reveal overflow-hidden rounded-3xl border border-zinc-100 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${
+              cardVisible ? "is-visible" : ""
+            }`}
+          >
+            {/* Segmented Control */}
+            <div className="mb-8 flex justify-center">
+              <div className="relative rounded-xl bg-zinc-100/70 p-1">
+                <div className="relative grid grid-cols-2">
+                  <div
+                    className="absolute inset-y-0 w-1/2 rounded-[10px] bg-white transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{
+                      transform: `translateX(${mode === "structured_document" ? "0%" : "100%"})`,
+                      boxShadow: "0 1px 3px rgb(0 0 0 / 0.06)",
+                    }}
+                  />
+                  <button
+                    onClick={() => setMode("structured_document")}
+                    className={`relative z-10 rounded-[10px] px-6 py-2 text-[13px] font-medium transition-colors duration-200 ${
+                      mode === "structured_document"
+                        ? "text-zinc-900"
+                        : "text-zinc-400 hover:text-zinc-500"
+                    }`}
+                  >
+                    Structured Document
+                  </button>
+                  <button
+                    onClick={() => setMode("free_text")}
+                    className={`relative z-10 rounded-[10px] px-6 py-2 text-[13px] font-medium transition-colors duration-200 ${
+                      mode === "free_text"
+                        ? "text-zinc-900"
+                        : "text-zinc-400 hover:text-zinc-500"
+                    }`}
+                  >
+                    Free Text
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Form Content */}
-          <div className="px-8 pb-8 pt-6">
-            {/* Entity Input */}
-            <div className="mb-8">
+            {/* Entity */}
+            <div className="mb-7">
               <label
                 htmlFor="entity-input"
-                className="mb-2 block text-[11px] font-medium uppercase tracking-[0.12em] text-stone-400"
+                className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400"
               >
                 Entity
               </label>
@@ -334,64 +440,64 @@ export default function AuditChamber() {
                 onChange={(e) => setEntity(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleRun()}
                 placeholder="LEI or company name"
-                className="h-11 w-full rounded-xl border-0 bg-stone-50 px-4 text-sm text-stone-700 placeholder:text-stone-300 transition-all focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent/25"
+                className="h-11 w-full border-b border-zinc-200 bg-transparent px-0 text-[15px] text-zinc-900 placeholder:text-zinc-300 transition-colors focus:border-zinc-900 focus:outline-none"
               />
             </div>
 
             {/* Company Details */}
-            <div className="mb-8">
-              <label className="mb-3 block text-[11px] font-medium uppercase tracking-[0.12em] text-stone-400">
+            <div className="mb-7">
+              <label className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
                 Company Details
               </label>
-              <div className="grid grid-cols-2 gap-4">
-                <CompanyInput
+              <div className="grid grid-cols-2 gap-x-8 gap-y-5 md:grid-cols-4">
+                <UnderlineInput
                   id="employees"
                   label="Employees"
                   value={employees}
                   onChange={setEmployees}
-                  placeholder="500"
+                  placeholder="e.g., 250"
                   type="number"
                 />
-                <CompanyInput
+                <UnderlineInput
                   id="revenue"
                   label="Revenue (EUR)"
                   value={revenue}
                   onChange={setRevenue}
-                  placeholder="85000000"
+                  placeholder="e.g., 85M"
                   type="number"
                 />
-                <CompanyInput
+                <UnderlineInput
                   id="assets"
                   label="Total Assets (EUR)"
                   value={assets}
                   onChange={setAssets}
-                  placeholder="42000000"
+                  placeholder="e.g., 42M"
                   type="number"
                 />
-                <CompanyInput
+                <UnderlineInput
                   id="reporting-year"
                   label="Reporting Year"
                   value={reportingYear}
                   onChange={setReportingYear}
-                  placeholder="2025"
+                  placeholder="e.g., 2025"
                   type="number"
                 />
               </div>
             </div>
 
-            {/* Subtle Separator */}
-            <div className="mb-8 border-t border-stone-100/80" />
+            {/* Separator */}
+            <div className="mb-7 border-t border-zinc-100" />
 
-            {/* Content Area — conditional on mode */}
-            <div className="mb-10">
+            {/* Content Area */}
+            <div className="mb-8">
               {mode === "structured_document" ? (
                 <>
                   <div className="mb-3 flex items-center justify-between">
-                    <label className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-400">
+                    <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
                       Document Vault
                     </label>
-                    <span className="text-[11px] text-stone-300">
-                      <span className="font-mono font-semibold text-stone-500">
+                    <span className="text-[11px] text-zinc-300">
+                      <span className="font-mono font-semibold text-zinc-500">
                         {reportFileName ? "1" : "0"}
                       </span>
                       /1
@@ -404,17 +510,17 @@ export default function AuditChamber() {
                 </>
               ) : (
                 <>
-                  <label className="mb-3 block text-[11px] font-medium uppercase tracking-[0.12em] text-stone-400">
+                  <label className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
                     Sustainability Description
                   </label>
                   <textarea
                     value={freeText}
                     onChange={(e) => setFreeText(e.target.value)}
                     placeholder="Describe your current sustainability situation, goals, emissions data, energy consumption, transition plans..."
-                    rows={6}
-                    className="w-full resize-none rounded-xl border-0 bg-stone-50 px-4 py-3 text-sm text-stone-700 placeholder:text-stone-300 transition-all focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent/25"
+                    rows={5}
+                    className="w-full resize-none border-b border-zinc-200 bg-transparent px-0 py-2 text-[15px] text-zinc-900 placeholder:text-zinc-300 transition-colors focus:border-zinc-900 focus:outline-none"
                   />
-                  <p className="mt-2 text-[11px] text-stone-300">
+                  <p className="mt-2 text-[11px] text-zinc-300">
                     The more detail you provide, the more accurate the
                     assessment will be.
                   </p>
@@ -427,37 +533,37 @@ export default function AuditChamber() {
               onClick={handleRun}
               disabled={!canRun}
               className={`
-                h-12 w-full rounded-full text-[15px] font-semibold transition-all duration-200
-                focus:outline-none focus:ring-2 focus:ring-accent/30 focus:ring-offset-2
+                h-14 w-full rounded-xl text-[15px] font-medium transition-all duration-200
+                focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2
                 ${
                   canRun
-                    ? "bg-accent text-white hover:bg-blue-600 hover:shadow-lg hover:shadow-accent/20"
-                    : "bg-stone-100 text-stone-300 cursor-not-allowed"
+                    ? "bg-zinc-900 text-white hover:bg-zinc-800"
+                    : "bg-zinc-100 text-zinc-300 cursor-not-allowed"
                 }
               `}
             >
-              Run Analysis
+              Analyze Report
             </button>
           </div>
-        </div>
 
-        {/* Dev shortcut */}
-        <button
-          onClick={() => skipToComplete(mode)}
-          className="mt-8 w-full text-center text-xs text-stone-300 transition-colors hover:text-accent"
-        >
-          Skip to results
-        </button>
-      </div>
+          {/* Dev shortcut */}
+          <button
+            onClick={() => skipToComplete(mode)}
+            className="mt-6 w-full text-center text-[11px] text-zinc-300 transition-colors hover:text-zinc-500"
+          >
+            Skip to results
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
 
 /* ================================================================= */
-/* Company Input Field                                                 */
+/* Underline Input Field                                               */
 /* ================================================================= */
 
-function CompanyInput({
+function UnderlineInput({
   id,
   label,
   value,
@@ -476,7 +582,7 @@ function CompanyInput({
     <div>
       <label
         htmlFor={id}
-        className="mb-1.5 block text-[11px] font-medium text-stone-400"
+        className="mb-1 block text-[11px] font-medium text-zinc-400"
       >
         {label}
       </label>
@@ -486,7 +592,7 @@ function CompanyInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-10 w-full rounded-xl border-0 bg-stone-50 px-4 font-mono text-sm text-stone-700 placeholder:text-stone-300 transition-all focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent/25"
+        className="h-10 w-full border-b border-zinc-200 bg-transparent px-0 font-mono text-sm text-zinc-900 placeholder:text-zinc-300 placeholder:font-sans transition-colors focus:border-zinc-900 focus:outline-none"
       />
     </div>
   );
@@ -541,10 +647,10 @@ function ReportUploadCard({
         group flex cursor-pointer flex-col items-center justify-center rounded-2xl p-8 text-center transition-all duration-200
         ${
           dragging
-            ? "border-2 border-accent bg-blue-50/30 scale-[1.01]"
+            ? "border-2 border-dashed border-zinc-400 bg-zinc-50 scale-[1.01]"
             : isFilled
-              ? "border border-stone-200/80 bg-stone-50/50"
-              : "border border-stone-200/60 bg-stone-50/30 hover:bg-stone-50 hover:border-stone-200"
+              ? "border border-zinc-200 bg-zinc-50/50"
+              : "border border-dashed border-zinc-200 bg-zinc-50/30 hover:bg-zinc-50/80 hover:border-zinc-300"
         }
       `}
     >
@@ -571,7 +677,7 @@ function ReportUploadCard({
               <path d="M20 6L9 17l-5-5" />
             </svg>
           </div>
-          <p className="max-w-[280px] truncate text-sm font-medium text-stone-600">
+          <p className="max-w-[280px] truncate text-sm font-medium text-zinc-600">
             {fileName}
           </p>
           <p className="mt-1 text-xs font-medium text-emerald-600">Ready</p>
@@ -579,15 +685,15 @@ function ReportUploadCard({
       ) : (
         <>
           <div className="mb-3 transition-transform duration-200 group-hover:-translate-y-0.5">
-            <UploadCloudIcon className="h-10 w-10 text-stone-300" />
+            <UploadCloudIcon className="h-10 w-10 text-zinc-300" />
           </div>
-          <p className="text-sm font-medium text-stone-500">
+          <p className="text-sm font-medium text-zinc-500">
             Annual Management Report
           </p>
-          <p className="mt-1 text-xs text-stone-300">
+          <p className="mt-1 text-xs text-zinc-300">
             Drop file here or click to browse
           </p>
-          <p className="mt-3 text-[10px] font-medium uppercase tracking-wider text-stone-300">
+          <p className="mt-3 text-[10px] font-medium uppercase tracking-wider text-zinc-300">
             .json &nbsp; .xhtml
           </p>
         </>

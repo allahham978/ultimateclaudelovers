@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python3:*)",
       "Bash(source:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(tail:*)"
     ]
   }
 }
