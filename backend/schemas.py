@@ -91,6 +91,8 @@ class Recommendation(BaseModel):
     title: str
     description: str
     regulatory_reference: str
+    category: str = "General"
+    impact: str = ""
 
 
 # ---------------------------------------------------------------------------

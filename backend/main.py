@@ -11,9 +11,11 @@ Endpoints:
 
 import asyncio
 import json
+import logging
 import os
 import tempfile
 import threading
+import traceback
 import uuid
 from typing import Any
 
@@ -25,6 +27,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from events import emit_node_complete, register, unregister
 from graph import graph
 from schemas import CompanyInputs
 from state import AuditState
@@ -39,11 +42,18 @@ from tools.report_parser import (
 # App setup
 # ---------------------------------------------------------------------------
 
+logger = logging.getLogger("audit")
+logging.basicConfig(level=logging.INFO)
+
 app = FastAPI(title="EU CSRD Compliance Engine", version="3.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -74,63 +84,44 @@ _jobs: dict[str, _AuditJob] = {}
 
 
 def _run_graph(audit_id: str, state: AuditState, job: _AuditJob) -> None:
-    """Run the LangGraph pipeline in a background thread, pushing SSE events."""
+    """Run the LangGraph pipeline in a background thread, pushing SSE events.
+
+    Log events are emitted in real-time by each agent node via the events
+    module.  Node-complete and final-complete events are emitted here once
+    the graph finishes.
+    """
+    # Register the job so agents can push log events in real-time
+    register(audit_id, lambda evt: job.events.append(evt))
+
     try:
+        logger.info("[%s] Graph execution starting...", audit_id[:8])
         result = graph.invoke(state)
+        logger.info("[%s] Graph execution completed successfully", audit_id[:8])
 
-        all_logs = result.get("logs", [])
+        # Emit node_complete events from pipeline_trace
         pipeline_trace = result.get("pipeline_trace", [])
-        trace_by_agent: dict[str, dict] = {t["agent"]: t for t in pipeline_trace}
-
-        # Emit log + node_complete events grouped by agent execution order
-        current_agent: str | None = None
-        for log_entry in all_logs:
-            agent = log_entry["agent"]
-
-            # When agent transitions, emit node_complete for the previous agent
-            if current_agent is not None and agent != current_agent:
-                if current_agent in trace_by_agent:
-                    trace = trace_by_agent.pop(current_agent)
-                    job.events.append(
-                        {
-                            "type": "node_complete",
-                            "agent": current_agent,
-                            "duration_ms": trace["ms"],
-                        }
-                    )
-
-            current_agent = agent
-            job.events.append(
-                {
-                    "type": "log",
-                    "agent": log_entry["agent"],
-                    "message": log_entry["msg"],
-                    "timestamp": str(log_entry["ts"]),
-                }
-            )
-
-        # node_complete for the last agent
-        if current_agent is not None and current_agent in trace_by_agent:
-            trace = trace_by_agent.pop(current_agent)
-            job.events.append(
-                {
-                    "type": "node_complete",
-                    "agent": current_agent,
-                    "duration_ms": trace["ms"],
-                }
+        for trace_entry in pipeline_trace:
+            emit_node_complete(
+                audit_id, trace_entry["agent"], trace_entry["ms"]
             )
 
         # Complete event — unified final_result for both modes
         final_result = result.get("final_result")
-
         if final_result:
-            result_dict = final_result.model_dump() if hasattr(final_result, "model_dump") else final_result
+            result_dict = (
+                final_result.model_dump()
+                if hasattr(final_result, "model_dump")
+                else final_result
+            )
             job.result = result_dict
             job.events.append({"type": "complete", "result": result_dict})
 
     except Exception as exc:
+        logger.error("[%s] Graph execution FAILED: %s", audit_id[:8], exc)
+        logger.error("[%s] Traceback:\n%s", audit_id[:8], traceback.format_exc())
         job.events.append({"type": "error", "message": str(exc)})
     finally:
+        unregister(audit_id)
         job.complete.set()
 
 
@@ -157,6 +148,8 @@ async def audit_run(
     reporting_year: int | None = Form(None),
 ):
     """Accept a report JSON (structured_document) or free text (free_text), start audit."""
+    logger.info("POST /audit/run — mode=%s, entity=%s", mode, entity_id)
+
     # Validate mode
     if mode not in ("structured_document", "free_text"):
         raise HTTPException(400, f"Invalid mode: {mode}. Must be 'structured_document' or 'free_text'.")
@@ -177,7 +170,9 @@ async def audit_run(
             raise HTTPException(400, "mode=structured_document requires a report_json file upload.")
 
         raw_bytes = await report_json.read()
+        logger.info("[%s] Uploaded file: %s (%d bytes)", audit_id[:8], report_json.filename, len(raw_bytes))
         is_xhtml = raw_bytes.lstrip()[:10].startswith((b"<?xml", b"<html", b"<!DOC"))
+        logger.info("[%s] Detected format: %s", audit_id[:8], "XHTML" if is_xhtml else "JSON")
 
         if is_xhtml:
             # XHTML upload: parse iXBRL facts + extract narrative sustainability text
@@ -185,10 +180,15 @@ async def audit_run(
             try:
                 os.write(tmp_fd, raw_bytes)
                 os.close(tmp_fd)
+                logger.info("[%s] Parsing XHTML → iXBRL facts...", audit_id[:8])
                 raw_json = extract_xhtml_to_json(tmp_path)
+                logger.info("[%s] Extracted %d facts, running parse_report...", audit_id[:8], len(raw_json.get("facts", [])))
                 cleaned, esrs_data, taxonomy_data, narrative_sections = parse_report(
                     raw_json, file_path=tmp_path
                 )
+                logger.info("[%s] Parse complete: %d clean facts, %d ESRS, %d taxonomy, %d narrative sections",
+                           audit_id[:8], len(cleaned.get("facts", [])), len(esrs_data.get("facts", [])),
+                           len(taxonomy_data.get("facts", [])), len(narrative_sections))
             finally:
                 os.unlink(tmp_path)
         else:
@@ -254,12 +254,16 @@ async def audit_stream(audit_id: str):
 
     async def _event_generator():
         sent = 0
+        heartbeat_interval = 5.0  # seconds between keepalive comments
+        last_heartbeat = asyncio.get_event_loop().time()
+
         while True:
             # Emit any new events
             while sent < len(job.events):
                 event = job.events[sent]
                 sent += 1
                 yield f"data: {json.dumps(event)}\n\n"
+                last_heartbeat = asyncio.get_event_loop().time()
 
             # If the graph has finished, drain remaining events and exit
             if job.complete.is_set():
@@ -268,6 +272,12 @@ async def audit_stream(audit_id: str):
                     sent += 1
                     yield f"data: {json.dumps(event)}\n\n"
                 break
+
+            # Send SSE comment as keepalive to prevent connection timeout
+            now = asyncio.get_event_loop().time()
+            if now - last_heartbeat >= heartbeat_interval:
+                yield ": keepalive\n\n"
+                last_heartbeat = now
 
             await asyncio.sleep(0.05)
 

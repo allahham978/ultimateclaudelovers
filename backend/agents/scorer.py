@@ -18,6 +18,7 @@ Scoring algorithm (PRD Section 6 / Iteration 9):
 import time
 from typing import Any
 
+from events import emit_log
 from schemas import CompanyInputs, ComplianceScore, ESRSClaim
 from state import AuditState
 from tools.knowledge_base import (
@@ -84,8 +85,13 @@ def scorer_node(state: AuditState) -> dict[str, Any]:
     pipeline_trace: list[dict] = list(state.get("pipeline_trace") or [])
 
     ts = lambda: int(time.time() * 1000)  # noqa: E731
+    audit_id = state.get("audit_id", "")
 
-    logs.append({"agent": "scorer", "msg": "Starting compliance scoring...", "ts": ts()})
+    def log(msg: str) -> None:
+        logs.append({"agent": "scorer", "msg": msg, "ts": ts()})
+        emit_log(audit_id, "scorer", msg)
+
+    log("Starting compliance scoring...")
 
     esrs_claims: dict[str, ESRSClaim] = state.get("esrs_claims") or {}
     company_inputs: CompanyInputs = state.get("company_inputs") or CompanyInputs(
@@ -99,12 +105,10 @@ def scorer_node(state: AuditState) -> dict[str, Any]:
         total_assets_eur=company_inputs.total_assets_eur,
     )
 
-    logs.append({
-        "agent": "scorer",
-        "msg": f"Company classified as '{size_category}' (employees={company_inputs.number_of_employees}, "
-               f"revenue=€{company_inputs.revenue_eur:,.0f}, assets=€{company_inputs.total_assets_eur:,.0f})",
-        "ts": ts(),
-    })
+    log(
+        f"Company classified as '{size_category}' (employees={company_inputs.number_of_employees}, "
+        f"revenue=€{company_inputs.revenue_eur:,.0f}, assets=€{company_inputs.total_assets_eur:,.0f})"
+    )
 
     # Step 3: Get applicable requirements from knowledge base
     applicable = get_applicable_requirements(
@@ -115,11 +119,7 @@ def scorer_node(state: AuditState) -> dict[str, Any]:
         total_assets_eur=company_inputs.total_assets_eur,
     )
 
-    logs.append({
-        "agent": "scorer",
-        "msg": f"Knowledge base returned {len(applicable)} applicable disclosure requirements",
-        "ts": ts(),
-    })
+    log(f"Knowledge base returned {len(applicable)} applicable disclosure requirements")
 
     # Step 4: Compare claims against requirements
     disclosed_count = 0
@@ -191,16 +191,14 @@ def scorer_node(state: AuditState) -> dict[str, Any]:
         missing_count=missing_count,
     )
 
-    logs.append({
-        "agent": "scorer",
-        "msg": f"Score: {overall}/100 — {disclosed_count} disclosed, {partial_count} partial, "
-               f"{missing_count} missing out of {total} requirements (size: {size_category})",
-        "ts": ts(),
-    })
+    log(
+        f"Score: {overall}/100 — {disclosed_count} disclosed, {partial_count} partial, "
+        f"{missing_count} missing out of {total} requirements (size: {size_category})"
+    )
 
     duration_ms = int((time.time() - started_at) * 1000)
     pipeline_trace.append({"agent": "scorer", "started_at": started_at, "ms": duration_ms})
-    logs.append({"agent": "scorer", "msg": f"Scoring complete in {duration_ms}ms", "ts": ts()})
+    log(f"Scoring complete in {duration_ms}ms")
 
     return {
         "compliance_score": compliance_score,
