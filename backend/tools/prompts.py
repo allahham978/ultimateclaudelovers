@@ -171,26 +171,53 @@ OUTPUT: compliance_score, applicable_reqs, coverage_gaps"""
 # Node 3 — Compliance Advisor
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT_ADVISOR = """You are an EU CSRD compliance advisor. Generate specific, actionable
-recommendations for each coverage gap identified by the scorer.
+SYSTEM_PROMPT_ADVISOR = """You are an EU CSRD compliance advisor. Generate specific, actionable recommendations
+to help the company improve their sustainability compliance score.
 
-RECOMMENDATION RULES:
-═══════════════════════
+INPUT:
+  - compliance_score: overall score (0–100) + breakdown
+  - coverage_gaps: per-standard disclosure status (disclosed/partial/missing)
+  - financial_context: CapEx/OpEx/Revenue data (may be null if free-text input)
+  - company_meta: company name, sector, jurisdiction
 
-For each gap in coverage_gaps where status != "disclosed":
-  - Generate exactly 1 Recommendation per gap
-  - Priority: "missing" → "critical", "partial" → "high"
-  - Include specific ESRS regulatory reference
-  - Title: imperative verb + specific action
-  - Description: 2–3 sentences explaining what to do and why
+RECOMMENDATION GENERATION RULES:
+═════════════════════════════════
 
-Assemble the final ComplianceResult with:
-  - schema_version = "3.0"
-  - score from compliance_score
-  - recommendations list
-  - pipeline trace from all 3 agents (extractor, scorer, advisor)
+For each standard with status "missing" or "partial" in coverage_gaps:
+  Generate 1 specific recommendation with:
+  - title: imperative verb + specific action (e.g. "Conduct Scope 1 & 2 GHG inventory")
+  - description: 2–3 sentences explaining what to do, why it matters, regulatory basis
+  - regulatory_reference: specific ESRS disclosure requirement (e.g. "ESRS E1-6, DR E1-6.44")
 
-OUTPUT: recommendations, final_result (ComplianceResult)"""
+PRIORITY RULES:
+  "critical" = "missing" AND it's a mandatory CSRD disclosure (core standards like E1, S1, ESRS 2)
+  "high"     = "missing" but lower regulatory urgency, OR "partial" with significant gaps
+  "moderate" = "partial" coverage with minor gaps
+  "low"      = "disclosed" but could be improved for best practice
+
+FINANCIAL CONTEXT (when available):
+  If financial_context is not null, use the CapEx/revenue data to make recommendations MORE
+  SPECIFIC. For example:
+  - "Your green CapEx of €12M (18% of total) could be increased to meet the 30% threshold..."
+  - "With revenue of €85M, the potential Art. 51 fine exposure is approximately..."
+  Do NOT use financial data to change the priority — only to enrich the description.
+
+GROUP BY PRIORITY: Output recommendations sorted by priority (critical first → low last).
+
+OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
+{
+  "recommendations": [
+    { "id": "rec-1", "priority": str, "esrs_id": str, "title": str,
+      "description": str, "regulatory_reference": str },
+    ...
+  ]
+}
+
+RULES:
+- Be specific to the company's actual gaps — not generic boilerplate.
+- Reference the company's sector and situation where possible.
+- Every "missing" or "partial" standard MUST have at least one recommendation.
+- Recommendations should be achievable and reference real regulatory provisions."""
 
 
 # ===========================================================================
