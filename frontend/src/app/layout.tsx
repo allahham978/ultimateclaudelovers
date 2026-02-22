@@ -63,7 +63,7 @@ function NavHeader() {
     <header className="sticky top-0 z-50 border-b border-stone-200/40 bg-canvas/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-8">
         {/* Logo / Wordmark */}
-        <div className="flex items-center gap-3">
+        <a href="/" className="flex items-center gap-3">
           <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" aria-label="EU flag">
             <rect width="24" height="24" rx="4" fill="#003399" />
             {Array.from({ length: 12 }, (_, i) => {
@@ -74,7 +74,7 @@ function NavHeader() {
           <span className="text-[15px] font-semibold tracking-tight text-stone-800">
             ESGateway
           </span>
-        </div>
+        </a>
 
         {/* Search */}
         <div className="relative">

@@ -360,20 +360,7 @@ function IdleView({
   return (
     <div className="relative -mx-8 -mt-12 min-h-[calc(100vh-4rem)] overflow-hidden">
       {/* ---- Background Canvas ---- */}
-      <div className="absolute inset-0 bg-slate-50" />
-      <div
-        className="absolute inset-0 bg-grid"
-        style={{
-          maskImage:
-            "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%)",
-        }}
-      />
-
-      {/* ---- EU Atmospheric Glows ---- */}
-      <div className="pointer-events-none absolute -left-32 -top-40 h-[600px] w-[600px] rounded-full bg-[#003399]/[0.04] blur-[140px]" />
-      <div className="pointer-events-none absolute -bottom-20 right-0 h-[400px] w-[400px] rounded-full bg-[#FFCC00]/[0.06] blur-[120px]" />
+      <div className="absolute inset-0 bg-canvas" />
 
       {/* ---- Main Content ---- */}
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl items-center px-8 py-16 lg:py-0">
@@ -506,44 +493,66 @@ function IdleView({
                 />
               </div>
 
-              {/* Company Details */}
+              {/* Company Details — The Ledger */}
               <div className="mb-5">
                 <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Company Details
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <TechInput
-                    id="employees"
-                    label="Employees"
-                    value={employees}
-                    onChange={setEmployees}
-                    placeholder="e.g., 1.5K"
-                    type="text"
-                  />
-                  <TechInput
-                    id="revenue"
-                    label="Revenue (EUR)"
-                    value={revenue}
-                    onChange={setRevenue}
-                    placeholder="e.g., 85M"
-                    type="text"
-                  />
-                  <TechInput
-                    id="assets"
-                    label="Total Assets (EUR)"
-                    value={assets}
-                    onChange={setAssets}
-                    placeholder="e.g., 42M"
-                    type="text"
-                  />
-                  <TechInput
-                    id="reporting-year"
-                    label="Reporting Year"
-                    value={reportingYear}
-                    onChange={setReportingYear}
-                    placeholder="e.g., 2025"
-                    type="number"
-                  />
+                <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50">
+                  {/* Row 1 */}
+                  <div className="border-b border-r border-slate-200 p-3 transition-colors focus-within:bg-white">
+                    <label htmlFor="employees" className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                      Employees
+                    </label>
+                    <input
+                      id="employees"
+                      type="text"
+                      value={employees}
+                      onChange={(e) => setEmployees(e.target.value)}
+                      placeholder="e.g., 1.5K"
+                      className="w-full border-none bg-transparent p-0 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                    />
+                  </div>
+                  <div className="border-b border-slate-200 p-3 transition-colors focus-within:bg-white">
+                    <label htmlFor="revenue" className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                      Revenue (EUR)
+                    </label>
+                    <input
+                      id="revenue"
+                      type="text"
+                      value={revenue}
+                      onChange={(e) => setRevenue(e.target.value)}
+                      placeholder="e.g., 85M"
+                      className="w-full border-none bg-transparent p-0 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                    />
+                  </div>
+                  {/* Row 2 */}
+                  <div className="border-r border-slate-200 p-3 transition-colors focus-within:bg-white">
+                    <label htmlFor="assets" className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                      Total Assets (EUR)
+                    </label>
+                    <input
+                      id="assets"
+                      type="text"
+                      value={assets}
+                      onChange={(e) => setAssets(e.target.value)}
+                      placeholder="e.g., 42M"
+                      className="w-full border-none bg-transparent p-0 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                    />
+                  </div>
+                  <div className="p-3 transition-colors focus-within:bg-white">
+                    <label htmlFor="reporting-year" className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                      Reporting Year
+                    </label>
+                    <input
+                      id="reporting-year"
+                      type="number"
+                      value={reportingYear}
+                      onChange={(e) => setReportingYear(e.target.value)}
+                      placeholder="e.g., 2025"
+                      className="w-full border-none bg-transparent p-0 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -604,55 +613,9 @@ function IdleView({
               </button>
             </div>
 
-            {/* Dev shortcut */}
-            <button
-              onClick={() => skipToComplete(mode)}
-              className="mt-4 w-full text-center text-[10px] text-slate-300 transition-colors hover:text-slate-500"
-            >
-              Skip to results
-            </button>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ================================================================= */
-/* Tech Input Field                                                    */
-/* ================================================================= */
-
-function TechInput({
-  id,
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  type?: string;
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={id}
-        className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400"
-      >
-        {label}
-      </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 font-mono text-xs text-slate-900 placeholder:text-slate-300 placeholder:font-sans transition-colors focus:border-[#003399]/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#003399]/20"
-      />
     </div>
   );
 }
