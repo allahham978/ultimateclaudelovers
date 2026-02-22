@@ -1,89 +1,62 @@
-```markdown
-# 🔌 EU AI Infrastructure Accountability Engine
+# 🔌 ESGateway
 
-## Scope
+## Inspiration
+Built specifically for this hackathon, our core mission was simple: **to make building and working in the EU as seamless and attractive as possible.**
 
-A B2B consulting platform that automates **CSRD (Corporate Sustainability Reporting Directive)** compliance and **EU Taxonomy** alignment for European AI infrastructure. The engine audits the gap between corporate sustainability claims and financial reality by cross-referencing mandatory **ESRS (European Sustainability Reporting Standards)** disclosures against official financial reporting to quantify the "Say-Do Gap".
+The European Union represents a massive, lucrative market, but its evolving labyrinth of ESG regulations—specifically CSRD, ESRS, and the EU Taxonomy—creates a daunting barrier to entry. Companies, whether they are local startups scaling within the EU or global enterprises trying to enter the market, often view these regulations as a roadblock rather than an opportunity. 
 
-The output is a single-page audit report showing the **Taxonomy Alignment Percentage** — one number that answers: *are you legally spending where you're promising?*
+We wanted to change that narrative. Our inspiration was to build a tool that completely demystifies EU compliance, lowering the barrier to entry and making Europe a transparent, highly attractive place to do business. We built **ESGateway**—an engine that gives companies a definitive roadmap to compliance so they can focus on innovating rather than navigating red tape.
 
-## Architecture
+## What it does
+ESGateway is a B2B consulting platform that automates **CSRD (Corporate Sustainability Reporting Directive)** compliance and **EU Taxonomy** alignment for European AI infrastructure and broader enterprise markets. 
 
-```mermaid
-graph TD
-    subgraph FRONTEND [FRONTEND: Next.js + TypeScript]
-        A[Taxonomy Alignment] --- B[ESRS vs. Do Ledger] --- C[Taxonomy Roadmap]
-        D[Pipeline Timeline]
-    end
+The engine audits the gap between corporate sustainability claims and financial reality by cross-referencing mandatory disclosures against official financial reporting to quantify the "Say-Do Gap".
 
-    FRONTEND -- AuditReport typed JSON contract --> BACKEND
+**A Score for Everyone, A Roadmap for the Future:**
+Whether you are a non-EU company looking to enter the market, or an EU company already doing basic reporting, everyone gets a definitive compliance score and **Taxonomy Alignment Percentage** — one number that answers: *are you legally spending where you're promising?*
 
-    subgraph BACKEND [BACKEND: LangGraph Multi-Agent Pipeline]
-        E[Inputs] --> F[Extractor: Parse ESRS]
-        F --> G[Fetcher: Fetch CapEx]
-        G --> H[Auditor: Score Gaps]
-        H --> I[Consultant: Gen Roadmap]
-    end
 
-```
 
-## Input Layer
+Crucially, ESGateway is predictive. For companies already in the EU, the system analyzes your current data against upcoming legislative phases. If your company is growing, the engine flags exactly what new legislation will apply to you next year (e.g., crossing the 250-employee or €40M turnover threshold) and provides the necessary steps to prepare before you are caught off guard.
 
-The system is designed to ingest the three "Golden Sources" of truth required for a high-fidelity EU audit:
+## How we built it
+We decoupled our frontend and backend using a strict TypeScript contract (`contracts/`), enabling rapid parallel development and a highly deterministic state machine. The frontend was built with **Next.js, TypeScript, and Tailwind CSS** for a clean, "Enterprise Modernist" interface.
 
-* **Integrated Management Report**: The primary corporate filing combining audited financial statements ("The Do") with the mandatory Sustainability Statement ("The Say").
-* **EU Taxonomy Table**: A standardized mandatory disclosure providing the precise percentage of a company’s **CapEx** that is legally defined as "Green" under EU classification.
-* **Climate Transition Plan**: The strategic roadmap mandated by **ESRS E1**, detailing specific interim targets and planned financial investments (e.g., hardware retrofits) to achieve net-zero.
+### The Triad: A Purpose-Built AI Agent Workflow
+To tackle the sheer density of EU financial and sustainability reporting, we moved beyond a simple LLM wrapper. Our Python LangGraph backend is powered by Anthropic Claude 3.5 Sonnet, orchestrated as a team of three specialized **AI Agents**. By dividing the cognitive load, we eliminate agent ambiguity.
 
-## Contract-First Workflow
+1. **The Extractor Agent (The Data Miner):** Ingests unstructured corporate PDFs. Utilizing prompt caching and strict XML-tagging, it isolates exact CapEx figures and company sizing metrics. 
+2. **The Scorer Agent (The Strict Auditor):** Cross-references the Extractor's data directly against our typed JSON regulatory database to objectively calculate current compliance.
+3. **The Advisor Agent (The Strategic Consultant):** Analyzes the compliance gaps and generates a concrete roadmap to achieve alignment and unlock the European market.
 
-The frontend and backend are decoupled by a single TypeScript interface: **`AuditReport`**.
 
-```
-contracts/
-├── audit-report.schema.ts   ← the typed contract (source of truth)
-└── audit-report.mock.ts     ← realistic mock data for UI development
 
-```
+### Live EU Legal Knowledge Base
+To ensure clear adherence to strict EU standards, we built a live **Regulatory Knowledge Base** underpinned by a strictly typed, version-controlled JSON schema.
 
-### AuditReport Shape (EU Updated)
 
-| Section | Purpose | Key Fields |
-| --- | --- | --- |
-| `company` | Profile metadata | `name`, `ticker`, `sector`, `fiscal_year`, `registry_source` |
-| `taxonomy_alignment` | Headline metric (%) | `value`, `label` (e.g., "Taxonomy Aligned") |
-| `esrs_ledger[]` | Double Materiality Rows | `esrs_id`, `materiality_impact`, `financial_risk`, `status` |
-| `taxonomy_roadmap` | Three-pillar roadmap | `hardware`, `power`, `workload` — each with `projected_alignment_increase` |
-| `sources[]` | Consolidated citations | `document_name`, `document_type`, `registry_id` |
-| `pipeline` | Agent execution timeline | `agents[]` with `name`, `duration_ms`, `status` |
+## Challenges we ran into
 
-## Execution Workflow
+1. **The "Cold Start" Market Pivot:** Initially, we only built the system to ingest and analyze highly structured data and existing 100+ page ESG reports. However, we quickly realized there was a massive market segment—SMEs and non-EU companies looking to enter the market—who *don't have these documents yet*. We had to rapidly redesign our input layer and Advisor Agent to guide companies from a blank slate, offering predictive roadmaps based purely on their basic company metrics (revenue, headcount, sector).
+2. **From ESG "Advice" to Strict "Compliance":** Mid-hackathon, we completely pivoted the output of our Advisor Agent. We started by trying to generate broad "ESG strategy advice," but realized LLMs can easily drift into subjective, hallucinated corporate jargon. We shifted to generating strict **compliance advice**. LLMs are incredibly powerful at deterministic rule-following (checking user states against our JSON legal schema) rather than inventing green strategies, so we aligned our product to fit the actual strengths of the technology.
+3. **Double Materiality Mapping:** Accurately mapping financial data to ESRS double materiality requirements required deep prompt engineering to ensure our agents understood the difference between financial risk (outside-in) and environmental impact (inside-out).
 
-1. **User Ingestion**: The user uploads the official PDF/XHTML versions of the three required documents into the "Audit Chamber."
-2. **Verification**: The system cross-references targets in the **Transition Plan** against actuals in the **Taxonomy Table**.
-3. **Gap Analysis**: The system flags specific areas where current CapEx fails to support stated climate goals or ESRS requirements.
-4. **Strategy**: The engine outputs a plan to reallocate budget into taxonomy-aligned infrastructure to increase compliance scores and reduce potential CSRD fines.
 
-## Tech Stack
 
-| Layer | Technology |
-| --- | --- |
-| Frontend | Next.js, TypeScript |
-| Backend Orchestration | LangGraph (Python) |
-| LLM | Anthropic Claude 3.5 Sonnet |
-| LLM Optimization | Prompt Caching (for 100+ page reports), XML-tag processing |
-| Contract | TypeScript interfaces (`contracts/`) |
+## Accomplishments that we're proud of
+We are incredibly proud of building a **deterministic AI system**. By forcing the LLM to interact with a strictly typed JSON database representing EU law, we removed "agent ambiguity." We didn't just build a chatbot that talks about sustainability; we built a rigorous compliance engine that cites specific articles, thresholds, and financial penalties without hallucinating.
 
-## Team & Roles
+## What we learned
+* **The Power of Multi-Agent Orchestration:** Moving from a single prompt to a LangGraph workflow with designated personas drastically reduced errors and improved analytical depth.
+* **Structuring for AI:** The best way to make an AI system reliable is to feed it highly structured, typed data rather than expecting it to accurately parse legal PDFs on the fly.
+* **Regulatory Nuance:** We gained a profound understanding of the EU Taxonomy's 6 environmental objectives, and how EU legislation scales dynamically based on a company's growth trajectory.
 
-* **The Architect (Agentic & Frontend)**: Responsible for the state machine orchestration, API layer, and the "Enterprise Modernist" interface.
-* **The Financial Engineer (Data Lead A)**: Owns the structured financial data mapping and the logic for processing national registry filings and EU Taxonomy tables.
-* **The NLP Modeler (Data Lead B)**: Owns the ESRS parsing logic, PDF chunking strategies, and the defensible "Double Materiality" scoring algorithm.
 
-## Project Philosophy
 
-* **Less is better.** One page, one score, one ledger, one plan. No dashboard clutter.
-* **Truly agentic.** Agents use tool calling and multi-step reasoning, optimized for Claude's strengths: prompt caching, XML tags, and financial reasoning.
-* **Regulatory First.** We don't just provide "scores"; we provide automated, enterprise-grade compliance that protects against CSRD regulatory fines.
+## What's next for ESGateway
 
-`
+* **Holistic ESG Compliance:** Expanding our knowledge base and rule engine beyond just environmental sustainability (the "E") to cover the full spectrum of Social and Governance directives. This includes integrating upcoming regulations like the Corporate Sustainability Due Diligence Directive (CS3D) for supply chain monitoring and labor rights.
+* **Continuous Compliance Monitoring:** Transitioning from a one-off audit tool to a dynamic, always-on engine. Companies will be able to continuously upload quarterly financials, cap tables, or live operating metrics, receiving real-time alerts and updated recommendations the moment they approach new regulatory growth thresholds.
+* **Multi-Modal Data Ingestion:** Upgrading our Extractor Agent to handle multi-modal inputs. We want to allow companies to upload not just text PDFs, but raw ERP data dumps (Excel/CSV), images of manufacturing facilities, and even audio transcripts from stakeholder meetings for a much richer Double Materiality assessment.
+* **Refined Scoring Mechanisms:** Enhancing our mathematical models to include sector-specific benchmarking, allowing companies to see not only their own "Say-Do Gap" but also how their taxonomy alignment compares against anonymized industry peers within the EU.
+* **Automated Report Generation:** Moving beyond generating strategic advice to actually generating the compliance artifacts themselves. We plan to output draft, legally-formatted XHTML and iXBRL-tagged reports ready for direct submission to national registries and the upcoming European Single Access Point (ESAP).
