@@ -55,6 +55,8 @@ export interface Recommendation {
   title: string;
   description: string;
   regulatory_reference: string;
+  category?: string;
+  impact?: string;
 }
 
 // ---------------------------------------------------------------------------

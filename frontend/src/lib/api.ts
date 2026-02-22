@@ -43,15 +43,30 @@ export async function startAnalysis(params: AnalysisParams): Promise<string> {
     form.append("free_text", params.freeText);
   }
 
-  const res = await fetch(`${config.apiUrl}/audit/run`, {
-    method: "POST",
-    body: form,
-  });
+  console.log(`[API] POST ${config.apiUrl}/audit/run — mode=${params.mode}, entity=${params.entity}`);
+  if (params.reportFile) {
+    console.log(`[API] Uploading file: ${params.reportFile.name} (${(params.reportFile.size / 1024 / 1024).toFixed(1)} MB)`);
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${config.apiUrl}/audit/run`, {
+      method: "POST",
+      body: form,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[API] fetch() threw:`, err);
+    throw new Error(`Network error connecting to ${config.apiUrl}: ${msg}`);
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    console.error(`[API] POST /audit/run failed (${res.status}):`, body);
     throw new Error(`POST /audit/run failed (${res.status}): ${body}`);
   }
+
+  console.log(`[API] POST /audit/run succeeded`);
 
   const data: { audit_id: string } = await res.json();
   return data.audit_id;
@@ -72,22 +87,36 @@ export function streamAuditEvents(
   onError: (err: string) => void
 ): () => void {
   const url = `${config.apiUrl}/audit/${auditId}/stream`;
+  console.log(`[SSE] Opening EventSource: ${url}`);
   const source = new EventSource(url);
+
+  source.onopen = () => {
+    console.log(`[SSE] Connection opened (readyState=${source.readyState})`);
+  };
 
   source.onmessage = (e) => {
     try {
       const parsed: SSEEvent = JSON.parse(e.data);
+      console.log(`[SSE] Event:`, parsed.type, parsed.type === "log" ? parsed.message : "");
       onEvent(parsed);
     } catch {
+      console.error(`[SSE] Failed to parse event:`, e.data);
       onError(`Failed to parse SSE event: ${e.data}`);
     }
   };
 
-  source.onerror = () => {
-    if (source.readyState === EventSource.CLOSED) return;
-    onError("Lost connection to audit stream.");
+  source.onerror = (e) => {
+    console.error(`[SSE] Error event — readyState=${source.readyState}`, e);
+    if (source.readyState === EventSource.CLOSED) {
+      console.log(`[SSE] Connection closed by server`);
+      return;
+    }
+    onError(`Lost connection to audit stream (readyState=${source.readyState}).`);
     source.close();
   };
 
-  return () => source.close();
+  return () => {
+    console.log(`[SSE] Cleanup — closing connection`);
+    source.close();
+  };
 }
