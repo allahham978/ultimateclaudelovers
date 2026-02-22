@@ -74,9 +74,6 @@ function NavHeader() {
           <span className="text-[15px] font-semibold tracking-tight text-stone-800">
             ESGateway
           </span>
-          <span className="hidden rounded-full bg-stone-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-stone-500 sm:inline">
-            ESRS
-          </span>
         </div>
 
         {/* Search */}

@@ -21,6 +21,17 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
+/* Technical Background Grid                                          */
+/* ------------------------------------------------------------------ */
+
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(148 163 184 / 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(148 163 184 / 0.1) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* ------------------------------------------------------------------ */
 /* Cinematic Hero Animations                                          */
 /* ------------------------------------------------------------------ */
 

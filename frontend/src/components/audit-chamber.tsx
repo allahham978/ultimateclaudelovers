@@ -108,11 +108,24 @@ export default function AuditChamber() {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
+  /* ---- parse shorthand amounts like "85M", "1.2B", "500K" ---- */
+  const parseAmount = (raw: string): number => {
+    const s = raw.trim().toUpperCase();
+    const m = s.match(/^([0-9]*\.?[0-9]+)\s*([KMB]?)$/);
+    if (!m) return NaN;
+    const num = parseFloat(m[1]);
+    const suffix = m[2];
+    if (suffix === "K") return num * 1_000;
+    if (suffix === "M") return num * 1_000_000;
+    if (suffix === "B") return num * 1_000_000_000;
+    return num;
+  };
+
   /* ---- build CompanyInputs from form state ---- */
   const buildCompanyInputs = (): CompanyInputs | null => {
     const emp = parseInt(employees, 10);
-    const rev = parseFloat(revenue);
-    const ast = parseFloat(assets);
+    const rev = parseAmount(revenue);
+    const ast = parseAmount(assets);
     const yr = parseInt(reportingYear, 10);
 
     if (isNaN(emp) || isNaN(rev) || isNaN(ast) || isNaN(yr)) return null;
@@ -248,7 +261,7 @@ export default function AuditChamber() {
   }
 
   /* ================================================================= */
-  /* Render: Idle — Cinematic Single-Column                             */
+  /* Render: Idle — Enterprise Command Center                           */
   /* ================================================================= */
 
   return (
@@ -278,7 +291,7 @@ export default function AuditChamber() {
 }
 
 /* ================================================================= */
-/* Idle View — Cinematic single-column hero + scroll-reveal form       */
+/* Idle View — Enterprise Command Center (60/40 Asymmetric)            */
 /* ================================================================= */
 
 function IdleView({
@@ -324,7 +337,7 @@ function IdleView({
   skipToComplete: (m?: "structured_document" | "free_text") => void;
   error: string | null;
 }) {
-  /* ---- Scroll-triggered card reveal ---- */
+  /* ---- Card entrance animation ---- */
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardVisible, setCardVisible] = useState(false);
 
@@ -345,225 +358,271 @@ function IdleView({
   }, []);
 
   return (
-    <div className="-mx-8 -mt-12">
-      {/* ============================================================ */}
-      {/* Section 1: Cinematic Hero Viewport                            */}
-      {/* ============================================================ */}
-      <section className="flex min-h-[85vh] flex-col items-center justify-center px-8 text-center">
-        {/* Badge */}
-        <div className="hero-stagger-1 mb-8 inline-flex items-center gap-2.5 rounded-full border border-zinc-200 bg-white/80 px-4 py-1.5">
-          <EUFlag className="h-3.5 w-3.5" />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
-            EU Directive 2022/2464
-          </span>
-        </div>
+    <div className="relative -mx-8 -mt-12 min-h-[calc(100vh-4rem)] overflow-hidden">
+      {/* ---- Background Canvas ---- */}
+      <div className="absolute inset-0 bg-slate-50" />
+      <div
+        className="absolute inset-0 bg-grid"
+        style={{
+          maskImage:
+            "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%)",
+        }}
+      />
 
-        {/* Headline */}
-        <h1 className="hero-stagger-2 text-[3.5rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-zinc-900 md:text-[5rem]">
-          Seamless ESRS
-          <br />
-          Reporting
-        </h1>
+      {/* ---- EU Atmospheric Glows ---- */}
+      <div className="pointer-events-none absolute -left-32 -top-40 h-[600px] w-[600px] rounded-full bg-[#003399]/[0.04] blur-[140px]" />
+      <div className="pointer-events-none absolute -bottom-20 right-0 h-[400px] w-[400px] rounded-full bg-[#FFCC00]/[0.06] blur-[120px]" />
 
-        {/* Subtitle */}
-        <p className="hero-stagger-3 mx-auto mt-7 max-w-2xl text-xl leading-relaxed text-zinc-500">
-          Upload your management report and company details to receive a
-          compliance score with prioritized recommendations.
-        </p>
-      </section>
-
-      {/* ============================================================ */}
-      {/* Section 2: Scroll-Revealed Form Card                          */}
-      {/* ============================================================ */}
-      <section className="flex justify-center px-8 pb-32">
-        <div className="w-full max-w-4xl">
-          {/* Error display */}
-          {error && (
-            <div className="mb-4 rounded-2xl border border-red-200/60 bg-red-50/50 px-5 py-4 text-sm text-red-600/80">
-              {error}
-            </div>
-          )}
-
-          <div
-            ref={cardRef}
-            className={`card-reveal overflow-hidden rounded-3xl border border-zinc-100 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${
-              cardVisible ? "is-visible" : ""
-            }`}
-          >
-            {/* Segmented Control */}
-            <div className="mb-8 flex justify-center">
-              <div className="relative rounded-xl bg-zinc-100/70 p-1">
-                <div className="relative grid grid-cols-2">
-                  <div
-                    className="absolute inset-y-0 w-1/2 rounded-[10px] bg-white transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                    style={{
-                      transform: `translateX(${mode === "structured_document" ? "0%" : "100%"})`,
-                      boxShadow: "0 1px 3px rgb(0 0 0 / 0.06)",
-                    }}
-                  />
-                  <button
-                    onClick={() => setMode("structured_document")}
-                    className={`relative z-10 rounded-[10px] px-6 py-2 text-[13px] font-medium transition-colors duration-200 ${
-                      mode === "structured_document"
-                        ? "text-zinc-900"
-                        : "text-zinc-400 hover:text-zinc-500"
-                    }`}
-                  >
-                    Structured Document
-                  </button>
-                  <button
-                    onClick={() => setMode("free_text")}
-                    className={`relative z-10 rounded-[10px] px-6 py-2 text-[13px] font-medium transition-colors duration-200 ${
-                      mode === "free_text"
-                        ? "text-zinc-900"
-                        : "text-zinc-400 hover:text-zinc-500"
-                    }`}
-                  >
-                    Free Text
-                  </button>
-                </div>
-              </div>
+      {/* ---- Main Content ---- */}
+      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl items-center px-8 py-16 lg:py-0">
+        <div className="grid w-full gap-12 lg:grid-cols-[3fr_2fr] lg:gap-20">
+          {/* ============================================================ */}
+          {/* Left Column: The Narrative                                    */}
+          {/* ============================================================ */}
+          <div className="flex flex-col justify-center">
+            {/* Badge */}
+            <div className="hero-stagger-1 mb-8 border-l-2 border-[#003399] pl-3">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                EU Directive 2022/2464
+              </span>
             </div>
 
-            {/* Entity */}
-            <div className="mb-7">
-              <label
-                htmlFor="entity-input"
-                className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400"
-              >
-                Entity
-              </label>
-              <input
-                id="entity-input"
-                type="text"
-                value={entity}
-                onChange={(e) => setEntity(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleRun()}
-                placeholder="LEI or company name"
-                className="h-11 w-full border-b border-zinc-200 bg-transparent px-0 text-[15px] text-zinc-900 placeholder:text-zinc-300 transition-colors focus:border-zinc-900 focus:outline-none"
-              />
-            </div>
+            {/* Headline */}
+            <h1 className="hero-stagger-2 font-display text-5xl font-extrabold leading-[1.08] tracking-tight text-slate-900 lg:text-6xl">
+              Unlocking{" "}
+              <span className="bg-gradient-to-r from-[#003399] via-[#2B60DE] to-[#FFCC00] bg-clip-text text-transparent">
+                ESRS
+              </span>
+              <br />
+              Compliance
+            </h1>
 
-            {/* Company Details */}
-            <div className="mb-7">
-              <label className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
-                Company Details
-              </label>
-              <div className="grid grid-cols-2 gap-x-8 gap-y-5 md:grid-cols-4">
-                <UnderlineInput
-                  id="employees"
-                  label="Employees"
-                  value={employees}
-                  onChange={setEmployees}
-                  placeholder="e.g., 250"
-                  type="number"
-                />
-                <UnderlineInput
-                  id="revenue"
-                  label="Revenue (EUR)"
-                  value={revenue}
-                  onChange={setRevenue}
-                  placeholder="e.g., 85M"
-                  type="number"
-                />
-                <UnderlineInput
-                  id="assets"
-                  label="Total Assets (EUR)"
-                  value={assets}
-                  onChange={setAssets}
-                  placeholder="e.g., 42M"
-                  type="number"
-                />
-                <UnderlineInput
-                  id="reporting-year"
-                  label="Reporting Year"
-                  value={reportingYear}
-                  onChange={setReportingYear}
-                  placeholder="e.g., 2025"
-                  type="number"
-                />
-              </div>
-            </div>
+            {/* Subtitle */}
+            <p className="hero-stagger-3 mt-6 max-w-lg text-lg leading-relaxed text-slate-600">
+              Upload your management report and company details to receive a
+              comprehensive compliance score and prioritized action plan.
+            </p>
 
-            {/* Separator */}
-            <div className="mb-7 border-t border-zinc-100" />
-
-            {/* Content Area */}
-            <div className="mb-8">
-              {mode === "structured_document" ? (
-                <>
-                  <div className="mb-3 flex items-center justify-between">
-                    <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
-                      Document Vault
-                    </label>
-                    <span className="text-[11px] text-zinc-300">
-                      <span className="font-mono font-semibold text-zinc-500">
-                        {reportFileName ? "1" : "0"}
-                      </span>
-                      /1
+            {/* Trust Anchors */}
+            <div className="hero-stagger-4 mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+              {["CSRD Ready", "Taxonomy Aligned", "ESEF Validated"].map(
+                (item) => (
+                  <div key={item} className="flex items-center gap-2">
+                    <svg
+                      className="h-4 w-4 text-emerald-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4.5 12.75l6 6 9-13.5"
+                      />
+                    </svg>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      {item}
                     </span>
                   </div>
-                  <ReportUploadCard
-                    fileName={reportFileName}
-                    onFile={setReportFile}
-                  />
-                </>
-              ) : (
-                <>
-                  <label className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
-                    Sustainability Description
-                  </label>
-                  <textarea
-                    value={freeText}
-                    onChange={(e) => setFreeText(e.target.value)}
-                    placeholder="Describe your current sustainability situation, goals, emissions data, energy consumption, transition plans..."
-                    rows={5}
-                    className="w-full resize-none border-b border-zinc-200 bg-transparent px-0 py-2 text-[15px] text-zinc-900 placeholder:text-zinc-300 transition-colors focus:border-zinc-900 focus:outline-none"
-                  />
-                  <p className="mt-2 text-[11px] text-zinc-300">
-                    The more detail you provide, the more accurate the
-                    assessment will be.
-                  </p>
-                </>
+                )
               )}
             </div>
-
-            {/* CTA */}
-            <button
-              onClick={handleRun}
-              disabled={!canRun}
-              className={`
-                h-14 w-full rounded-xl text-[15px] font-medium transition-all duration-200
-                focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2
-                ${
-                  canRun
-                    ? "bg-zinc-900 text-white hover:bg-zinc-800"
-                    : "bg-zinc-100 text-zinc-300 cursor-not-allowed"
-                }
-              `}
-            >
-              Analyze Report
-            </button>
           </div>
 
-          {/* Dev shortcut */}
-          <button
-            onClick={() => skipToComplete(mode)}
-            className="mt-6 w-full text-center text-[11px] text-zinc-300 transition-colors hover:text-zinc-500"
-          >
-            Skip to results
-          </button>
+          {/* ============================================================ */}
+          {/* Right Column: Floating Interface                              */}
+          {/* ============================================================ */}
+          <div className="flex flex-col justify-center">
+            {/* Error display */}
+            {error && (
+              <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50/50 px-4 py-3 text-sm text-red-600/80">
+                {error}
+              </div>
+            )}
+
+            <div
+              ref={cardRef}
+              className={`card-reveal relative overflow-hidden rounded-2xl border border-white/80 bg-white/80 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.08)] backdrop-blur-xl ${
+                cardVisible ? "is-visible" : ""
+              }`}
+            >
+              {/* Top shimmer line */}
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+
+              {/* Segmented Control */}
+              <div className="mb-6">
+                <div className="rounded-lg bg-slate-100 p-1">
+                  <div className="relative grid grid-cols-2">
+                    <div
+                      className="absolute inset-y-0 w-1/2 rounded-md bg-white transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                      style={{
+                        transform: `translateX(${mode === "structured_document" ? "0%" : "100%"})`,
+                        boxShadow: "0 1px 3px rgb(0 0 0 / 0.08)",
+                      }}
+                    />
+                    <button
+                      onClick={() => setMode("structured_document")}
+                      className={`relative z-10 rounded-md px-4 py-2 text-[12px] font-semibold transition-colors duration-200 ${
+                        mode === "structured_document"
+                          ? "text-slate-900"
+                          : "text-slate-400 hover:text-slate-500"
+                      }`}
+                    >
+                      Structured Document
+                    </button>
+                    <button
+                      onClick={() => setMode("free_text")}
+                      className={`relative z-10 rounded-md px-4 py-2 text-[12px] font-semibold transition-colors duration-200 ${
+                        mode === "free_text"
+                          ? "text-slate-900"
+                          : "text-slate-400 hover:text-slate-500"
+                      }`}
+                    >
+                      Free Text
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Entity */}
+              <div className="mb-5">
+                <label
+                  htmlFor="entity-input"
+                  className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                >
+                  Entity
+                </label>
+                <input
+                  id="entity-input"
+                  type="text"
+                  value={entity}
+                  onChange={(e) => setEntity(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleRun()}
+                  placeholder="LEI or company name"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 placeholder:text-slate-300 transition-colors focus:border-[#003399]/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#003399]/20"
+                />
+              </div>
+
+              {/* Company Details */}
+              <div className="mb-5">
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Company Details
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <TechInput
+                    id="employees"
+                    label="Employees"
+                    value={employees}
+                    onChange={setEmployees}
+                    placeholder="e.g., 250"
+                    type="number"
+                  />
+                  <TechInput
+                    id="revenue"
+                    label="Revenue (EUR)"
+                    value={revenue}
+                    onChange={setRevenue}
+                    placeholder="e.g., 85M"
+                    type="text"
+                  />
+                  <TechInput
+                    id="assets"
+                    label="Total Assets (EUR)"
+                    value={assets}
+                    onChange={setAssets}
+                    placeholder="e.g., 42M"
+                    type="text"
+                  />
+                  <TechInput
+                    id="reporting-year"
+                    label="Reporting Year"
+                    value={reportingYear}
+                    onChange={setReportingYear}
+                    placeholder="e.g., 2025"
+                    type="number"
+                  />
+                </div>
+              </div>
+
+              {/* Separator */}
+              <div className="mb-5 border-t border-slate-100" />
+
+              {/* Content Area */}
+              <div className="mb-6">
+                {mode === "structured_document" ? (
+                  <>
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Document Vault
+                      </label>
+                      <span className="text-[10px] text-slate-300">
+                        <span className="font-mono font-bold text-slate-500">
+                          {reportFileName ? "1" : "0"}
+                        </span>
+                        /1
+                      </span>
+                    </div>
+                    <ReportUploadCard
+                      fileName={reportFileName}
+                      onFile={setReportFile}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Sustainability Description
+                    </label>
+                    <textarea
+                      value={freeText}
+                      onChange={(e) => setFreeText(e.target.value)}
+                      placeholder="Describe your current sustainability situation, goals, emissions data, energy consumption, transition plans..."
+                      rows={4}
+                      className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-300 transition-colors focus:border-[#003399]/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#003399]/20"
+                    />
+                  </>
+                )}
+              </div>
+
+              {/* CTA */}
+              <button
+                onClick={handleRun}
+                disabled={!canRun}
+                className={`
+                  h-12 w-full rounded-lg text-sm font-semibold shadow-md transition-all duration-200
+                  focus:outline-none focus:ring-2 focus:ring-[#003399]/40 focus:ring-offset-2
+                  ${
+                    canRun
+                      ? "bg-[#003399] text-white hover:bg-[#002266] hover:shadow-lg active:scale-[0.99]"
+                      : "cursor-not-allowed bg-slate-100 text-slate-300 shadow-none"
+                  }
+                `}
+              >
+                Analyze Report
+              </button>
+            </div>
+
+            {/* Dev shortcut */}
+            <button
+              onClick={() => skipToComplete(mode)}
+              className="mt-4 w-full text-center text-[10px] text-slate-300 transition-colors hover:text-slate-500"
+            >
+              Skip to results
+            </button>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
 
 /* ================================================================= */
-/* Underline Input Field                                               */
+/* Tech Input Field                                                    */
 /* ================================================================= */
 
-function UnderlineInput({
+function TechInput({
   id,
   label,
   value,
@@ -582,7 +641,7 @@ function UnderlineInput({
     <div>
       <label
         htmlFor={id}
-        className="mb-1 block text-[11px] font-medium text-zinc-400"
+        className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400"
       >
         {label}
       </label>
@@ -592,7 +651,7 @@ function UnderlineInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-10 w-full border-b border-zinc-200 bg-transparent px-0 font-mono text-sm text-zinc-900 placeholder:text-zinc-300 placeholder:font-sans transition-colors focus:border-zinc-900 focus:outline-none"
+        className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 font-mono text-xs text-slate-900 placeholder:text-slate-300 placeholder:font-sans transition-colors focus:border-[#003399]/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#003399]/20"
       />
     </div>
   );
@@ -644,13 +703,13 @@ function ReportUploadCard({
       onDrop={handleDrop}
       onClick={() => inputRef.current?.click()}
       className={`
-        group flex cursor-pointer flex-col items-center justify-center rounded-2xl p-8 text-center transition-all duration-200
+        group flex cursor-pointer flex-col items-center justify-center rounded-xl p-6 text-center transition-all duration-200
         ${
           dragging
-            ? "border-2 border-dashed border-zinc-400 bg-zinc-50 scale-[1.01]"
+            ? "border-2 border-dashed border-[#003399]/40 bg-blue-50/30 scale-[1.01]"
             : isFilled
-              ? "border border-zinc-200 bg-zinc-50/50"
-              : "border border-dashed border-zinc-200 bg-zinc-50/30 hover:bg-zinc-50/80 hover:border-zinc-300"
+              ? "border border-slate-200 bg-slate-50/50"
+              : "border border-dashed border-slate-200 bg-slate-50/30 hover:bg-blue-50/20 hover:border-[#003399]/30"
         }
       `}
     >
@@ -665,35 +724,37 @@ function ReportUploadCard({
 
       {isFilled ? (
         <>
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50">
+          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50">
             <svg
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
-              className="h-5 w-5 text-emerald-500"
+              className="h-4 w-4 text-emerald-500"
             >
               <path d="M20 6L9 17l-5-5" />
             </svg>
           </div>
-          <p className="max-w-[280px] truncate text-sm font-medium text-zinc-600">
+          <p className="max-w-[240px] truncate text-sm font-medium text-slate-600">
             {fileName}
           </p>
-          <p className="mt-1 text-xs font-medium text-emerald-600">Ready</p>
+          <p className="mt-1 text-[11px] font-medium text-emerald-600">
+            Ready
+          </p>
         </>
       ) : (
         <>
-          <div className="mb-3 transition-transform duration-200 group-hover:-translate-y-0.5">
-            <UploadCloudIcon className="h-10 w-10 text-zinc-300" />
+          <div className="mb-2 transition-transform duration-200 group-hover:-translate-y-0.5">
+            <UploadCloudIcon className="h-8 w-8 text-slate-300" />
           </div>
-          <p className="text-sm font-medium text-zinc-500">
+          <p className="text-sm font-medium text-slate-500">
             Annual Management Report
           </p>
-          <p className="mt-1 text-xs text-zinc-300">
+          <p className="mt-1 text-[11px] text-slate-300">
             Drop file here or click to browse
           </p>
-          <p className="mt-3 text-[10px] font-medium uppercase tracking-wider text-zinc-300">
+          <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-300">
             .json &nbsp; .xhtml
           </p>
         </>
