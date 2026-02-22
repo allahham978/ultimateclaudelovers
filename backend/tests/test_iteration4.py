@@ -18,6 +18,7 @@ Tests cover:
 import json
 import time
 import uuid
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -42,6 +43,46 @@ from schemas import (
 )
 
 client = TestClient(app)
+
+
+# ---------------------------------------------------------------------------
+# Mock Claude API helpers for real extractor
+# ---------------------------------------------------------------------------
+
+def _mock_claude_response(text: str) -> MagicMock:
+    """Create a mock Anthropic Messages API response."""
+    block = MagicMock()
+    block.text = text
+    resp = MagicMock()
+    resp.content = [block]
+    return resp
+
+
+_MOCK_EXTRACTOR_JSON = json.dumps({
+    "company_meta": {
+        "name": "TestCorp SA", "lei": "529900TESTCORP00001", "sector": "AI Infrastructure",
+        "fiscal_year": 2024, "jurisdiction": "EU", "report_title": "Annual Management Report 2024",
+    },
+    "esrs_claims": {
+        "E1-1": {"data_point": "Transition Plan", "disclosed_value": "Net-zero by 2040", "unit": None, "confidence": 0.85, "xbrl_concept": "esrs_E1-1_01"},
+        "E1-5": {"data_point": "Energy Consumption", "disclosed_value": "45,000 MWh", "unit": "MWh", "confidence": 0.90, "xbrl_concept": "esrs_E1-5_04"},
+        "E1-6": {"data_point": "GHG Emissions", "disclosed_value": "Scope 1: 1,200 tCO2eq", "unit": "tCO2eq", "confidence": 0.80, "xbrl_concept": "esrs_E1-6_01"},
+    },
+    "financial_context": {"capex_total_eur": 50000000, "capex_green_eur": 17500000, "opex_total_eur": 120000000, "opex_green_eur": 24000000, "revenue_eur": 250000000, "taxonomy_activities": [], "confidence": 0.92},
+})
+
+_MOCK_EXTRACTOR_LITE_JSON = json.dumps({
+    "company_meta": {
+        "name": "Lumiere Systemes SA", "lei": None, "sector": "AI Infrastructure",
+        "fiscal_year": None, "jurisdiction": "FR", "report_title": "User-Provided Sustainability Description",
+    },
+    "esrs_claims": {
+        "E1-1": {"data_point": "Transition Plan", "disclosed_value": "Net-zero target mentioned", "unit": None, "confidence": 0.5, "xbrl_concept": None},
+        "E1-5": {"data_point": "Energy Consumption", "disclosed_value": None, "unit": None, "confidence": 0.0, "xbrl_concept": None},
+        "E1-6": {"data_point": "GHG Emissions", "disclosed_value": None, "unit": None, "confidence": 0.0, "xbrl_concept": None},
+    },
+    "financial_context": None,
+})
 
 
 # ---------------------------------------------------------------------------
@@ -306,6 +347,13 @@ class TestSystemPrompts:
 
 
 class TestGraphPipeline:
+    @pytest.fixture(autouse=True)
+    def _mock_extractor_api(self):
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = _mock_claude_response(_MOCK_EXTRACTOR_JSON)
+        with patch("agents.extractor.anthropic.Anthropic", return_value=mock_client):
+            yield
+
     def test_graph_imports(self):
         from graph import graph  # noqa: F401
 
@@ -345,6 +393,16 @@ class TestGraphPipeline:
 
 
 class TestExtractorFreeText:
+    """Tests for extractor in free_text mode — requires mocking the Claude API."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_extractor_api(self):
+        """Mock the Claude API for all tests in this class."""
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = _mock_claude_response(_MOCK_EXTRACTOR_LITE_JSON)
+        with patch("agents.extractor.anthropic.Anthropic", return_value=mock_client):
+            yield
+
     def test_returns_esrs_claims(self, compliance_check_state):
         from agents.extractor import extractor_node
         result = extractor_node(compliance_check_state)
@@ -386,6 +444,13 @@ class TestExtractorFreeText:
 
 
 class TestScorerNode:
+    @pytest.fixture(autouse=True)
+    def _mock_extractor_api(self):
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = _mock_claude_response(_MOCK_EXTRACTOR_LITE_JSON)
+        with patch("agents.extractor.anthropic.Anthropic", return_value=mock_client):
+            yield
+
     def test_returns_compliance_score(self, compliance_check_state):
         from agents.extractor import extractor_node
         from agents.scorer import scorer_node
@@ -419,6 +484,13 @@ class TestScorerNode:
 
 
 class TestAdvisorNode:
+    @pytest.fixture(autouse=True)
+    def _mock_extractor_api(self):
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = _mock_claude_response(_MOCK_EXTRACTOR_LITE_JSON)
+        with patch("agents.extractor.anthropic.Anthropic", return_value=mock_client):
+            yield
+
     def test_returns_recommendations(self, compliance_check_state):
         from agents.extractor import extractor_node
         from agents.scorer import scorer_node
@@ -499,6 +571,13 @@ class TestAdvisorNode:
 
 
 class TestFreeTextEndpoint:
+    @pytest.fixture(autouse=True)
+    def _mock_extractor_api(self):
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = _mock_claude_response(_MOCK_EXTRACTOR_LITE_JSON)
+        with patch("agents.extractor.anthropic.Anthropic", return_value=mock_client):
+            yield
+
     def test_free_text_returns_run_id(self):
         r = _upload_free_text()
         assert r.status_code == 200
@@ -570,6 +649,13 @@ class TestFreeTextEndpoint:
 
 
 class TestFreeTextSSE:
+    @pytest.fixture(autouse=True)
+    def _mock_extractor_api(self):
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = _mock_claude_response(_MOCK_EXTRACTOR_LITE_JSON)
+        with patch("agents.extractor.anthropic.Anthropic", return_value=mock_client):
+            yield
+
     def test_free_text_sse_has_three_node_completes(self):
         run_id = _run_and_wait_free_text()
         events = _collect_sse_events(run_id)
@@ -610,6 +696,13 @@ class TestFreeTextSSE:
 
 
 class TestStructuredDocumentRegression:
+    @pytest.fixture(autouse=True)
+    def _mock_extractor_api(self):
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = _mock_claude_response(_MOCK_EXTRACTOR_JSON)
+        with patch("agents.extractor.anthropic.Anthropic", return_value=mock_client):
+            yield
+
     def test_structured_endpoint_still_works(self):
         r = _upload_structured()
         assert r.status_code == 200
@@ -666,6 +759,12 @@ class TestStructuredDocumentRegression:
 
 
 class TestGateChecks:
+    @pytest.fixture(autouse=True)
+    def _mock_extractor_api(self):
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = _mock_claude_response(_MOCK_EXTRACTOR_JSON)
+        with patch("agents.extractor.anthropic.Anthropic", return_value=mock_client):
+            yield
     def test_gate_schemas_ok(self):
         from schemas import ComplianceResult, ComplianceScore  # noqa: F401
         assert True

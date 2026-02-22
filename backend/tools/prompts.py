@@ -75,10 +75,12 @@ OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
 }
 
 RULES:
+- Extract ALL ESRS standards found, not just E1. The key is the ESRS ID (e.g. "E1-1", "S1-6").
 - confidence is 0.0–1.0: 1.0 = explicit iXBRL tag with value + unit, 0.5 = concept present but ambiguous, 0.0 = not found
 - xbrl_concept: the iXBRL concept name that sourced this data point
 - Never hallucinate or estimate values. Only extract what is explicitly in the structured data.
-- If a data point is missing, set disclosed_value to null and confidence to 0.0."""
+- If a data point is missing, set disclosed_value to null and confidence to 0.0.
+- EUR values should be in absolute terms — check the decimals/scale attributes and multiply if needed."""
 
 
 # ---------------------------------------------------------------------------
@@ -124,12 +126,14 @@ OUTPUT FORMAT: Return ONLY a valid JSON object. Schema:
     "<ESRS-ID>": { "data_point": str, "disclosed_value": str|null, "unit": str|null,
                    "confidence": float, "xbrl_concept": null },
     ...
-  }
+  },
+  "financial_context": null
 }
 
 RULES:
 - Never hallucinate or invent data not present in the input text.
-- If the input contains almost nothing, return mostly null values.
+- If the input contains almost nothing, return mostly null values and few/no esrs_claims.
+- financial_context is always null in free text mode.
 - xbrl_concept is always null in this mode (no iXBRL tags in free text)."""
 
 

@@ -90,6 +90,54 @@ MOCK_EXTRACTOR_RESPONSE_JSON = json.dumps({
             "xbrl_concept": "esrs_E1-6_01_GrossScope1GHGEmissions",
         },
     },
+    "financial_context": {
+        "capex_total_eur": 50000000.0,
+        "capex_green_eur": 17500000.0,
+        "opex_total_eur": 120000000.0,
+        "opex_green_eur": 24000000.0,
+        "revenue_eur": 250000000.0,
+        "taxonomy_activities": [
+            "8.1 Data processing, hosting and related activities",
+            "4.1 Electricity generation using solar photovoltaic technology",
+        ],
+        "confidence": 0.92,
+    },
+})
+
+# Mock response for free-text mode extractor
+MOCK_EXTRACTOR_LITE_RESPONSE_JSON = json.dumps({
+    "company_meta": {
+        "name": "Lumiere Systemes SA",
+        "lei": None,
+        "sector": "AI Infrastructure",
+        "fiscal_year": None,
+        "jurisdiction": "FR",
+        "report_title": "User-Provided Sustainability Description",
+    },
+    "esrs_claims": {
+        "E1-1": {
+            "data_point": "Transition Plan for Climate Change Mitigation",
+            "disclosed_value": "Net-zero target mentioned",
+            "unit": None,
+            "confidence": 0.5,
+            "xbrl_concept": None,
+        },
+        "E1-5": {
+            "data_point": "Energy Consumption and Mix",
+            "disclosed_value": None,
+            "unit": None,
+            "confidence": 0.0,
+            "xbrl_concept": None,
+        },
+        "E1-6": {
+            "data_point": "Gross Scopes 1, 2, 3 GHG Emissions",
+            "disclosed_value": None,
+            "unit": None,
+            "confidence": 0.0,
+            "xbrl_concept": None,
+        },
+    },
+    "financial_context": None,
 })
 
 MOCK_FETCHER_RESPONSE_JSON = json.dumps({
@@ -258,8 +306,11 @@ def minimal_state() -> AuditState:
 
 
 @pytest.fixture
-def state_after_extractor(minimal_state) -> AuditState:
-    """State after extractor node has run — includes company_meta and esrs_claims."""
+def state_after_extractor(minimal_state, mock_anthropic_client) -> AuditState:
+    """State after extractor node has run — includes company_meta and esrs_claims.
+
+    Requires mock_anthropic_client since extractor now makes real Claude API calls.
+    """
     from agents.extractor import extractor_node
 
     result = extractor_node(minimal_state)
@@ -291,12 +342,27 @@ def state_after_auditor(state_after_fetcher) -> AuditState:
 
 @pytest.fixture
 def mock_anthropic_client():
-    """Patch Anthropic client for both fetcher and auditor, return mock."""
-    mock_client = MagicMock()
-    # Default response works for fetcher (iteration 6 tests)
-    mock_client.messages.create.return_value = _make_mock_claude_response(MOCK_FETCHER_RESPONSE_JSON)
+    """Patch Anthropic client for all agents with system-prompt-aware routing.
 
-    with patch("agents.fetcher.anthropic.Anthropic", return_value=mock_client), \
+    Since agents.extractor.anthropic and agents.fetcher.anthropic are the SAME
+    module object, we use a single mock client with a side_effect that returns
+    the correct response based on the system prompt argument:
+    - SYSTEM_PROMPT_FETCHER → MOCK_FETCHER_RESPONSE_JSON
+    - Otherwise → MOCK_EXTRACTOR_RESPONSE_JSON
+    """
+    from tools.prompts import SYSTEM_PROMPT_FETCHER
+
+    def _route_response(**kwargs):
+        system = kwargs.get("system", "")
+        if system == SYSTEM_PROMPT_FETCHER:
+            return _make_mock_claude_response(MOCK_FETCHER_RESPONSE_JSON)
+        return _make_mock_claude_response(MOCK_EXTRACTOR_RESPONSE_JSON)
+
+    mock_client = MagicMock()
+    mock_client.messages.create.side_effect = _route_response
+
+    with patch("agents.extractor.anthropic.Anthropic", return_value=mock_client), \
+         patch("agents.fetcher.anthropic.Anthropic", return_value=mock_client), \
          patch("agents.auditor.Anthropic", return_value=mock_client):
         yield mock_client
 
@@ -329,10 +395,17 @@ def compliance_check_state() -> AuditState:
 
 @pytest.fixture
 def compliance_state_after_extractor(compliance_check_state) -> AuditState:
-    """Compliance check state after extractor node has run."""
+    """Compliance check state after extractor node has run.
+
+    Mocks the Claude API since extractor now makes real API calls.
+    """
     from agents.extractor import extractor_node
 
-    result = extractor_node(compliance_check_state)
+    mock_client = MagicMock()
+    mock_client.messages.create.return_value = _make_mock_claude_response(MOCK_EXTRACTOR_LITE_RESPONSE_JSON)
+
+    with patch("agents.extractor.anthropic.Anthropic", return_value=mock_client):
+        result = extractor_node(compliance_check_state)
     return {**compliance_check_state, **result}
 
 

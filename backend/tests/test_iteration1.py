@@ -29,27 +29,27 @@ from schemas import (
 
 
 class TestExtractorNode:
-    def test_returns_company_meta(self, minimal_state):
+    def test_returns_company_meta(self, minimal_state, mock_anthropic_client):
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
         assert "company_meta" in result
         assert isinstance(result["company_meta"], CompanyMeta)
 
-    def test_company_name_reflects_entity_id(self, minimal_state):
+    def test_company_name_reflects_entity_id(self, minimal_state, mock_anthropic_client):
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
         assert result["company_meta"].name == minimal_state["entity_id"]
 
-    def test_returns_esrs_claims_dict(self, minimal_state):
+    def test_returns_esrs_claims_dict(self, minimal_state, mock_anthropic_client):
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
         assert "esrs_claims" in result
         assert isinstance(result["esrs_claims"], dict)
 
-    def test_esrs_claims_has_all_three_standards(self, minimal_state):
+    def test_esrs_claims_has_all_three_standards(self, minimal_state, mock_anthropic_client):
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
@@ -58,14 +58,14 @@ class TestExtractorNode:
         assert "E1-5" in claims, "E1-5 (Energy) claim missing"
         assert "E1-6" in claims, "E1-6 (GHG Emissions) claim missing"
 
-    def test_esrs_claims_are_valid_pydantic_models(self, minimal_state):
+    def test_esrs_claims_are_valid_pydantic_models(self, minimal_state, mock_anthropic_client):
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
         for key, claim in result["esrs_claims"].items():
             assert isinstance(claim, ESRSClaim), f"{key} is not an ESRSClaim"
 
-    def test_esrs_claim_confidence_in_range(self, minimal_state):
+    def test_esrs_claim_confidence_in_range(self, minimal_state, mock_anthropic_client):
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
@@ -74,13 +74,13 @@ class TestExtractorNode:
                 f"{key} confidence {claim.confidence} outside 0–1 range"
             )
 
-    def test_company_meta_fiscal_year_is_int(self, minimal_state):
+    def test_company_meta_fiscal_year_is_int(self, minimal_state, mock_anthropic_client):
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
         assert isinstance(result["company_meta"].fiscal_year, int)
 
-    def test_appends_logs_with_agent_label(self, minimal_state):
+    def test_appends_logs_with_agent_label(self, minimal_state, mock_anthropic_client):
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
@@ -90,14 +90,14 @@ class TestExtractorNode:
             assert "msg" in log
             assert "ts" in log
 
-    def test_appends_one_entry_to_pipeline_trace(self, minimal_state):
+    def test_appends_one_entry_to_pipeline_trace(self, minimal_state, mock_anthropic_client):
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
         extractor_entries = [t for t in result["pipeline_trace"] if t["agent"] == "extractor"]
         assert len(extractor_entries) == 1
 
-    def test_pipeline_trace_entry_has_ms_field(self, minimal_state):
+    def test_pipeline_trace_entry_has_ms_field(self, minimal_state, mock_anthropic_client):
         from agents.extractor import extractor_node
 
         result = extractor_node(minimal_state)
@@ -106,7 +106,7 @@ class TestExtractorNode:
         assert isinstance(entry["ms"], int)
         assert entry["ms"] >= 0
 
-    def test_accumulates_existing_logs(self, minimal_state):
+    def test_accumulates_existing_logs(self, minimal_state, mock_anthropic_client):
         """Node must append to existing logs, not overwrite them."""
         from agents.extractor import extractor_node
 
@@ -115,7 +115,7 @@ class TestExtractorNode:
         system_logs = [l for l in result["logs"] if l["agent"] == "system"]
         assert len(system_logs) == 1, "Existing log entries must be preserved"
 
-    def test_does_not_modify_init_keys(self, minimal_state):
+    def test_does_not_modify_init_keys(self, minimal_state, mock_anthropic_client):
         """Node must not overwrite input-only keys."""
         from agents.extractor import extractor_node
 
@@ -506,13 +506,13 @@ class TestGraphEndToEnd:
 
         assert graph is not None
 
-    def test_graph_runs_end_to_end(self, minimal_state):
+    def test_graph_runs_end_to_end(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         assert result is not None
 
-    def test_final_result_present_in_result(self, minimal_state):
+    def test_final_result_present_in_result(self, minimal_state, mock_anthropic_client):
         from graph import graph
         from schemas import ComplianceResult
 
@@ -520,7 +520,7 @@ class TestGraphEndToEnd:
         assert "final_result" in result
         assert isinstance(result["final_result"], ComplianceResult)
 
-    def test_three_nodes_executed_in_order(self, minimal_state):
+    def test_three_nodes_executed_in_order(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
@@ -529,33 +529,33 @@ class TestGraphEndToEnd:
             f"Unexpected node execution order: {agents}"
         )
 
-    def test_audit_id_propagated_to_final_result(self, minimal_state):
+    def test_audit_id_propagated_to_final_result(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         assert result["final_result"].audit_id == minimal_state["audit_id"]
 
-    def test_compliance_score_present(self, minimal_state):
+    def test_compliance_score_present(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         score = result["final_result"].score
         assert 0 <= score.overall <= 100
 
-    def test_pipeline_has_three_agents(self, minimal_state):
+    def test_pipeline_has_three_agents(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         assert len(result["final_result"].pipeline.agents) == 3
 
-    def test_pipeline_agent_order_in_final_result(self, minimal_state):
+    def test_pipeline_agent_order_in_final_result(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         names = [a.agent for a in result["final_result"].pipeline.agents]
         assert names == ["extractor", "scorer", "advisor"]
 
-    def test_all_agent_timings_are_completed(self, minimal_state):
+    def test_all_agent_timings_are_completed(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
@@ -564,7 +564,7 @@ class TestGraphEndToEnd:
                 f"{agent_timing.agent} status is '{agent_timing.status}', expected 'completed'"
             )
 
-    def test_logs_contain_entries_from_all_three_agents(self, minimal_state):
+    def test_logs_contain_entries_from_all_three_agents(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
@@ -573,25 +573,25 @@ class TestGraphEndToEnd:
         assert "scorer" in logged_agents
         assert "advisor" in logged_agents
 
-    def test_schema_version_is_3_0(self, minimal_state):
+    def test_schema_version_is_3_0(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         assert result["final_result"].schema_version == "3.0"
 
-    def test_recommendations_is_list(self, minimal_state):
+    def test_recommendations_is_list(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         assert isinstance(result["final_result"].recommendations, list)
 
-    def test_company_name_in_final_result(self, minimal_state):
+    def test_company_name_in_final_result(self, minimal_state, mock_anthropic_client):
         from graph import graph
 
         result = graph.invoke(minimal_state)
         assert result["final_result"].company.name == minimal_state["entity_id"]
 
-    def test_graph_handles_empty_report_json(self):
+    def test_graph_handles_empty_report_json(self, mock_anthropic_client):
         """Graph must not crash when report JSON has no facts."""
         from graph import graph
         from schemas import ComplianceResult, CompanyInputs
@@ -612,7 +612,7 @@ class TestGraphEndToEnd:
         result = graph.invoke(state)
         assert isinstance(result["final_result"], ComplianceResult)
 
-    def test_graph_handles_missing_entity_id(self):
+    def test_graph_handles_missing_entity_id(self, mock_anthropic_client):
         """Graph must not crash when entity_id is absent."""
         from graph import graph
         from schemas import ComplianceResult, CompanyInputs
@@ -632,7 +632,7 @@ class TestGraphEndToEnd:
         result = graph.invoke(state)
         assert isinstance(result["final_result"], ComplianceResult)
 
-    def test_final_result_json_serialisable(self, minimal_state):
+    def test_final_result_json_serialisable(self, minimal_state, mock_anthropic_client):
         """Final result must be serialisable to JSON (as required for SSE streaming)."""
         import json
         from graph import graph

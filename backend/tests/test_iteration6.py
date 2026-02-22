@@ -251,6 +251,7 @@ class TestErrorHandling:
         assert "API connection failed" in error_logs[0]["msg"]
 
     def test_malformed_json_returns_safe_defaults(self, minimal_state, mock_anthropic_client):
+        mock_anthropic_client.messages.create.side_effect = None
         mock_anthropic_client.messages.create.return_value = _make_mock_claude_response("not valid json {{{")
         result = fetcher_node(minimal_state)
         fin = result["taxonomy_financials"]
@@ -267,6 +268,7 @@ class TestErrorHandling:
             "taxonomy_activities": [],
             "confidence": 0.7,
         })
+        mock_anthropic_client.messages.create.side_effect = None
         mock_anthropic_client.messages.create.return_value = _make_mock_claude_response(flat_response)
         result = fetcher_node(minimal_state)
         fin = result["taxonomy_financials"]
@@ -275,6 +277,7 @@ class TestErrorHandling:
         assert fin.confidence == 0.7
 
     def test_empty_response_returns_safe_defaults(self, minimal_state, mock_anthropic_client):
+        mock_anthropic_client.messages.create.side_effect = None
         mock_anthropic_client.messages.create.return_value = _make_mock_claude_response("{}")
         result = fetcher_node(minimal_state)
         fin = result["taxonomy_financials"]
